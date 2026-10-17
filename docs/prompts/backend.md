@@ -6,7 +6,7 @@ Copy either the Chinese or English version into your AI coding session at the re
 
 ## 中文提示词
 
-你正在 `wahab-linux/jinni` 仓库开发 AfterClass，参加 DYHTG 2026 的 BlackRock challenge。我负责后端，Wahab 独立负责前端。请直接完成后端实现和验证，不要重新选题。
+你正在 `wahab-linux/my-jinni` 仓库开发 AfterClass，参加 DYHTG 2026 的 BlackRock challenge。我负责后端，Wahab 独立负责前端。请直接完成后端实现和验证，不要重新选题。
 
 先阅读 `AGENTS.md`、`docs/PROJECT_PLAN.md`、`docs/API.md`、`docs/openapi.json`、`app/schemas.py`、`data/` 和 `web/fixtures/`。现有项目是初始化骨架，`POST /api/v1/recommendations` 有意返回 501。你要把它替换为实际两源整合和确定性推荐。
 
@@ -40,7 +40,7 @@ Copy either the Chinese or English version into your AI coding session at the re
 
 ## English prompt
 
-You are developing AfterClass in `wahab-linux/jinni` for the DYHTG 2026 BlackRock challenge. I own the backend; Wahab independently owns the frontend. Implement and verify the backend now; keep the agreed product scope.
+You are developing AfterClass in `wahab-linux/my-jinni` for the DYHTG 2026 BlackRock challenge. I own the backend; Wahab independently owns the frontend. Implement and verify the backend now; keep the agreed product scope.
 
 First read `AGENTS.md`, `docs/PROJECT_PLAN.md`, `docs/API.md`, `docs/openapi.json`, `app/schemas.py`, `data/`, and `web/fixtures/`. The current project is a scaffold: `POST /api/v1/recommendations` deliberately returns 501. Replace that stub with actual integration of both sources and deterministic recommendations.
 

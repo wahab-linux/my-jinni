@@ -6,6 +6,8 @@ Choose an activity that fits your interests, budget, and journey back.
 
 DYHTG 2026 · BlackRock challenge · Backend: roXy · Frontend: Wahab
 
+Repository / 仓库: [wahab-linux/my-jinni](https://github.com/wahab-linux/my-jinni) (the original `jinni` URL redirects here / 原 `jinni` 链接重定向至此).
+
 ## Run / 启动
 
 Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then run from the repository root:

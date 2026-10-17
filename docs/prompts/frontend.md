@@ -6,7 +6,7 @@ Wahab 在自己的仓库副本中复制任意一种语言版本给 AI，两版�
 
 ## 中文提示词
 
-你正在 `wahab-linux/jinni` 仓库开发 AfterClass，参加 DYHTG 2026 的 BlackRock challenge。我是 Wahab，负责前端；队友负责后端，正在实现推荐引擎。请直接实现前端，不要重新选题。
+你正在 `wahab-linux/my-jinni` 仓库开发 AfterClass，参加 DYHTG 2026 的 BlackRock challenge。我是 Wahab，负责前端；队友负责后端，正在实现推荐引擎。请直接实现前端，不要重新选题。
 
 先阅读 `AGENTS.md`、`docs/PROJECT_PLAN.md`、`docs/API.md`、`docs/openapi.json` 和 `web/fixtures/`。后端目前可能明确返回 501，请依据既定契约和样例独立推进，不等待后端完成。
 
@@ -36,7 +36,7 @@ Wahab 在自己的仓库副本中复制任意一种语言版本给 AI，两版�
 
 ## English prompt
 
-You are developing AfterClass in `wahab-linux/jinni` for the DYHTG 2026 BlackRock challenge. I am Wahab and own the frontend; my teammate owns the backend and is implementing the decision engine. Build the frontend now and keep the agreed product scope.
+You are developing AfterClass in `wahab-linux/my-jinni` for the DYHTG 2026 BlackRock challenge. I am Wahab and own the frontend; my teammate owns the backend and is implementing the decision engine. Build the frontend now and keep the agreed product scope.
 
 First read `AGENTS.md`, `docs/PROJECT_PLAN.md`, `docs/API.md`, `docs/openapi.json`, and `web/fixtures/`. The backend may still return an explicit 501. Work independently against the agreed contract and examples.
 
