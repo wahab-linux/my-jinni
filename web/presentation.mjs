@@ -34,9 +34,9 @@ export function criterionLabel(criterion, custom = false) {
 }
 
 export const topicCopy = {
-  market: { name: 'Money choices', description: 'Explore made-up financial examples and compare their fees and ratings.', notice: 'Demo figures only. No real prices, predictions or investment advice.' },
-  travel: { name: 'Getting around', description: 'Compare ways to get there. Choose what matters and set your budget.', notice: 'Example journeys only. Prices, travel times and carbon figures are not live.' },
-  student: { name: 'Student life', description: 'Find an activity or opportunity that fits your time, interests and budget.', notice: 'Made-up opportunities. Places and availability have not been checked.' },
-  sustainability: { name: 'Greener choices', description: 'Compare the cost, waiting time and possible benefit of small changes.', notice: 'Example costs and environmental estimates. Savings and benefits are not verified.' },
-  custom: { name: 'My own idea', description: 'Try the example, or add your own options using the advanced editor below.', notice: 'The example is made up. Check any information you add before relying on it.' },
+  market: { name: 'Money choices', example: 'Fees & financial examples', description: 'Explore made-up financial examples and compare their fees and ratings.', notice: 'Demo figures only. No real prices, predictions or investment advice.' },
+  travel: { name: 'Getting around', example: 'Train, bus & more', description: 'Compare ways to make an example journey. Start with a £25 budget, or change it below.', notice: 'Example journeys only. Prices, travel times and carbon figures are not live.' },
+  student: { name: 'Student life', example: 'Activities & opportunities', description: 'Find an activity or opportunity that fits your time, interests and budget.', notice: 'Made-up opportunities. Places and availability have not been checked.' },
+  sustainability: { name: 'Greener choices', example: 'Small everyday changes', description: 'Compare the cost, waiting time and possible benefit of small changes.', notice: 'Example costs and environmental estimates. Savings and benefits are not verified.' },
+  custom: { name: 'My own idea', example: 'Try a ready-made example', description: 'Compare the ready-made example choices. Adding your own information needs the advanced editor below.', notice: 'The example is made up. Check any information you add before relying on it.' },
 };

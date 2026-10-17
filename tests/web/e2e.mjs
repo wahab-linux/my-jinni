@@ -48,6 +48,8 @@ const addSourceAction = async (target, id) => {
   if (!await target.locator('#add-source-picker').evaluate((element) => element.open)) await target.locator('#add-source-picker > summary').click();
   await target.locator(`#${id}`).click();
 };
+const chooseTopic = async (id) => page.locator(`#scenario-tabs button[data-id="${id}"]`).click();
+const moreLimits = async () => { if (!await page.locator('#extra-limits').evaluate((element) => element.open)) await page.locator('#extra-limits > summary').click(); };
 const featured = page.locator('.activity.featured');
 const row = (title) => page.locator('.source-item').filter({ has: page.getByText(title, { exact: true }) });
 const paste = async (title, text) => {
@@ -80,17 +82,59 @@ try {
     assert.match(await page.title(), /^jinni ·/);
     assert.equal(await page.locator('.brand .lamp-mark path').count(), 3);
     assert.match(await page.locator('.footer').innerText(), /^jinni ·/);
-    assert.equal(await page.locator('#decision-scenario option').count(), 5);
     assert.equal(await page.locator('#scenario-tabs button').count(), 5);
     assert.equal(await page.locator('#library-dialog').isVisible(), false);
     assert.equal(await page.locator('#question').isVisible(), false);
     assert.equal(await page.locator('#legacy-planner').evaluate((element) => element.open), false);
     assert.equal(await page.locator('#sound-toggle').getAttribute('aria-pressed'), 'false');
-    assert.equal(await page.locator('#decision-scenario').inputValue(), 'travel');
+    assert.equal(await page.locator('#decision-workspace').getAttribute('data-scenario'), 'travel');
+  });
+  await check('first-time example produces a real comparison and an easy return to preserved choices', async () => {
+    await waitText(page.locator('#decision-results'), 'Your comparison will appear here');
+    await page.locator('#try-example').click();
+    await page.locator('.decision-card').waitFor();
+    assert.equal(await page.locator('#comparison-title').evaluate((element) => element === document.activeElement), true);
+    await waitText(page.locator('.match-explanation'), 'Why this came first');
+    assert.equal(await page.locator('.decision-card .decision-score').count(), 0);
+    assert.equal(await page.locator('.decision-card').getByText('It fits the limits you set.', { exact: true }).isVisible(), true);
+    await page.locator('#edit-choices').click();
+    assert.equal(await page.locator('#scenario-title').evaluate((element) => element === document.activeElement), true);
+    assert.equal(await page.locator('#limit-cost-pence').inputValue(), '25');
+    await page.locator('#limit-cost-pence').fill('8');
+    await page.locator('#priority-cost-pence').selectOption('100');
+    assert.equal(await page.locator('.decision-card').count(), 0);
+    assert.equal(await page.locator('#edit-choices').isVisible(), false);
+    await page.locator('#decision-submit').click();
+    await waitText(page.locator('.decision-card'), '£8.00');
+    await page.locator('#edit-choices').click();
+    assert.equal(await page.locator('#limit-cost-pence').inputValue(), '8');
+    assert.equal(await page.locator('#priority-cost-pence').inputValue(), '100');
+    await page.locator('#decision-reset').click();
+  });
+  await check('optional limits remain applied when closed and show how many are set', async () => {
+    assert.equal(await page.locator('#extra-limits').evaluate((element) => element.open), false);
+    await waitText(page.locator('#active-limit-preview'), 'Travel time: up to 3 hr');
+    await moreLimits();
+    await page.locator('#bound-duration-minutes').selectOption('lte');
+    await page.locator('#limit-duration-minutes').fill('0');
+    await waitText(page.locator('#extra-limits > summary'), '1 set');
+    await waitText(page.locator('#active-limit-preview'), 'Travel time: up to 0 min');
+    await page.locator('#extra-limits > summary').click();
+    await page.locator('#decision-submit').click();
+    await waitText(page.locator('#decision-status'), 'Nothing fits your limits');
+    await page.locator('#edit-choices').click();
+    await moreLimits();
+    assert.equal(await page.locator('#limit-duration-minutes').inputValue(), '0');
+    await page.locator('#limit-duration-minutes').fill('');
+    await page.locator('#extra-limits > summary').click();
+    await page.locator('#decision-submit').click();
+    assert.equal(await page.locator('#extra-limits').evaluate((element) => element.open), true);
+    assert.equal(await page.locator('#limit-duration-minutes').evaluate((element) => element === document.activeElement), true);
+    await page.locator('#decision-reset').click();
   });
   await check('all five scenarios calculate comparison, exclusions and two-source provenance locally', async () => {
     for (const id of ['market', 'travel', 'student', 'sustainability', 'custom']) {
-      await page.locator('#decision-scenario').selectOption(id);
+      await chooseTopic(id);
       await page.locator('#decision-submit').click();
       await page.locator('#decision-results .decision-card').waitFor();
       assert.ok(await page.locator('#decision-results .comparison-table tbody tr').count() > 0);
@@ -98,9 +142,9 @@ try {
       await page.locator('.decision-about > summary').click();
       await waitText(page.locator('.decision-provenance'), 'not probabilities');
     }
-    await page.locator('#decision-scenario').selectOption('market');
+    await chooseTopic('market');
     await waitText(page.locator('#scenario-notice'), 'No real prices');
-    await page.locator('#decision-scenario').selectOption('travel');
+    await chooseTopic('travel');
     await page.locator('#decision-submit').click();
     await page.screenshot({ path: 'tmp/web/workspace-light.png', fullPage: true });
     await appearance(page, 'dark');
@@ -109,7 +153,7 @@ try {
   });
   await check('phone comparisons bring the result into focus and keep scenario controls within the screen', async () => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.locator('#decision-scenario').selectOption('travel');
+    await chooseTopic('travel');
     await page.locator('#decision-submit').click();
     assert.equal(await page.locator('#comparison-title').evaluate((element) => element === document.activeElement), true);
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
@@ -117,7 +161,7 @@ try {
     await page.setViewportSize({ width: 1280, height: 950 });
   });
   await check('everyday importance choices preserve suggested settings and keep exact maths optional', async () => {
-    await page.locator('#decision-scenario').selectOption('travel');
+    await chooseTopic('travel');
     assert.equal(await page.locator('#priority-cost-pence').inputValue(), 'suggested');
     assert.equal(await page.locator('#weight-cost-pence').inputValue(), '45');
     assert.equal(await page.locator('#exact-cost-pence').isVisible(), false);
@@ -133,7 +177,7 @@ try {
     assert.equal(await page.locator('#exact-cost-pence').isVisible(), false);
   });
   await check('pound budgets round-trip exactly and prices remain £ in cards and comparisons', async () => {
-    await page.locator('#decision-scenario').selectOption('travel');
+    await chooseTopic('travel');
     assert.equal(await page.locator('#limit-cost-pence').inputValue(), '25');
     await page.getByLabel('Your budget (£)', { exact: true }).fill('7.99');
     await page.locator('#decision-submit').click(); await waitText(page.locator('#decision-status'), 'Nothing fits');
@@ -157,6 +201,7 @@ try {
     assert.equal(await page.locator('.decision-card').count(), 0);
     await page.locator('#bound-cost-pence').selectOption('lte');
     await page.locator('#limit-cost-pence').fill('0');
+    await moreLimits();
     await page.locator('#bound-duration-minutes').selectOption('lte');
     await page.locator('#limit-duration-minutes').fill('0');
     await page.locator('#decision-submit').click();
@@ -169,7 +214,7 @@ try {
     await page.locator('.decision-card').waitFor();
   });
   await check('custom editor validates and calculates a new domain with safe text rendering', async () => {
-    await page.locator('#decision-scenario').selectOption('custom');
+    await chooseTopic('custom');
     await page.locator('#custom-editor summary').click();
     const custom = JSON.parse(await page.locator('#custom-json').inputValue());
     custom.title = 'Workshop selection';
@@ -199,7 +244,7 @@ try {
     await page.locator('#custom-json').fill('{broken');
     await page.locator('#custom-apply').click();
     await waitText(page.locator('#custom-status.error'), 'not applied');
-    await page.locator('#decision-scenario').selectOption('travel');
+    await chooseTopic('travel');
   });
   await check('library drawer opens on demand, Escape closes it, and reduced motion disables result entrance', async () => {
     await openTools(); await waitText(page.locator('#library-status'), 'Library ready.');

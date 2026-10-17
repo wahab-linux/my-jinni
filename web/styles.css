@@ -391,6 +391,36 @@ body { background: radial-gradient(ellipse at 5% 3%, var(--wash-one), transparen
 @media (max-width: 1000px) { .scenario-tab { flex-direction: column; align-items: start; gap: 9px; }.scenario-tab strong { font-size: 12px; } }
 @media (max-width: 560px) { .scenario-tab { flex-direction: row; align-items: center; min-height: 72px; }.criterion-control { padding: 15px; }.intro .hero-badge { font-size: 9px; }.priority-choice, .constraint-controls select, .constraint-controls input, .constraint-controls .currency-input input, .constraint-controls .limit-input input { font-size: 16px; } }
 
+/* A clear first visit: one topic choice, simple preferences, optional limits. */
+.welcome-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 20px; margin-top: 22px; }
+.welcome-actions .text-button { font-size: 14px; }
+.welcome-actions + .hint { max-width: 460px; font-size: 13px; }
+.topic-text { display: grid; gap: 4px; min-width: 0; }
+.topic-text small { font-size: 11px; line-height: 1.5; }
+.scenario-tab { align-items: start; }
+.workspace-heading .hint { margin-bottom: 0; font-size: 14px; }
+#scenario-title { font-size: 23px; }
+#spending-controls { margin-block: 22px; }
+#spending-controls .constraint-controls { padding: 16px; background: var(--topic-soft); border: 1px solid var(--topic); border-radius: 12px; }
+.criteria-heading { align-items: baseline; flex-wrap: wrap; gap: 6px; }
+.criteria-heading .text-button { font-size: 12px; }
+.criterion-control { padding: 13px 15px; margin-block: 10px; }
+.criterion-title { margin-bottom: 8px; }
+.priority-choice { margin-bottom: 0; }
+.extra-limits { margin-block: 18px; border: 1px solid var(--control-line); border-radius: 10px; padding: 0 14px; }
+.extra-limits > summary { min-height: 48px; padding-block: 12px; font-size: 14px; font-weight: 600; color: var(--ink); }
+.limit-preview { display: block; color: var(--muted); font-size: 12px; font-weight: 400; margin-top: 5px; }
+.limit-preview:empty { display: none; }
+#other-limit-controls .constraint-controls { border-top: 1px solid var(--line); padding-block: 14px; }
+.match-explanation { margin-top: 22px; border-top: 1px solid var(--line); padding-top: 15px; }
+.match-explanation h4 { font-size: 15px; margin: 0; }
+.match-explanation ul { margin-bottom: 0; }
+.decision-disclosure .decision-score { text-align: left; font-size: 14px; font-weight: 600; }
+#edit-choices { width: 100%; justify-content: space-between; margin-top: 18px; }
+.decision-output > .feedback, .decision-placeholder p, .decision-card ul, .decision-card > .hint { font-size: 14px; }
+@media (max-width: 1000px) { .topic-text small { font-size: 10px; } }
+@media (max-width: 560px) { .welcome-actions { align-items: stretch; flex-direction: column; gap: 14px; }.welcome-actions .button { justify-content: space-between; }.welcome-actions .text-button { align-self: start; }.scenario-tab { align-items: center; }.topic-text small { font-size: 11px; }.intro h1 { font-size: 36px; }.criterion-title .hint { text-align: left; } }
+
 /* The shared lamp follows the active violet and gold palette. */
 :root { --lamp-gold: #9b6a17; }
 :root[data-theme="dark"] { --lamp-gold: #e9c779; }

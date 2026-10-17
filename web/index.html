@@ -37,30 +37,31 @@
   </header>
   <main class="wrap">
     <section class="intro" aria-labelledby="title">
-      <div class="intro-copy"><p class="hero-badge"><span class="status-dot" aria-hidden="true"></span>A LITTLE HELP WITH EVERYDAY CHOICES</p><h1 id="title">Big choices.<br><span>Made a little easier.</span></h1><p class="lead">Pick what you’re choosing, tell us what matters,<br>and we’ll help you compare your options.</p><div class="hero-points"><span><b aria-hidden="true">✓</b> No account needed</span><span><b aria-hidden="true">✓</b> Free to explore</span><span><b aria-hidden="true">✓</b> Your files stay local</span></div></div>
+      <div class="intro-copy"><p class="hero-badge"><span class="status-dot" aria-hidden="true"></span>A LITTLE HELP WITH EVERYDAY CHOICES</p><h1 id="title">Compare your options.<br><span>Find what suits you.</span></h1><p class="lead">Choosing a journey, an activity or a small change?<br>Tell us your budget and what matters. We’ll show you which example fits best, and why.</p><div class="welcome-actions"><button id="try-example" type="button" class="button primary" disabled>Try a travel example <span aria-hidden="true">→</span></button><a class="text-button" href="#decision-workspace">Choose a different topic</a></div><p class="hint">New here? Try the example first. You can change the choices afterwards.</p><div class="hero-points"><span><b aria-hidden="true">✓</b> No account needed</span><span><b aria-hidden="true">✓</b> Free to explore</span><span><b aria-hidden="true">✓</b> Nothing to book or buy</span></div></div>
       <aside class="intro-visual" aria-label="jinni, your decision assistant"><div class="visual-orbit orbit-one"></div><div class="visual-orbit orbit-two"></div><div class="visual-spark spark-one" aria-hidden="true">✦</div><div class="visual-spark spark-two" aria-hidden="true">✧</div><div class="visual-card"><div class="visual-card-top"><span class="visual-icon assistant-lamp" aria-hidden="true"><svg class="lamp-mark" viewBox="0 0 64 64" focusable="false"><path class="lamp-body" d="M19 33H47C45 44 38 49 27 48C20 47 16 42 15 38L6 33L18 35"/><path d="M19 33C23 30 29 28 36 29L43 33M47 34C60 30 61 43 46 43"/><path class="lamp-gold" d="M23 52H42M32 24C23 19 39 15 31 9C28 6 30 3 33 2"/></svg></span><span class="assistant-label">Your decision assistant</span></div><p>A little clarity.<br><em>For your next choice.</em></p><div class="visual-tags"><span>Your budget</span><span>Your time</span><span>Your choice</span></div></div><div class="floating-note"><span aria-hidden="true">✓</span> A little help choosing.</div></aside>
     </section>
     <div class="demo-banner"><span class="info-icon" aria-hidden="true">i</span><span><strong>You’re exploring a fictional demo.</strong> These examples use made-up prices and information. They are not real offers, predictions or advice.</span><span class="demo-pill">DEMO WORKSPACE</span></div>
     <noscript><p class="feedback error">Enable JavaScript to use the planner and browser library.</p></noscript>
     <section id="decision-workspace" aria-labelledby="decision-heading">
-      <div class="workspace-heading"><div><p class="eyebrow">1. PICK WHAT YOU’RE CHOOSING</p><h2 id="decision-heading">What can we help you choose?</h2></div><span class="local-badge">No account needed</span></div>
-      <div id="scenario-tabs" class="scenario-tabs" role="group" aria-label="What are you choosing?"></div>
+      <div class="workspace-heading"><div><p class="eyebrow">STEP 1 OF 3 · CHOOSE A TOPIC</p><h2 id="decision-heading">What do you want to compare?</h2><p class="hint">Pick one below. Getting around is selected to help you start.</p></div></div>
+      <div id="scenario-tabs" class="scenario-tabs" role="group" aria-label="Choose a topic"></div>
       <p id="decision-load-status" class="feedback" role="status" aria-live="polite">Getting your choices ready…</p><button id="decision-retry" class="button secondary" type="button" hidden>Retry decision data</button>
       <div class="decision-grid">
         <section class="panel decision-preferences" aria-label="Decision preferences">
           <form id="decision-form"><fieldset id="decision-inputs" disabled>
-            <label for="decision-scenario">What are you choosing?</label><select id="decision-scenario"></select>
-            <h3 id="scenario-title">Choose a topic</h3><p id="scenario-description" class="muted"></p><p id="scenario-notice" class="scenario-notice"></p>
-            <div class="criteria-heading"><h3>2. What matters to you?</h3><button id="decision-reset" type="button" class="text-button">Reset</button></div>
-            <p class="hint">Choose how much each thing matters. Add a budget or another limit if you like.</p>
+            <p class="eyebrow">STEP 2 OF 3 · MAKE IT YOURS</p><h3 id="scenario-title" tabindex="-1">Choose a topic</h3><p id="scenario-description" class="muted"></p><p id="scenario-notice" class="scenario-notice"></p>
+            <div id="spending-controls"></div>
+            <div class="criteria-heading"><h3>What matters most?</h3><button id="decision-reset" type="button" class="text-button">Use suggested settings</button></div>
+            <p class="hint">Leave these on Suggested if you’re unsure. Change any that matter more or less to you.</p>
             <div id="criteria-controls"></div>
+            <details id="extra-limits" class="extra-limits"><summary>More limits (optional)<span id="extra-limit-count"></span><span id="active-limit-preview" class="limit-preview"></span></summary><p class="hint">Only use these if a choice must stay above or below a particular amount. Limits rule choices out, even if they are a good match.</p><div id="other-limit-controls"></div></details>
             <details id="custom-editor" class="custom-editor" hidden><summary>Advanced: add your own information</summary><p class="hint">Advanced: use the same two-source schema. Names and simulation labels you provide are not independently verified.</p><label for="custom-json">Custom decision JSON</label><textarea id="custom-json" rows="12" spellcheck="false"></textarea><button id="custom-apply" type="button" class="button secondary">Use custom data</button><p id="custom-status" class="feedback" role="status"></p></details>
             <button id="decision-submit" type="submit" class="button primary">Find my best match <span aria-hidden="true">→</span></button>
-            <p class="form-footnote">Your choices guide the result. No account or AI key needed.</p>
+            <p class="form-footnote">Just comparing — this won’t book or buy anything.</p>
           </fieldset></form>
         </section>
-        <section class="panel decision-output" aria-labelledby="comparison-title"><div class="results-heading"><div><p class="eyebrow">3. EXPLORE YOUR CHOICES</p><h2 id="comparison-title" tabindex="-1">Your best match</h2></div><span id="decision-count" class="local-badge">Let’s find a fit</span></div>
-          <p id="decision-status" class="feedback" role="status" aria-live="polite">Pick what matters, then tap Find my best match.</p><div id="decision-results"><div class="decision-placeholder"><span aria-hidden="true">↗</span><h3>Your next good choice starts here.</h3><p>Choose what matters on the left. We’ll show you what fits and what it costs.</p></div></div>
+        <section class="panel decision-output" aria-labelledby="comparison-title"><div class="results-heading"><div><p class="eyebrow">STEP 3 OF 3 · SEE WHAT FITS</p><h2 id="comparison-title" tabindex="-1">Your comparison</h2></div><span id="decision-count" class="local-badge">Let’s find a fit</span></div>
+          <p id="decision-status" class="feedback" role="status" aria-live="polite">Pick what matters, then tap Find my best match.</p><div id="decision-results"></div><button id="edit-choices" type="button" class="button secondary" hidden>Change my choices <span aria-hidden="true">↑</span></button>
         </section>
       </div>
     </section>
@@ -95,7 +96,7 @@
       </div>
     </section>
     </details>
-    <section id="how-it-works" class="how-it-works" aria-labelledby="how-title"><div><p class="eyebrow">SMALL STEPS. GOOD PLANS.</p><h2 id="how-title">A decision you can explain.</h2></div><div class="steps"><article><span>01</span><h3>Make it yours</h3><p>Pick a topic, choose what matters, and add your budget.</p></article><article><span>02</span><h3>See what fits</h3><p>Compare the prices and details, and see why each choice fits.</p></article><article><span>03</span><h3>Keep your context</h3><p>Save useful guides and find the original passages whenever you need them.</p></article></div></section>
+    <section id="how-it-works" class="how-it-works" aria-labelledby="how-title"><div><p class="eyebrow">HOW TO USE JINNI</p><h2 id="how-title">Three small steps.</h2></div><div class="steps"><article><span>01</span><h3>Choose a topic</h3><p>Pick the kind of choice you want to try. Each topic comes with made-up examples.</p></article><article><span>02</span><h3>Tell us what matters</h3><p>Set a spending limit if you have one. Use the suggested preferences or change them to suit you.</p></article><article><span>03</span><h3>Compare your options</h3><p>See the closest match and its price and details. Change your settings and compare again whenever you like.</p></article></div></section>
     <section class="about" aria-label="About this browser edition"><p><strong>Made to explore.</strong> The example prices and information are made up. If you add your own information, check it before relying on the result. Files and searches stay in your browser.</p><p>Want AI help with your notes? Try the <a href="https://github.com/wahab-linux/my-jinni#run-the-desktop-application">desktop edition</a> with OpenAI, DeepSeek, Gemini or Claude. Cloud AI generation is not available on this site.</p></section>
   </main>
   <footer class="wrap footer"><span>jinni · A little help choosing.</span><span>A team prototype. Not an official BlackRock or Aladdin product.</span></footer>
