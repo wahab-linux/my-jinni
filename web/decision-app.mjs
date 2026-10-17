@@ -1,5 +1,6 @@
 import { evaluateDecision } from './decisions.mjs';
-import { money, parseBudget } from './planner.mjs';
+import { parseBudget } from './planner.mjs';
+import { criterionLabel, displayMeasure as measure, topicCopy, unitLabel } from './presentation.mjs';
 import { setupSound } from './effects.mjs';
 
 const $ = (id) => document.getElementById(id);
@@ -15,8 +16,7 @@ const status = (id, message, error = false) => {
   $(id).textContent = message;
   $(id).className = `feedback${error ? ' error' : ''}`;
 };
-const measure = (value, unit) => typeof value !== 'number' || !Number.isFinite(value) ? 'Unknown'
-  : unit === 'pence' ? money(value) : `${new Intl.NumberFormat('en-GB', { maximumFractionDigits: 3 }).format(value)} ${unit}`;
+const labelFor = (criterion) => criterionLabel(criterion, !!state.custom || state.current?.scenario.id === 'custom');
 
 function scenarioIcon(id) {
   const paths = {
@@ -35,57 +35,90 @@ function scenarioIcon(id) {
   return icon;
 }
 
-function clearComparison(message = 'Priorities changed. Compare again to update your result.') {
+function clearComparison(message = 'Your choices changed. Tap Find my best match to update the result.') {
   $('decision-results').replaceChildren();
   status('decision-status', message);
 }
 
 function control(criterion, defaults) {
+  const title = labelFor(criterion);
+  const defaultWeight = Object.hasOwn(defaults.weights ?? {}, criterion.id) ? defaults.weights[criterion.id] : criterion.default_weight;
   const row = node('div', undefined, 'criterion-control');
   row.dataset.criterion = criterion.id;
   const heading = node('div', undefined, 'criterion-title');
-  const label = node('label', criterion.label);
-  label.htmlFor = `weight-${criterion.id}`;
-  heading.append(label, node('span', `${criterion.direction === 'minimize' ? 'Lower' : 'Higher'} is preferred · ${criterion.unit === 'pence' ? 'GBP' : criterion.unit}`, 'hint'));
+  const label = node('label', title);
+  label.htmlFor = `priority-${criterion.id}`;
+  const preference = criterion.unit === 'pence' ? 'Lower cost is better · £'
+    : `${criterion.direction === 'minimize' ? 'Less' : 'More'} is better · ${unitLabel(criterion.unit)}`;
+  heading.append(label, node('span', preference, 'hint'));
+  const priorityLabel = node('label', 'How much does this matter?', 'sr-only');
+  priorityLabel.htmlFor = `priority-${criterion.id}`;
+  const priority = document.createElement('select');
+  priority.id = `priority-${criterion.id}`; priority.className = 'priority-choice';
+  priority.setAttribute('aria-label', `How much ${title} matters`);
+  priority.append(new Option('Suggested', 'suggested'), new Option('Not important', '0'), new Option('A little important', '25'),
+    new Option('Important', '50'), new Option('Very important', '100'), new Option('Fine-tune…', 'custom'));
+  priority.value = 'suggested';
+  const advanced = node('details', undefined, 'exact-priority');
+  advanced.hidden = true;
+  advanced.id = `exact-${criterion.id}`;
+  advanced.append(node('summary', 'Fine-tune importance'));
   const weights = node('div', undefined, 'weight-controls');
   const slider = document.createElement('input');
   slider.type = 'range'; slider.min = '0'; slider.max = '100'; slider.step = '1';
-  slider.value = String(Object.hasOwn(defaults.weights ?? {}, criterion.id) ? defaults.weights[criterion.id] : criterion.default_weight);
-  slider.setAttribute('aria-label', `Priority slider for ${criterion.label}`);
+  slider.value = String(defaultWeight);
+  slider.setAttribute('aria-label', `Importance slider for ${title}`);
   const weight = document.createElement('input');
   weight.type = 'number'; weight.min = '0'; weight.max = '100'; weight.step = 'any';
-  weight.id = `weight-${criterion.id}`; weight.value = slider.value;
+  weight.id = `weight-${criterion.id}`; weight.value = String(defaultWeight);
   weight.dataset.weight = criterion.id;
-  weight.setAttribute('aria-label', `Weight for ${criterion.label}`);
-  slider.addEventListener('input', () => { weight.value = slider.value; clearComparison(); });
-  weight.addEventListener('input', () => { slider.value = weight.value; });
-  weights.append(slider, weight);
+  weight.setAttribute('aria-label', `Exact importance for ${title}`);
+  const sync = () => {
+    priority.value = Number(weight.value) === defaultWeight ? 'suggested'
+      : ['0', '25', '50', '100'].includes(weight.value) ? weight.value : 'custom';
+  };
+  slider.addEventListener('input', () => { weight.value = slider.value; sync(); clearComparison(); });
+  weight.addEventListener('input', () => { slider.value = weight.value; sync(); });
+  priority.addEventListener('change', () => {
+    if (priority.value === 'custom') { advanced.hidden = false; advanced.open = true; weight.focus(); }
+    else { weight.value = priority.value === 'suggested' ? String(defaultWeight) : priority.value; slider.value = weight.value; advanced.open = false; advanced.hidden = true; }
+    clearComparison();
+  });
+  weights.append(slider, weight); advanced.append(weights, node('p', '0 means ignore this; 100 means it matters most. Limits still apply.', 'hint'));
   const bounds = node('div', undefined, 'constraint-controls');
-  const operatorLabel = node('label', undefined, 'sr-only');
-  operatorLabel.textContent = `Hard limit for ${criterion.label}`;
+  const operatorLabel = node('label', 'Any limits?', 'limit-heading');
   operatorLabel.htmlFor = `bound-${criterion.id}`;
   const operator = document.createElement('select');
   operator.id = `bound-${criterion.id}`; operator.dataset.operator = criterion.id;
-  operator.append(new Option('No hard limit', ''), new Option('At most', 'lte'), new Option('At least', 'gte'));
-  const limitLabel = node('label');
-  const limitName = node('span', `Limit for ${criterion.label}${criterion.unit === 'pence' ? ' (£)' : ` (${criterion.unit})`}`, 'sr-only');
-  limitName.id = `limit-label-${criterion.id}`;
+  operator.setAttribute('aria-label', `Limit for ${title}`);
+  operator.append(new Option(criterion.unit === 'pence' ? 'No spending limit' : 'No limit', ''),
+    new Option(criterion.unit === 'pence' ? 'Spend up to…' : 'No more than…', 'lte'),
+    new Option(criterion.unit === 'pence' ? 'Spend at least…' : 'At least…', 'gte'));
+  const limitLabel = node('label', undefined, 'limit-field');
+  const limitName = node('span', '', 'limit-caption'); limitName.id = `limit-label-${criterion.id}`;
+  const inputWrap = node('span', undefined, criterion.unit === 'pence' ? 'currency-input' : 'limit-input');
   const limit = document.createElement('input');
   limit.id = `limit-${criterion.id}`; limit.type = 'text'; limit.inputMode = 'decimal';
   limit.dataset.limit = criterion.id; limit.setAttribute('aria-labelledby', limitName.id);
-  limit.placeholder = criterion.unit === 'pence' ? 'Amount in £' : criterion.unit;
+  limit.placeholder = criterion.unit === 'pence' ? 'e.g. 25.00' : 'Enter an amount';
+  if (criterion.unit === 'pence') { const symbol = node('span', '£', 'currency-prefix'); symbol.setAttribute('aria-hidden', 'true'); inputWrap.append(symbol); }
+  inputWrap.append(limit);
   const existing = defaults.constraints?.find((constraint) => constraint.criterion_id === criterion.id);
   operator.value = existing?.operator ?? '';
   limit.value = existing ? String(existing.value / (criterion.unit === 'pence' ? 100 : 1)) : '';
-  limit.hidden = !operator.value; limit.required = !!operator.value;
-  operator.addEventListener('change', () => {
-    limit.hidden = !operator.value; limit.required = !!operator.value;
-    clearComparison();
-    if (operator.value) limit.focus();
-  });
-  limitLabel.append(limitName, limit);
-  bounds.append(operatorLabel, operator, limitLabel);
-  row.append(heading, weights, bounds);
+  const showLimit = () => {
+    const visible = !!operator.value;
+    limitLabel.hidden = !visible; limit.required = visible;
+    limitName.textContent = criterion.unit === 'pence'
+      ? `${operator.value === 'gte' ? 'Minimum spend' : 'Your budget'} (£)`
+      : `${operator.value === 'gte' ? 'Minimum' : 'Maximum'} (${unitLabel(criterion.unit)})`;
+  };
+  showLimit();
+  operator.addEventListener('change', () => { showLimit(); clearComparison(); if (operator.value) limit.focus(); });
+  limitLabel.append(limitName, inputWrap);
+  const operatorGroup = node('div'); operatorGroup.append(operatorLabel, operator);
+  bounds.append(operatorGroup, limitLabel);
+  row.append(heading, priorityLabel, priority, bounds, advanced);
   return row;
 }
 
@@ -95,23 +128,24 @@ function selectScenario(id) {
   state.current = entry; state.custom = null;
   const { scenario } = entry;
   $('decision-scenario').value = id;
-  $('scenario-title').textContent = scenario.title;
-  $('scenario-description').textContent = scenario.description;
-  $('scenario-notice').textContent = scenario.notice;
+  $('scenario-title').textContent = topicCopy[id].name;
+  $('decision-workspace').dataset.scenario = id;
+  $('scenario-description').textContent = topicCopy[id].description;
+  $('scenario-notice').textContent = topicCopy[id].notice;
   $('criteria-controls').replaceChildren(...scenario.criteria.map((criterion) => control(criterion, scenario.default_request)));
   $('custom-editor').hidden = id !== 'custom';
   $('custom-editor').open = false;
   status('custom-status', '');
   if (id === 'custom') $('custom-json').value = JSON.stringify({ title: scenario.title, criteria: scenario.criteria, dataset: entry.dataset }, null, 2);
   for (const tab of $('scenario-tabs').children) tab.setAttribute('aria-pressed', String(tab.dataset.id === id));
-  $('decision-count').textContent = `${entry.dataset.options.length} options · Two sources`;
-  clearComparison('Adjust your priorities and limits, then compare the options.');
+  $('decision-count').textContent = `${entry.dataset.options.length} choices to explore`;
+  clearComparison('Tell us what matters, then find your best match.');
 }
 
 async function loadDecisions() {
   $('decision-inputs').disabled = true;
   $('decision-retry').hidden = true;
-  clearComparison('Loading the decision datasets…');
+  clearComparison('Getting your choices ready…');
   try {
     const response = await fetch('./decisions.json', { signal: AbortSignal.timeout(10000), cache: 'no-cache' });
     if (!response.ok) throw new Error();
@@ -124,8 +158,8 @@ async function loadDecisions() {
     }
     if (!['market', 'travel', 'student', 'sustainability', 'custom'].every((id) => ids.has(id))) throw new Error();
     state.entries = catalog.scenarios;
-    $('decision-scenario').replaceChildren(...state.entries.map(({ scenario }) => new Option(scenario.title, scenario.id)));
-    const names = { market: 'Market context', travel: 'Travel', student: 'Student hub', sustainability: 'Sustainability', custom: 'Your own idea' };
+    $('decision-scenario').replaceChildren(...state.entries.map(({ scenario }) => new Option(topicCopy[scenario.id].name, scenario.id)));
+    const names = Object.fromEntries(Object.entries(topicCopy).map(([id, copy]) => [id, copy.name]));
     $('scenario-tabs').replaceChildren(...state.entries.map(({ scenario }) => {
       const tab = node('button', undefined, 'scenario-tab');
       tab.type = 'button'; tab.dataset.id = scenario.id; tab.setAttribute('aria-pressed', 'false');
@@ -137,12 +171,12 @@ async function loadDecisions() {
     }));
     selectScenario('travel');
     $('decision-inputs').disabled = false;
-    status('decision-load-status', 'Five scenarios ready. All preset options and measurements are fictional.');
+    status('decision-load-status', 'Ready to explore. All examples use made-up information.');
   } catch {
     state.entries = []; state.current = null;
-    status('decision-load-status', 'Decision data could not be loaded or validated. Check your connection and retry.', true);
+    status('decision-load-status', 'Your choices could not be loaded. Check your connection and try again.', true);
     $('decision-retry').hidden = false;
-    clearComparison('No comparison is available until the source data load successfully.');
+    clearComparison('We need the example information before we can find a match.');
   }
 }
 
@@ -161,50 +195,66 @@ function table(headers, rows, caption) {
 
 function renderResult(result) {
   const target = $('decision-results'); target.replaceChildren();
-  status('decision-status', result.summary);
-  $('decision-count').textContent = `${result.ranked.length} feasible · ${result.excluded.length} excluded`;
+  status('decision-status', result.recommended ? `We found ${result.ranked.length} ${result.ranked.length === 1 ? 'choice' : 'choices'} that fit what you asked for.` : 'Nothing fits your limits yet. Try changing a limit.');
+  $('decision-count').textContent = `${result.ranked.length} fit · ${result.excluded.length} don’t fit`;
   if (result.recommended) {
     const choice = result.recommended;
     const card = node('article', undefined, 'decision-card'); card.dataset.optionId = choice.id;
     const header = node('header'); const heading = node('div');
-    heading.append(node('p', 'HIGHEST PREFERENCE FIT', 'eyebrow'), node('h3', choice.name));
-    const score = node('div', choice.score.toFixed(2), 'decision-score'); score.append(node('small', 'Relative score / 100'));
-    header.append(heading, score); card.append(header, node('p', choice.description, 'muted'));
+    heading.append(node('p', 'CLOSEST MATCH TO YOUR CHOICES', 'eyebrow'), node('h3', choice.name));
+    const score = node('div', choice.score.toFixed(2), 'decision-score'); score.append(node('small', 'Match score · out of 100'));
+    header.append(heading, score); card.append(header);
+    if (choice.description !== 'A fictional example for transparent preference comparison.') card.append(node('p', choice.description, 'muted'));
     const measures = node('dl', undefined, 'decision-metrics');
     for (const criterion of result.criteria) {
-      const group = node('div'); group.append(node('dt', criterion.label), node('dd', measure(choice.metrics[criterion.id], criterion.unit))); measures.append(group);
+      const group = node('div'); group.append(node('dt', labelFor(criterion)), node('dd', measure(choice.metrics[criterion.id], criterion.unit))); measures.append(group);
     }
     card.append(measures);
     const explanation = node('details', undefined, 'decision-disclosure');
-    explanation.append(node('summary', 'Why this option ranks first'));
-    const reasons = node('ul'); reasons.append(...choice.reasons.map((reason) => node('li', reason))); explanation.append(reasons);
+    explanation.append(node('summary', 'Why this is a good match'));
+    const reasons = node('ul');
+    reasons.append(node('li', 'It fits the limits you set.'));
+    for (const part of choice.contributions) {
+      const criterion = result.criteria.find((item) => item.id === part.criterion_id);
+      reasons.append(node('li', `${labelFor(criterion)}: ${measure(part.value, part.unit)}. You asked us to favour ${criterion.direction === 'minimize' ? 'less' : 'more'}.`));
+    }
+    explanation.append(reasons);
     card.append(explanation); target.append(card);
-    target.append(table(['Option', 'Relative score', ...result.criteria.map((criterion) => criterion.label)], result.ranked.map((option) => [option.name, `${option.score.toFixed(2)} / 100`, ...result.criteria.map((criterion) => measure(option.metrics[criterion.id], criterion.unit))]), 'Feasible options and actual measures'));
-    const breakdown = node('details', undefined, 'decision-disclosure'); breakdown.append(node('summary', 'Inspect score contributions'));
+    target.append(table(['Your choices', 'Match score', ...result.criteria.map(labelFor)], result.ranked.map((option) => [option.name, `${option.score.toFixed(2)} / 100`, ...result.criteria.map((criterion) => measure(option.metrics[criterion.id], criterion.unit))]), 'Compare the choices that fit'));
+    const breakdown = node('details', undefined, 'decision-disclosure'); breakdown.append(node('summary', 'More details: how we worked it out'));
     for (const option of result.ranked) {
-      breakdown.append(node('h4', option.name), table(['Measure', 'Value', 'Weight', 'Normalised', 'Points'], option.contributions.map((part) => [part.label, measure(part.value, part.unit), String(part.weight), `${(part.normalised * 100).toFixed(2)}%`, part.points.toFixed(6)]), `Score breakdown for ${option.name}`));
+      breakdown.append(node('h4', option.name), table(['What matters', 'Value', 'Importance', 'Preference match', 'Score points'], option.contributions.map((part) => [labelFor(result.criteria.find((criterion) => criterion.id === part.criterion_id)), measure(part.value, part.unit), String(part.weight), `${(part.normalised * 100).toFixed(2)}%`, part.points.toFixed(6)]), `Score breakdown for ${option.name}`));
     }
     target.append(breakdown);
   } else {
     const empty = node('div', undefined, 'decision-placeholder');
-    empty.append(node('h3', 'No option meets these limits.'), node('p', 'Try adjusting a hard limit or inspect the missing measurements below. Unknown values are never treated as zero.'));
+    empty.append(node('h3', 'Nothing quite fits. Let’s try again.'), node('p', 'Try raising your budget or changing a limit. We leave out choices when important information is missing.'));
     target.append(empty);
   }
   if (result.excluded.length) {
     const excluded = node('details', undefined, 'decision-disclosure'); excluded.id = 'decision-exclusions';
-    excluded.append(node('summary', `Why ${result.excluded.length} options were excluded`));
+    excluded.append(node('summary', `Why ${result.excluded.length} choices don’t fit`));
     for (const option of result.excluded) {
       const item = node('article', undefined, 'decision-excluded');
-      const reasons = node('ul'); reasons.append(...option.reasons.map((reason) => node('li', reason)));
+      const reasons = node('ul');
+      for (let reason of option.reasons) {
+        for (const criterion of result.criteria) reason = reason.replaceAll(criterion.label, () => labelFor(criterion));
+        reason = reason.replace('exceeds its selected maximum', 'is over your limit').replace('is below its selected minimum', 'is below your minimum')
+          .replace('Availability is unknown.', 'We don’t know if this is available.').replace('Option is unavailable.', 'This is not available.')
+          .replace('No measurements were provided for this option.', 'There is not enough information about this choice.').replace('Missing value for', 'We don’t have a value for');
+        reasons.append(node('li', reason));
+      }
       item.append(node('h4', option.name), reasons); excluded.append(item);
     }
     target.append(excluded);
   }
   const provenance = node('div', undefined, 'decision-provenance provenance');
-  provenance.append(node('strong', 'Source provenance · joined by option ID'));
+  provenance.append(node('strong', 'Where the example information comes from'));
   for (const source of result.sources) provenance.append(node('p', `${source.label} · ${source.is_simulated ? 'Simulated' : 'Provided metadata; accuracy unverified'} · ${source.updated_at}`));
   const limits = node('ul', undefined, 'decision-limitations'); limits.append(...result.limitations.map((limit) => node('li', limit)));
-  provenance.append(limits); target.append(provenance);
+  provenance.append(limits);
+  const about = node('details', undefined, 'decision-about decision-disclosure');
+  about.append(node('summary', 'About these examples'), provenance); target.append(about);
 }
 
 $('decision-form').addEventListener('input', () => clearComparison());
@@ -221,17 +271,19 @@ $('decision-form').addEventListener('submit', (event) => {
     const weights = {}; const constraints = [];
     for (const criterion of criteria) {
       const rawWeight = $(`weight-${criterion.id}`).value.trim();
-      if (!rawWeight) throw new Error('Enter a weight for each criterion; use zero to disable it.');
+      if (!rawWeight) throw new Error('Choose how much each thing matters. Use Not important to leave it out.');
       weights[criterion.id] = Number(rawWeight);
       const operator = $(`bound-${criterion.id}`).value;
       if (operator) {
         const raw = $(`limit-${criterion.id}`).value.trim();
-        if (!raw) throw new Error('Enter a value for each selected hard limit.');
+        if (!raw) throw new Error('Enter an amount for each limit you have chosen.');
         const value = criterion.unit === 'pence'
           ? parseBudget(raw.replace(/^-/, '')) * (raw.startsWith('-') ? -1 : 1) : Number(raw);
+        if (!Number.isFinite(value)) throw new Error(`Enter a number for ${labelFor(criterion)}.`);
         constraints.push({ criterion_id: criterion.id, operator, value });
       }
     }
+    if (!Object.values(weights).some((weight) => weight > 0)) throw new Error('Choose Important or Very important for at least one thing.');
     const request = { scenario_id: state.current.scenario.id, weights, constraints, ...(state.custom ? { custom: state.custom } : {}) };
     const response = evaluateDecision(request, state.current);
     if (response.error) throw new Error(response.error.details[0]?.message ?? response.error.message);
@@ -250,8 +302,8 @@ $('custom-apply').addEventListener('click', () => {
     state.custom = custom;
     $('criteria-controls').replaceChildren(...custom.criteria.map((criterion) => control(criterion, {})));
     $('scenario-title').textContent = custom.title;
-    clearComparison('Custom data applied. Set priorities and compare your options.');
-    status('custom-status', 'Custom criteria and both source datasets validated locally.');
+    clearComparison('Your information is ready. Choose what matters and find your match.');
+    status('custom-status', 'Your information has been checked and is ready to use.');
   } catch (error) { status('custom-status', `Custom data was not applied: ${error.message}`, true); }
 });
 

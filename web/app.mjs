@@ -126,7 +126,7 @@ function activityCard(activity, featured, zone) {
   const notes = node('details', undefined, 'activity-notes');
   notes.append(node('summary', 'Why this plan fits'));
   const reasons = node('ul');
-  reasons.append(...activity.reasons.map((reason) => node('li', reason)));
+  reasons.append(...activity.reasons.map((reason) => node('li', reason.replaceAll('GBP ', '£'))));
   notes.append(reasons);
   card.append(notes);
   return card;
@@ -197,12 +197,12 @@ function updateInterestSummary() {
 
 function renderSources() {
   $('sources').replaceChildren();
-  $('source-count').textContent = `${state.sources.length} / ${LIMITS.sources} sources · ${state.selected.size} selected`;
+  $('source-count').textContent = `${state.sources.length} / ${LIMITS.sources} saved items · ${state.selected.size} selected`;
   $('select-all').disabled = !state.sources.length || state.selected.size === state.sources.length;
   $('clear-selection').disabled = !state.selected.size;
   if (!state.sources.length) {
     const empty = node('div', undefined, 'library-empty');
-    empty.append(node('span', '+', 'library-empty-icon'), node('h3', 'Good things deserve a place.'), node('p', 'Add a note or guide using “Add a source” above. Just looking around? Try the fictional example.', 'muted'));
+    empty.append(node('span', '+', 'library-empty-icon'), node('h3', 'Good things deserve a place.'), node('p', 'Use “Add a note or file” above. Just looking around? Try the fictional example.', 'muted'));
     $('sources').append(empty);
   }
   const sources = [...state.sources].sort($('source-sort').value === 'title'
@@ -217,20 +217,20 @@ function renderSources() {
     input.addEventListener('change', () => {
       if (input.checked) state.selected.add(source.id); else state.selected.delete(source.id);
       clearSearch();
-      $('source-count').textContent = `${state.sources.length} / ${LIMITS.sources} sources · ${state.selected.size} selected`;
+      $('source-count').textContent = `${state.sources.length} / ${LIMITS.sources} saved items · ${state.selected.size} selected`;
       $('select-all').disabled = state.selected.size === state.sources.length;
       $('clear-selection').disabled = !state.selected.size;
     });
     label.append(input, document.createTextNode(source.title));
     row.append(label, node('p', `${source.kind.toUpperCase()} · ${source.character_count.toLocaleString()} characters · ${source.is_simulated ? 'Fictional / AI-generated' : 'Source accuracy not independently verified'}`, 'hint'));
     const actions = node('div', undefined, 'source-actions');
-    const view = node('button', 'View original text', 'text-button'); view.type = 'button';
+    const view = node('button', 'Read saved text', 'text-button'); view.type = 'button';
     view.addEventListener('click', () => openSource(source));
     const remove = node('button', 'Delete', 'text-button'); remove.type = 'button';
     remove.setAttribute('aria-label', `Delete ${source.title}`);
     remove.addEventListener('click', () => {
       state.pendingDelete = source;
-      $('delete-description').textContent = `“${source.title}” will be removed from your saved sources.`;
+      $('delete-description').textContent = `“${source.title}” will be removed from your notes and files.`;
       $('delete-dialog').showModal();
     });
     actions.append(view, remove); row.append(actions); $('sources').append(row);
@@ -247,12 +247,12 @@ async function withLibrary(action) {
 }
 
 async function saveSource(source) {
-  if (state.sources.length >= LIMITS.sources) throw new Error('Your library is full. Delete a source before adding another (limit: 20).');
+  if (state.sources.length >= LIMITS.sources) throw new Error('Your library is full. Remove an item before adding another (limit: 20).');
   await state.library.add(source);
   state.sources = await state.library.all(); state.selected.add(source.id);
   clearSearch(); renderSources();
   [...$('sources').children].find((row) => row.dataset.sourceId === source.id)?.querySelector('input')?.focus();
-  feedback('library-status', 'Source saved and selected. It stays in this browser until deleted or site data is cleared.');
+  feedback('library-status', 'Saved and selected. It stays in this browser until you remove it or clear site data.');
 }
 
 async function extractFile(file) {
@@ -393,7 +393,7 @@ $('delete-confirm').addEventListener('click', () => withLibrary(async () => {
     state.sources = await state.library.all();
     if (state.viewer?.id === source.id) $('viewer').close();
     $('delete-dialog').close();
-    clearSearch(); renderSources(); feedback('library-status', 'Source deleted from this browser.');
+    clearSearch(); renderSources(); feedback('library-status', 'Item removed from this browser.');
     $('add-source-picker').querySelector('summary').focus();
   } catch (error) { $('delete-dialog').close(); throw error; }
   finally { $('delete-confirm').disabled = false; }
@@ -403,16 +403,16 @@ $('search-form').addEventListener('submit', (event) => {
   const question = $('question').value.trim();
   if (!question || question.length > 2000) { feedback('search-status', 'Enter up to 2,000 characters to search.', true); return; }
   if (!state.selected.size) {
-    feedback('search-status', 'Select at least one source to search. Use the checkboxes or Select all.', true);
+    feedback('search-status', 'Tick at least one note or file to search, or use Select all.', true);
     $('sources').querySelector('input')?.focus();
     return;
   }
   const matches = searchSources(question, state.sources, state.selected);
-  feedback('search-status', matches.length ? `${matches.length} matching passages. Open the original to check the surrounding context.` : 'No matching evidence in the selected sources. Try different keywords.');
+  feedback('search-status', matches.length ? `${matches.length} matching passages. Open the original to check the surrounding context.` : 'No matching text in the selected notes or files. Try different words.');
   for (const { source, chunk, index } of matches) {
     const item = node('article', undefined, 'excerpt');
     item.append(node('h4', source.title), node('p', `${chunk.page ? `Page ${chunk.page} · ` : ''}${source.is_simulated ? 'Fictional / AI-generated source' : 'Source accuracy not independently verified'}`, 'hint'), node('blockquote', chunk.text));
-    const view = node('button', 'Open original passage ↗', 'text-button'); view.type = 'button';
+    const view = node('button', 'Read full text', 'text-button'); view.type = 'button';
     view.addEventListener('click', () => openSource(source, index)); item.append(view); $('search-results').append(item);
   }
 });

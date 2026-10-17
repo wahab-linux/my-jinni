@@ -74,7 +74,7 @@ function pdf(text) {
 try {
   await check('general decisions are primary while library, questions and itinerary start closed', async () => {
     await page.goto(base);
-    await waitText(page.locator('#decision-load-status'), 'Five scenarios ready');
+    await waitText(page.locator('#decision-load-status'), 'Ready to explore');
     assert.equal(await page.locator('#decision-scenario option').count(), 5);
     assert.equal(await page.locator('#scenario-tabs button').count(), 5);
     assert.equal(await page.locator('#library-dialog').isVisible(), false);
@@ -90,10 +90,11 @@ try {
       await page.locator('#decision-results .decision-card').waitFor();
       assert.ok(await page.locator('#decision-results .comparison-table tbody tr').count() > 0);
       assert.equal(await page.locator('.decision-provenance > p').count(), 2);
+      await page.locator('.decision-about > summary').click();
       await waitText(page.locator('.decision-provenance'), 'not probabilities');
     }
     await page.locator('#decision-scenario').selectOption('market');
-    await waitText(page.locator('#scenario-notice'), 'no live prices');
+    await waitText(page.locator('#scenario-notice'), 'No real prices');
     await page.locator('#decision-scenario').selectOption('travel');
     await page.locator('#decision-submit').click();
     await page.screenshot({ path: 'tmp/web/workspace-light.png', fullPage: true });
@@ -110,15 +111,51 @@ try {
     await page.screenshot({ path: 'tmp/web/workspace-phone.png', fullPage: true });
     await page.setViewportSize({ width: 1280, height: 950 });
   });
+  await check('everyday importance choices preserve suggested settings and keep exact maths optional', async () => {
+    await page.locator('#decision-scenario').selectOption('travel');
+    assert.equal(await page.locator('#priority-cost-pence').inputValue(), 'suggested');
+    assert.equal(await page.locator('#weight-cost-pence').inputValue(), '45');
+    assert.equal(await page.locator('#exact-cost-pence').isVisible(), false);
+    assert.doesNotMatch(await page.locator('#decision-form').innerText(), /\bweights\b|hard constraints|\bpence\b|\bGBP\b/i);
+    await page.locator('#priority-cost-pence').selectOption('100');
+    assert.equal(await page.locator('#weight-cost-pence').inputValue(), '100');
+    await page.locator('#decision-submit').click(); await page.locator('.decision-card').waitFor();
+    await page.locator('#priority-cost-pence').selectOption('custom');
+    await page.locator('#weight-cost-pence').fill('42.5');
+    await page.locator('#decision-submit').click(); await page.locator('.decision-card').waitFor();
+    await page.locator('#decision-reset').click();
+    assert.equal(await page.locator('#weight-cost-pence').inputValue(), '45');
+    assert.equal(await page.locator('#exact-cost-pence').isVisible(), false);
+  });
+  await check('pound budgets round-trip exactly and prices remain £ in cards and comparisons', async () => {
+    await page.locator('#decision-scenario').selectOption('travel');
+    assert.equal(await page.locator('#limit-cost-pence').inputValue(), '25');
+    await page.getByLabel('Your budget (£)', { exact: true }).fill('7.99');
+    await page.locator('#decision-submit').click(); await waitText(page.locator('#decision-status'), 'Nothing fits');
+    await page.locator('#limit-cost-pence').fill('8.00');
+    await page.locator('#decision-submit').click(); await waitText(page.locator('.decision-card'), '£8.00');
+    await waitText(page.locator('.comparison-table').first(), '£8.00');
+    assert.doesNotMatch(await page.locator('.decision-card').innerText(), /\bpence\b|\bGBP\b/);
+    await page.locator('#limit-cost-pence').fill('8.001');
+    await page.locator('#decision-submit').click(); await page.locator('#decision-status.error').waitFor();
+    assert.equal(await page.locator('.decision-card').count(), 0);
+    await page.locator('#decision-reset').click();
+  });
+  await check('ignoring every priority gives a plain correction rather than a fake match', async () => {
+    for (const input of await page.locator('.priority-choice').all()) await input.selectOption('0');
+    await page.locator('#decision-submit').click(); await waitText(page.locator('#decision-status.error'), 'Choose Important');
+    assert.equal(await page.locator('.decision-card').count(), 0);
+    await page.locator('#decision-reset').click();
+  });
   await check('priority changes clear stale results and hard-limit no-match is distinct from failure', async () => {
-    await page.locator('#weight-cost-pence').fill('0');
+    await page.locator('#priority-cost-pence').selectOption('0');
     assert.equal(await page.locator('.decision-card').count(), 0);
     await page.locator('#bound-cost-pence').selectOption('lte');
     await page.locator('#limit-cost-pence').fill('0');
     await page.locator('#bound-duration-minutes').selectOption('lte');
     await page.locator('#limit-duration-minutes').fill('0');
     await page.locator('#decision-submit').click();
-    await waitText(page.locator('#decision-status'), 'No options meet');
+    await waitText(page.locator('#decision-status'), 'Nothing fits your limits');
     assert.equal(await page.locator('.decision-card').count(), 0);
     await page.locator('#decision-exclusions summary').click();
     assert.ok(await page.locator('.decision-excluded').count() > 0);
@@ -140,7 +177,7 @@ try {
     }
     await page.locator('#custom-json').fill(JSON.stringify(custom));
     await page.locator('#custom-apply').click();
-    await waitText(page.locator('#custom-status'), 'validated locally');
+    await waitText(page.locator('#custom-status'), 'ready to use');
     assert.equal(await page.locator('#weight-constructor').inputValue(), String(criterion.default_weight));
     await page.locator('#decision-submit').click();
     await page.locator('.decision-card').waitFor();
@@ -198,7 +235,7 @@ try {
     assert.equal(await broken.locator('#decision-submit').isDisabled(), true);
     assert.equal(await broken.locator('.decision-card').count(), 0);
     await broken.unroute('**/decisions.json'); await broken.locator('#decision-retry').click();
-    await waitText(broken.locator('#decision-load-status'), 'Five scenarios ready');
+    await waitText(broken.locator('#decision-load-status'), 'Ready to explore');
     await broken.locator('#decision-submit').click(); await broken.locator('.decision-card').waitFor();
     await broken.close();
   });
@@ -356,8 +393,8 @@ try {
     await page.keyboard.press('Space');
     assert.equal(await row('Unselected secret').locator('input[type=checkbox]').evaluate((input) => input === document.activeElement), true);
     await page.keyboard.press('Space');
-    await search('octopus'); await waitText(page.locator('#search-status'), 'No matching evidence');
-    await row('Unselected secret').getByText('View original text').click();
+    await search('octopus'); await waitText(page.locator('#search-status'), 'No matching text');
+    await row('Unselected secret').getByText('Read saved text').click();
     assert.equal(await page.locator('#viewer-content img').count(), 0);
     assert.equal(await page.evaluate(() => window.compromised), undefined);
     await page.locator('#viewer-close').click();
@@ -392,7 +429,7 @@ try {
     }
   });
   await check('source text can be downloaded before browser data is cleared', async () => {
-    await row('notes.md').getByText('View original text').click();
+    await row('notes.md').getByText('Read saved text').click();
     const downloadPromise = page.waitForEvent('download'); await page.locator('#download-source').click();
     const download = await downloadPromise; assert.equal(download.suggestedFilename(), 'my-jinni-source.txt');
     const file = await download.path(); assert.match(await readFile(file, 'utf8'), /acoustic music/);
@@ -403,7 +440,7 @@ try {
     assert.equal(await page.locator('.source-item input:checked').count(), await page.locator('.source-item').count());
     await page.locator('#clear-selection').click();
     assert.equal(await page.locator('.source-item input:checked').count(), 0);
-    await search('beginner'); await waitText(page.locator('#search-status.error'), 'Select at least one');
+    await search('beginner'); await waitText(page.locator('#search-status.error'), 'Tick at least one');
     const count = await page.locator('.source-item').count();
     await row('notes.md').getByRole('button', { name: 'Delete notes.md', exact: true }).click();
     await page.locator('#delete-cancel').click();
@@ -419,7 +456,7 @@ try {
     await row('guide.pdf').locator('input').check(); await search('telescope'); await page.locator('.excerpt').waitFor();
     await row('guide.pdf').getByRole('button', { name: 'Delete guide.pdf', exact: true }).click();
     await page.locator('#delete-confirm').click();
-    await waitText(page.locator('#library-status'), 'Source deleted'); assert.equal(await page.locator('.excerpt').count(), 0);
+    await waitText(page.locator('#library-status'), 'Item removed'); assert.equal(await page.locator('.excerpt').count(), 0);
     await page.reload(); await openTools(); await waitText(page.locator('#library-status'), 'Library ready.'); assert.equal(await row('guide.pdf').count(), 0);
   });
   await check('source sort dropdown orders saved documents without losing selection', async () => {
