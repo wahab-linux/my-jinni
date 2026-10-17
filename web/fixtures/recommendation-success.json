@@ -13,7 +13,7 @@
       "outbound_minutes": 15,
       "return_minutes": 15,
       "arrive_at": "2026-10-20T16:15:00+01:00",
-      "back_on_campus_at": "2026-10-20T18:15:00+01:00",
+      "return_at": "2026-10-20T18:15:00+01:00",
       "reasons": [
         "Matches your interest in games.",
         "Costs £5.00 including return travel, within your £10.00 budget.",
@@ -34,7 +34,7 @@
         "outbound_minutes": 10,
         "return_minutes": 10,
         "arrive_at": "2026-10-20T16:10:00+01:00",
-        "back_on_campus_at": "2026-10-20T18:40:00+01:00",
+        "return_at": "2026-10-20T18:40:00+01:00",
         "reasons": ["Within your budget and time window; a different interest category."]
       },
       {
@@ -50,14 +50,14 @@
         "outbound_minutes": 12,
         "return_minutes": 12,
         "arrive_at": "2026-10-20T16:12:00+01:00",
-        "back_on_campus_at": "2026-10-20T18:27:00+01:00",
+        "return_at": "2026-10-20T18:27:00+01:00",
         "reasons": ["Within your budget and time window; a different interest category."]
       }
     ],
     "message": "Found an activity that fits your interests, budget, and return deadline.",
     "sources": [
       {"id": "events", "label": "AfterClass Events Demo", "kind": "mock", "is_simulated": true, "status": "ok", "updated_at": "2026-10-20T15:50:00+01:00"},
-      {"id": "travel", "label": "AfterClass Travel Demo", "kind": "mock", "is_simulated": true, "status": "ok", "updated_at": "2026-10-20T15:50:00+01:00"}
+      {"id": "travel", "label": "AfterClass Travel Demo", "kind": "mock", "is_simulated": true, "status": "ok", "updated_at": "2026-10-20T15:50:00+01:00", "origin_id": "glasgow-main-campus"}
     ]
   },
   "error": null,

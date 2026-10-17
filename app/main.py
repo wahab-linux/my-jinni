@@ -2,22 +2,36 @@ import json
 
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException
 
 from app import __version__
-from app.errors import http_error_handler, unexpected_error_handler, validation_error_handler
+from app.errors import (
+    error_response,
+    http_error_handler,
+    unexpected_error_handler,
+    validation_error_handler,
+)
+from app.scenario import (
+    DEMO_DATE,
+    MAX_BUDGET_PENCE,
+    ORIGINS,
+    SUPPORTED_DATES,
+    TIMEZONE,
+    validate_scenario,
+)
 from app.schemas import (
     Envelope,
     ErrorEnvelope,
     Health,
     InterestOption,
     Options,
+    OriginOption,
     RecommendationEnvelope,
     RecommendationRequest,
 )
-from app.settings import DEMO_DATE, ORIGIN_ID, TIMEZONE, WEB_DIR
+from app.settings import WEB_DIR
 from app.sources.mock_api import router as mock_router
 
 ERROR_RESPONSES = {
@@ -34,7 +48,10 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="AfterClass API",
         version=__version__,
-        description="API-first scaffold. All event and travel data are simulated.",
+        description=(
+            "Contract v0.2: activity decisions for anyone; students are the first experience. "
+            "The recommendation engine remains a 501 scaffold. All source data are simulated."
+        ),
         responses=ERROR_RESPONSES,
     )
     app.add_exception_handler(RequestValidationError, validation_error_handler)
@@ -51,8 +68,9 @@ def create_app() -> FastAPI:
             data=Options(
                 demo_date=DEMO_DATE,
                 timezone=TIMEZONE,
-                origin_id=ORIGIN_ID,
-                origin_label="University of Glasgow main campus",
+                supported_dates=list(SUPPORTED_DATES),
+                origins=[OriginOption(id=origin.id, label=origin.label) for origin in ORIGINS],
+                max_budget_pence=MAX_BUDGET_PENCE,
                 currency="GBP",
                 interests=[
                     InterestOption(id=key, label=label)
@@ -92,7 +110,12 @@ def create_app() -> FastAPI:
             503: {"model": ErrorEnvelope, "description": "A required source is unavailable"},
         },
     )
-    def recommendations(preferences: RecommendationRequest) -> RecommendationEnvelope:
+    def recommendations(
+        preferences: RecommendationRequest,
+    ) -> RecommendationEnvelope | JSONResponse:
+        details = validate_scenario(preferences)
+        if details:
+            return error_response(422, "VALIDATION_ERROR", "Please check your request.", details)
         raise HTTPException(
             status_code=501,
             detail="The decision engine is not implemented. Frontend fixtures are in /fixtures/.",

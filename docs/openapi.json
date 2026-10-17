@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "AfterClass API",
-    "description": "API-first scaffold. All event and travel data are simulated.",
+    "description": "Contract v0.2: activity decisions for anyone; students are the first experience. The recommendation engine remains a 501 scaffold. All source data are simulated.",
     "version": "0.1.0"
   },
   "paths": {
@@ -130,7 +130,7 @@
                           "outbound_minutes": 15,
                           "return_minutes": 15,
                           "arrive_at": "2026-10-20T16:15:00+01:00",
-                          "back_on_campus_at": "2026-10-20T18:15:00+01:00",
+                          "return_at": "2026-10-20T18:15:00+01:00",
                           "reasons": [
                             "Matches your interest in games.",
                             "Costs £5.00 including return travel, within your £10.00 budget.",
@@ -151,7 +151,7 @@
                             "outbound_minutes": 10,
                             "return_minutes": 10,
                             "arrive_at": "2026-10-20T16:10:00+01:00",
-                            "back_on_campus_at": "2026-10-20T18:40:00+01:00",
+                            "return_at": "2026-10-20T18:40:00+01:00",
                             "reasons": [
                               "Within your budget and time window; a different interest category."
                             ]
@@ -169,7 +169,7 @@
                             "outbound_minutes": 12,
                             "return_minutes": 12,
                             "arrive_at": "2026-10-20T16:12:00+01:00",
-                            "back_on_campus_at": "2026-10-20T18:27:00+01:00",
+                            "return_at": "2026-10-20T18:27:00+01:00",
                             "reasons": [
                               "Within your budget and time window; a different interest category."
                             ]
@@ -191,7 +191,8 @@
                             "kind": "mock",
                             "is_simulated": true,
                             "status": "ok",
-                            "updated_at": "2026-10-20T15:50:00+01:00"
+                            "updated_at": "2026-10-20T15:50:00+01:00",
+                            "origin_id": "glasgow-main-campus"
                           }
                         ]
                       },
@@ -223,7 +224,8 @@
                             "kind": "mock",
                             "is_simulated": true,
                             "status": "ok",
-                            "updated_at": "2026-10-20T15:50:00+01:00"
+                            "updated_at": "2026-10-20T15:50:00+01:00",
+                            "origin_id": "glasgow-main-campus"
                           }
                         ]
                       },
@@ -340,6 +342,21 @@
         ],
         "summary": "Travel",
         "operationId": "travel_mock_travel_get",
+        "parameters": [
+          {
+            "name": "origin_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "default": "glasgow-main-campus",
+              "title": "Origin Id"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -363,6 +380,16 @@
           },
           "500": {
             "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_dict_str__str__"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Travel source origin mismatch",
             "content": {
               "application/json": {
                 "schema": {
@@ -834,13 +861,25 @@
             "type": "string",
             "title": "Timezone"
           },
-          "origin_id": {
-            "type": "string",
-            "title": "Origin Id"
+          "supported_dates": {
+            "items": {
+              "type": "string",
+              "format": "date"
+            },
+            "type": "array",
+            "title": "Supported Dates"
           },
-          "origin_label": {
-            "type": "string",
-            "title": "Origin Label"
+          "origins": {
+            "items": {
+              "$ref": "#/components/schemas/OriginOption"
+            },
+            "type": "array",
+            "title": "Origins"
+          },
+          "max_budget_pence": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Max Budget Pence"
           },
           "currency": {
             "type": "string",
@@ -868,14 +907,37 @@
         "required": [
           "demo_date",
           "timezone",
-          "origin_id",
-          "origin_label",
+          "supported_dates",
+          "origins",
+          "max_budget_pence",
           "currency",
           "interests",
           "default_request",
           "is_simulated"
         ],
         "title": "Options"
+      },
+      "OriginOption": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "title": "Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "label"
+        ],
+        "title": "OriginOption"
       },
       "RecommendationData": {
         "properties": {
@@ -923,12 +985,13 @@
         "properties": {
           "origin_id": {
             "type": "string",
-            "const": "glasgow-main-campus",
+            "maxLength": 100,
+            "minLength": 1,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
             "title": "Origin Id"
           },
           "budget_pence": {
             "type": "integer",
-            "maximum": 20000.0,
             "minimum": 0.0,
             "title": "Budget Pence"
           },
@@ -1035,10 +1098,10 @@
             "format": "date-time",
             "title": "Arrive At"
           },
-          "back_on_campus_at": {
+          "return_at": {
             "type": "string",
             "format": "date-time",
-            "title": "Back On Campus At"
+            "title": "Return At"
           },
           "reasons": {
             "items": {
@@ -1064,7 +1127,7 @@
           "outbound_minutes",
           "return_minutes",
           "arrive_at",
-          "back_on_campus_at",
+          "return_at",
           "reasons"
         ],
         "title": "RecommendedActivity"
@@ -1102,6 +1165,20 @@
             "type": "string",
             "format": "date-time",
             "title": "Updated At"
+          },
+          "origin_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 1,
+                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Origin Id"
           }
         },
         "additionalProperties": false,
@@ -1134,7 +1211,9 @@
           },
           "origin_id": {
             "type": "string",
-            "const": "glasgow-main-campus",
+            "maxLength": 100,
+            "minLength": 1,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
             "title": "Origin Id"
           },
           "journeys": {

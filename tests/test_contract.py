@@ -14,6 +14,14 @@ def test_app_serves_scaffold_and_defaults(client):
     assert health["data"]["recommendations_ready"] is False
     options = client.get("/api/v1/options").json()["data"]
     assert options["demo_date"] == "2026-10-20"
+    assert options["supported_dates"] == ["2026-10-20"]
+    assert {origin["id"] for origin in options["origins"]} == {
+        "glasgow-main-campus",
+        "glasgow-city-centre",
+    }
+    assert options["default_request"]["origin_id"] == "glasgow-main-campus"
+    assert options["max_budget_pence"] == 20000
+    assert "origin_id" not in options
     assert options["timezone"] == "Europe/London"
     assert options["is_simulated"] is True
 
@@ -31,6 +39,7 @@ def test_valid_request_exposes_explicit_unimplemented_engine(client, valid_reque
         ("budget_pence", -1),
         ("budget_pence", 10.5),
         ("budget_pence", True),
+        ("origin_id", ""),
         ("depart_at", "2026-10-20T16:00:00"),
         ("return_by", "2026-10-20T15:00:00+01:00"),
         ("return_by", "2026-10-21T19:00:00+01:00"),
@@ -77,6 +86,9 @@ def test_frontend_response_fixtures_match_contract(client, filename):
     assert result.error is None
     assert {source.id for source in result.data.sources} == {"events", "travel"}
     assert result.warnings[0].code == "SIMULATED_DATA"
+    assert next(source for source in result.data.sources if source.id == "travel").origin_id == (
+        "glasgow-main-campus"
+    )
 
 
 def test_frontend_failure_fixture_has_error_envelope(client):
@@ -117,4 +129,5 @@ def test_success_example_contains_consistent_money_and_time():
         recommendation.ticket_cost_pence + recommendation.travel_cost_pence
     )
     assert recommendation.arrive_at <= recommendation.starts_at
-    assert recommendation.back_on_campus_at > recommendation.ends_at
+    assert recommendation.return_at > recommendation.ends_at
+    assert "back_on_campus_at" not in data["data"]["recommended"]

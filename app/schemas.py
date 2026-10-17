@@ -1,13 +1,13 @@
 from datetime import date
 from typing import Annotated, Generic, Literal, TypeVar
-from zoneinfo import ZoneInfo
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, StrictInt, model_validator
 
-from app.settings import DEMO_DATE, TIMEZONE
-
 Category = Literal["games", "music", "arts", "sport", "learning"]
 Pence = Annotated[StrictInt, Field(ge=0)]
+OriginId = Annotated[
+    str, Field(min_length=1, max_length=100, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+]
 T = TypeVar("T")
 
 
@@ -44,20 +44,16 @@ class Envelope(Model, Generic[T]):
 
 
 class RecommendationRequest(Model):
-    origin_id: Literal["glasgow-main-campus"]
-    budget_pence: Annotated[StrictInt, Field(ge=0, le=20000)]
+    origin_id: OriginId
+    budget_pence: Pence
     depart_at: AwareDatetime
     return_by: AwareDatetime
     interests: Annotated[list[Category], Field(min_length=1, max_length=5)]
 
     @model_validator(mode="after")
-    def validate_demo_window(self) -> "RecommendationRequest":
+    def validate_preferences(self) -> "RecommendationRequest":
         if self.return_by <= self.depart_at:
             raise ValueError("return_by must be later than depart_at")
-        local_zone = ZoneInfo(TIMEZONE)
-        for value in (self.depart_at, self.return_by):
-            if value.astimezone(local_zone).date() != DEMO_DATE:
-                raise ValueError(f"Use the fixed demo date {DEMO_DATE.isoformat()}")
         if len(set(self.interests)) != len(self.interests):
             raise ValueError("interests must not contain duplicates")
         return self
@@ -68,11 +64,17 @@ class InterestOption(Model):
     label: str
 
 
+class OriginOption(Model):
+    id: OriginId
+    label: str
+
+
 class Options(Model):
     demo_date: date
     timezone: str
-    origin_id: str
-    origin_label: str
+    supported_dates: list[date]
+    origins: list[OriginOption]
+    max_budget_pence: Pence
     currency: Literal["GBP"]
     interests: list[InterestOption]
     default_request: RecommendationRequest
@@ -119,7 +121,7 @@ class TravelFeed(Model):
     provider: str
     is_simulated: Literal[True]
     updated_at: AwareDatetime
-    origin_id: Literal["glasgow-main-campus"]
+    origin_id: OriginId
     journeys: list[JourneyRecord]
 
 
@@ -130,6 +132,15 @@ class SourceStatus(Model):
     is_simulated: Literal[True]
     status: Literal["ok"]
     updated_at: AwareDatetime
+    origin_id: OriginId | None = None
+
+    @model_validator(mode="after")
+    def validate_source_origin(self) -> "SourceStatus":
+        if self.id == "travel" and self.origin_id is None:
+            raise ValueError("Travel source metadata must identify its origin_id")
+        if self.id == "events" and self.origin_id is not None:
+            raise ValueError("Event source metadata is independent of origin_id")
+        return self
 
 
 class RecommendedActivity(Model):
@@ -145,7 +156,7 @@ class RecommendedActivity(Model):
     outbound_minutes: Annotated[StrictInt, Field(ge=0)]
     return_minutes: Annotated[StrictInt, Field(ge=0)]
     arrive_at: AwareDatetime
-    back_on_campus_at: AwareDatetime
+    return_at: AwareDatetime
     reasons: Annotated[list[str], Field(min_length=1)]
 
 

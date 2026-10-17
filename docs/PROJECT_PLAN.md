@@ -1,91 +1,92 @@
 # AfterClass project plan / 项目计划
 
-## Product / 产品
+## Product boundary / 产品边界
 
-User story: I leave Glasgow's main campus after class, have a budget and interests, and need to return by a deadline. Recommend one feasible activity and explain the cost, travel, and interest match.
+AfterClass helps people choose an activity using their interests, budget, available time, and journey constraints. Students choosing after-class activities are the first MVP audience. The reusable scope is activity selection; a universal decision platform for finance, shopping, or arbitrary industries is not part of this hackathon.
 
-用户故事：我从格大主校区出发，有预算和兴趣，必须在指定时间前返校。推荐一个可行活动，说明费用、交通和兴趣匹配情况。
+AfterClass 帮助有兴趣、预算、时间和出行约束的人选择活动。学生课后活动是首个 MVP 用户场景。通用范围是活动选择，本次不建设面向金融、购物等任意行业的万能决策平台。
 
-The prototype covers one fixed demo day (2026-10-20), one origin/return point, eight fictional activities, and four fictional travel destinations. Fixed travel durations are estimates, not scheduled buses or a route planner. Both source feeds are independently shaped mock APIs served by this repository, which the challenge permits. They do not claim to be external live providers.
+Core story: Given a departure point, budget, time window, and interests, recommend one feasible activity, show alternatives, and explain the total cost and return time.
 
-原型只覆盖固定演示日期 2026-10-20、一个出发/返回点、8 个虚构活动和 4 个虚构交通目的地。交通耗时是模拟估计，不是公交时刻表。两源为本项目自建、结构不同的 mock API，符合题目允许的形式，不冒充外部实时服务。
+核心用户故事：输入起点、预算、时间窗和兴趣，得到一个可行活动、备选及总费用和返回时间的解释。
 
-## Decision rules / 推荐规则
+## Read the requirements before building / 开发前先看需求
 
-1. Fetch both event and travel feeds. Normalise times to aware datetimes and event ticket prices from GBP decimal strings to integer pence using `Decimal`, never binary float.
-2. Join `event.venue.id` to `journey.destination_id`. Skip an event with no available journey; do not treat missing cost/time as zero.
-3. Reject malformed records with a warning if safe records remain. Invalid feed structure, duplicate IDs causing ambiguous joins, or a feed with no valid records is a 502 `INVALID_SOURCE_DATA`. A structurally valid empty event list is a successful no-match search. An empty travel list means no events have usable journeys.
-4. A candidate is feasible only when all three conditions hold:
-   - `ticket_cost_pence + return_fare_pence <= budget_pence`
-   - `depart_at + outbound_minutes <= event.starts_at`
-   - `event.ends_at + return_minutes <= return_by`
-5. Rank by `(interest_match descending, total_cost_pence ascending, total_travel_minutes ascending, event_id ascending)`. All listed interests have equal priority. A non-matching interest may still be a feasible alternative.
-6. Return the first item as `recommended` and the next zero to two as `alternatives`. No matches is HTTP 200 with `recommended: null` and an empty alternatives list.
-7. Generate short explanations directly from these facts. No LLM is needed at runtime.
-8. If a required feed times out/fails, return HTTP 503 `SOURCE_UNAVAILABLE`. Do not silently invent travel data or substitute the fixed frontend fixture.
+- `docs/REQUIREMENTS.md`: requirement IDs, P0/P1 scope, business/data rules, quality requirements, acceptance scenarios, and assumptions.
+- `docs/ARCHITECTURE.md`: reusable activity core, scenario/application policy, source adapters, and extension limits.
+- `docs/API.md` and `docs/openapi.json`: v0.2 contract and migration from the scaffold's earlier campus-specific fields.
+- `docs/TASKS.md`: small work packages with owners, dependencies, outputs, timeboxes, and runnable acceptance checks.
+- `docs/prompts/backend.md` and `docs/prompts/frontend.md`: copyable Chinese/English implementation instructions.
+- `docs/AI_USAGE.md`: actual AI assistance, human decisions/edits, checks, and submission draft.
 
-1. 读取两源，使用带时区时间；门票英镑字符串用 `Decimal` 转成整数便士。
-2. 按地点 ID 关联；缺失或不可用交通不能按免费、零分钟处理。
-3. 可安全跳过的坏记录附带警告；整源结构错误、重复 ID 导致歧义、或整源全是坏记录返回 502。合法空列表按无匹配处理。
-4. 同时满足预算、赶上开始、按时返校；等于边界视为满足。
-5. 排序：匹配兴趣优先，然后总价更低、往返耗时更短、活动 ID 排序。所选兴趣优先级相同。
-6. 一个首选、最多两个备选；没有结果返回 200，首选为 null。
-7. 解释由规则直接生成，运行时不依赖 LLM。
-8. 必需数据源失败或超时返回 503，不用假结果替代。
+需求、架构、接口、任务包、开发提示词和 AI 记录分别维护，先明确用户决策与验收，再按依赖开发，不能把有页面或能启动视为业务已完成。
 
-## Architecture / 架构
+## MVP configuration / 首个演示场景
 
-```mermaid
-flowchart LR
-  UI[Experience: web/] --> API[FastAPI: app/main.py]
-  API --> D[Decision: app/decision/]
-  API --> A[Integration: app/sources/ adapters]
-  A --> E[Mock event API]
-  A --> T[Mock travel API]
-  E --> EF[data/events.json]
-  T --> TF[data/travel.json]
-  A --> D
-```
+- Student-oriented experience, with campus as the default departure and return point.
+- One supported demonstration day, 2026-10-20 in Europe/London. This is scenario data, not a restriction in the reusable request/decision model.
+- A city-centre origin with its own transport feed checks that activity selection does not require student identity or campus-specific semantics.
+- Two independent mock source APIs: activities and travel. All activities, venues, fares, durations, and availability are fictional and labelled simulated.
+- Travel times are fixed estimates, not scheduled buses or a live routing service. Return is to the chosen origin.
+- One recommendation and up to two alternatives. Deterministic ranking and fact-based explanations, with no runtime LLM.
 
-Keep the decision engine pure: normalised data and preferences in, ranked results out. It must not import FastAPI, call HTTP, read files, or know about HTML. Application wiring can inject an `httpx.AsyncClient`; same-process mock HTTP calls can use `httpx.ASGITransport` to avoid a hardcoded port. Test clients can replace that transport to simulate timeouts and malformed responses.
+MVP 默认面向学生，校园为默认起点；演示日期属于配置。市中心起点使用对应交通数据，验证核心不依赖学生身份。活动和交通是两个自建模拟来源；不冒充实时数据。返回所选起点，输出一个首选和最多两个备选，运行不依赖 LLM。
 
-推荐引擎保持纯逻辑：输入规范化数据和偏好，输出排序结果；不导入 FastAPI、不访问 HTTP/文件、不涉及 HTML。应用层可注入 `httpx.AsyncClient`；同进程 mock HTTP 可用 `ASGITransport`，测试替换 transport 来模拟失败。
+The second origin is an architecture/contract acceptance scenario, not a commitment to build separate products or interfaces for multiple audiences during the hackathon.
 
-## Ownership / 文件归属
+第二起点是架构与接口验收样例，不代表本次要额外完成多个用户群的独立产品。
 
-| Owner / 负责人 | Files / 文件 | Delivery / 交付 |
+## Architectural responsibility / 架构职责
+
+1. Experience: render available scenario options and request states. The UI reads capabilities from the API rather than hardcoding campus or supported dates.
+2. Application/scenario: select supported origins/dates, validate source capabilities, coordinate fetching, and map failures to the shared API envelope.
+3. Decision: pure activity feasibility and ranking over normalised inputs. No student-role checks, campus constants, demo date, FastAPI, network, or file I/O.
+4. Integration: fetch independent feeds, convert source formats, preserve provenance, and validate origin/data consistency.
+
+1. 界面读取 API 公布的场景能力，不写死起点和支持日期。
+2. 应用和场景层检查数据支持范围、协调获取和错误转换。
+3. 决策层只处理通用活动可行性与排序，不判断学生身份，也不依赖校园、演示日期或 I/O。
+4. 数据适配层获取和统一两源，保留出处并验证起点匹配。
+
+These responsibilities fit the challenge's three layers: experience; decision/application; data integration. Scenario configuration is a boundary inside the application, not a new deployed service.
+
+上述职责仍落实为界面、决策/应用、数据接入三个层次；场景配置无需额外部署服务。
+
+## Rules and failure policy / 规则与失败策略
+
+- Ticket plus return travel must fit the budget; outbound arrival must not miss the start; event end plus return travel must meet the return deadline. Equality at each boundary is allowed.
+- Rank by interest match, then lower total cost, shorter total travel, and stable activity ID. Selected interests have equal priority.
+- Missing/unavailable journeys exclude the affected activity; unknown cost/time is never zero. A mismatched source origin must never be used for ranking.
+- No feasible activity is a successful empty result. Required-source failure is an error, not a reason to silently use a success fixture. Invalid source structure differs from no results.
+- Model syntax validation and scenario capability validation are different: a structurally valid request may still ask for an unsupported origin or date.
+
+总价、到达和返回三个约束必须同时满足，边界相等允许；兴趣优先，再比费用、耗时和稳定 ID。缺失交通不能当作免费或零分钟；不同起点的数据不可混用。无结果、整源失败、数据损坏、请求超出场景能力是不同状态。
+
+## Ownership and integration / 分工与联调
+
+| Owner / 负责人 | Primary files / 主要文件 | Responsibility / 职责 |
 | --- | --- | --- |
-| Backend owner / 你 | `app/`, `data/`, `tests/`, `scripts/` | Fetching, adapters, validation, ranking, API, tests / 接入、适配、推荐、接口、测试 |
-| Wahab | `web/index.html`, `web/styles.css`, new `web/*.js` and assets | Accessible responsive UI and all request states / 可访问、响应式前端与请求状态 |
-| Shared, coordinate first / 共享，先同步 | `app/schemas.py`, `web/fixtures/`, `docs/API.md`, `docs/openapi.json`, dependencies | Stable contract / 稳定契约 |
-| Each person / 各自 | `docs/AI_USAGE.md` (coordinate edits) | Accurate tool, decision, edit, verification records / 如实记录工具、决策、修改与验证 |
+| User / 你 | `app/`, `data/`, `tests/`, `scripts/` | Scenario validation, adapters, pure engine, API and tests / 场景校验、适配、推荐、接口与测试 |
+| Wahab | `web/index.html`, `web/styles.css`, new web JS/assets | Options-driven form, results, error states, accessibility / 按场景能力生成界面、结果、异常与可访问性 |
+| Together / 共同 | Schemas, fixtures, OpenAPI, integration acceptance | Agree and version contract changes before merging / 先同步契约，再联调合并 |
+| Each person / 各自 | AI usage notes; coordinate shared edits | Record actual tool use, decisions, edits and verification / 记录实际工具、决策、修改和验证 |
 
-Suggested Git branches: backend work on `backend`, Wahab's UI on `frontend`. Commit small coherent changes; merge after the first complete flow. These branches are suggestions, not pre-created checkouts.
+Suggested branches remain `backend` and `frontend`. The first handoff is a narrow vertical slice, not a complete backend and a complete frontend developed in isolation. Follow `docs/TASKS.md` for timeboxes and acceptance checks. Pull the v0.2 contract before starting or merging v0.1 work.
 
-建议后端使用 `backend` 分支、前端使用 `frontend` 分支，按小任务提交，首个完整流程后合并；初始化不会预先切换或创建这两个工作分支。
+建议分别使用 backend/frontend 分支。第一次交付是小型纵向闭环，不是两边各自做完全部系统才联调。具体时序和验收见任务包，开发或合并旧版本前先拉取 v0.2 契约。
 
-## First integration / 第一次联调
+## Current delivery status / 当前完成状态
 
-- First 20 minutes: both read and accept the API contract, test the default request, and agree file ownership.
-- Next 60–90 minutes: Wahab works against the explicit response fixtures; backend owner implements source integration and the engine. Then wire the live POST request and check the default result.
-- Default request should select `event-board-games` for £5 total; lowering budget to 400 pence selects `event-music`; budget 0 yields no match for the default window. Raising budget to 2000 and selecting only `learning` still ranks feasible events by the documented tie-breakers.
-- Before finishing Saturday: full flow, key tests, clear limitations, and first demo rehearsal.
-- Suggested Sunday 10:30: fixes, documentation, final report, demo practice. Official code freeze is Sunday 12:00 UK time.
+This revision provides requirements, architecture boundaries, migrated scaffold contracts/fixtures, and implementation handoffs. The calculated recommendation engine and interactive frontend remain outstanding. The explicit HTTP 501 stub must be replaced by actual source integration and decision logic; static success fixtures do not prove that implementation works.
 
-前 20 分钟确认契约；随后 60–90 分钟分头开发并联调。默认请求应选桌游，总价 £5；预算降为 £4 时选音乐；默认时间窗预算为 £0 时无结果。周六结束前跑通并演练；建议周日 10:30 起集中修错和文档，官方周日 12:00 停码。
+本次修订交付需求、架构边界、新版骨架契约/样例和开发任务。实际推荐引擎与交互前端仍待实现。必须以两源整合和真实规则替换 501；固定成功样例不能证明推荐业务已完成。
 
-## Acceptance checklist / 验收
+## Schedule and completion / 时间与完成标准
 
-- [ ] Recommendation actually combines both sources and changes with preferences.
-- [ ] Three code layers remain separate; readable code passes lint.
-- [ ] Unit tests cover budget equality, arrival equality, return equality, interest ranking, no match, and invalid/missing records.
-- [ ] Integration tests exercise both HTTP sources and source failure.
-- [ ] UI supports loading, success, no result, source failure, validation failure, and initial 501.
-- [ ] Simulated data is visible; money and time are formatted clearly; labels and keyboard navigation work.
-- [ ] One command starts the application; README, architecture, trade-offs, and actual AI usage are complete.
+Aim for an early end-to-end slice, then complete edge cases, source failures and documentation. Before finishing Saturday, run the complete main flow and rehearse once. Suggested Sunday 10:30 onward: fixes, final verification, documentation and demo practice. Official code freeze is Sunday 12:00 UK time; suggested milestones are team planning, not additional official rules.
 
-验收包含两源实际参与决策、三层结构、边界和集成测试、完整界面状态、模拟数据标注、可访问性、一条命令启动及最终文档。初始化阶段不勾选尚未完成项。
+先尽早完成端到端小闭环，再补边界、数据失败与文档。周六结束前跑通主流程并演练一次；建议周日 10:30 起集中修错、最终验证和演示准备。官方周日英国时间 12:00 停码，其他里程碑为团队建议。
 
-Trade-offs: mock data gives reproducibility and no external credentials, but does not validate real transport availability. Fixed-day/single-origin scope keeps the demo small. Deterministic ranking is explainable but only reflects the stated preferences and simplified travel estimates.
+Completion means the P0 requirement acceptance scenarios pass, both people can explain the flow and trade-offs, simulated data is visible, the app starts with one command, and the AI report reflects actual work. Do not tick requirements merely because scaffold tests pass.
 
-取舍：mock 数据可重复且无需凭据，但无法证明真实交通可用；固定日期和起点控制范围；确定性排序容易解释，但只反映显式偏好和简化交通估计。
+完成标准是 P0 验收通过、两人能解释流程和取舍、模拟数据标注清楚、一条命令启动、AI 报告如实记录；骨架测试通过不代表需求全部完成。

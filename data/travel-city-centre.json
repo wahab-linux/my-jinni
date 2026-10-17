@@ -1,0 +1,12 @@
+{
+  "provider": "AfterClass City Centre Travel Demo",
+  "is_simulated": true,
+  "updated_at": "2026-10-20T15:50:00+01:00",
+  "origin_id": "glasgow-city-centre",
+  "journeys": [
+    {"destination_id": "venue-west", "outbound_minutes": 35, "return_minutes": 30, "return_fare_pence": 400, "available": true},
+    {"destination_id": "venue-cinema", "outbound_minutes": 8, "return_minutes": 9, "return_fare_pence": 0, "available": true},
+    {"destination_id": "venue-hall", "outbound_minutes": 25, "return_minutes": 25, "return_fare_pence": 300, "available": true},
+    {"destination_id": "venue-sport", "outbound_minutes": 15, "return_minutes": 18, "return_fare_pence": 200, "available": false}
+  ]
+}
