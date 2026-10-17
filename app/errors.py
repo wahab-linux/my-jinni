@@ -24,7 +24,7 @@ async def validation_error_handler(_request: Request, exc: RequestValidationErro
 
 
 async def http_error_handler(_request: Request, exc: HTTPException) -> JSONResponse:
-    codes = {404: "NOT_FOUND", 405: "METHOD_NOT_ALLOWED", 501: "NOT_IMPLEMENTED"}
+    codes = {404: "NOT_FOUND", 405: "METHOD_NOT_ALLOWED"}
     response = error_response(
         exc.status_code, codes.get(exc.status_code, "HTTP_ERROR"), str(exc.detail)
     )

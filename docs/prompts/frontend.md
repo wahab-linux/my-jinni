@@ -1,39 +1,47 @@
-# Frontend development prompt
+# Desktop interface development prompt
 
-You are developing AfterClass in `wahab-linux/my-jinni` for the DYHTG 2026 BlackRock challenge. I am Wahab and own the frontend; my teammate owns the backend. Deliver an interactive UI, real integration, and failure states in stages. Do not choose a different product or stop at a design proposal.
+You are building PlanScope's desktop client in `wahab-linux/my-jinni` for the DYHTG 2026 BlackRock challenge. I am Wahab and own the interface. My teammate owns the Python backend. The user explicitly wants a desktop application and permits Electron/Tauri to reuse frontend skills. Use Electron with HTML/CSS/JavaScript. Deliver a working application window.
 
-Read `AGENTS.md`, `docs/REQUIREMENTS.md`, `docs/PROJECT_PLAN.md`, `docs/ARCHITECTURE.md`, `docs/API.md`, `docs/TASKS.md`, `docs/openapi.json`, and `web/fixtures/` first. Valid recommendation requests may still return an explicit 501. Use an explicit fixture mode during development, but normal mode must call the real API.
+Read `AGENTS.md`, `docs/REQUIREMENTS.md`, `docs/ARCHITECTURE.md`, `docs/API.md`, `docs/TASKS.md`, `docs/openapi.json` and `contracts/fixtures/`. All code, comments, UI copy and documentation must be English. Product name: PlanScope. Keep the repository/directory name `my-jinni`.
 
-## Product boundary and collaboration
+## Stack, boundaries and ownership
 
-- The product serves people with budget, time, and interest constraints. Student life after class is the first MVP scenario, not a student-only API/UI restriction. Keep the AfterClass brand and campus defaults, but read origins/dates from configuration.
-- Use existing HTML/CSS/vanilla JavaScript. Own `web/index.html`, `web/styles.css`, new `web/*.js`, and assets. Do not edit `app/`, backend tests, shared fixtures, contracts, or dependencies without coordination. Do not add accounts, maps, chat, payments, a database, a new framework, or an arbitrary-scenario platform.
-- FastAPI serves `/`, `/static/`, and `/fixtures/`. Use `/static/...` for assets, relative API URLs, and retain `uv run python -m app`.
-- Use the v0.2 field `return_at` and general UI wording such as “Return to starting point” or “Back by”; do not depend on `back_on_campus_at`. Preserve integer pence and the `data/error/warnings` envelope.
-- Where subagents are available, assign an isolated money/time helper module or read-only accessibility review with explicit file ownership. The coordinating agent owns the page and request states; do not have agents edit the same files concurrently.
+- Own `desktop/` and client-only tests. Coordinate root `package.json`, its lockfile, `.gitignore` and shared documentation. Pin the selected Electron version in the lockfile using current official documentation. There is no existing JS framework to preserve; start with plain HTML/CSS/JavaScript unless the team chooses one. Do not add a separate website deliverable.
+- Suggested files: `desktop/main.cjs` (window, IPC and lifecycle), `preload.cjs` (contextBridge), and `renderer/index.html`, `styles.css`, `app.js` (interface). Keep the implementation small.
+- The Python backend is implemented at `http://127.0.0.1:8000`. Do not duplicate ranking, read source JSON directly, or change schemas independently. Fetch options and recommendations through the API.
+- The Electron main process makes HTTP requests; expose only `getOptions()` and `recommend(preferences)` through preload, with structured `{status, body}` results and a separate connection-failure state. Keep `contextIsolation: true`, `nodeIntegration: false` and the renderer sandbox. Validate the IPC sender and request shape; limit channels to the fixed local API routes. Do not expose arbitrary fetch URLs, filesystem, shell, ipcRenderer or process access. Insert provider text using textContent.
+- This bridge avoids a renderer-origin/CORS mismatch. Keep web security enabled and use local packaged assets in the application window.
+- First integration may start the backend separately with `uv run python -m app`. After that works, add `npm run desktop` to start the local backend if necessary and then open the window. Resolve the repository and `.venv` interpreter portably on Windows; do not hardcode roXy's path. Spawn Python with an argument array, `shell: false`, `windowsHide: true`, loopback binding and no Uvicorn reload.
+- Wait for `/health` readiness without blocking the interface; bound startup and HTTP waits, show retry/diagnostics and report port conflicts. On close, stop only the backend process this client created. Never terminate a separately started backend or another app. Check readiness and identity rather than treating any process on port 8000 as ours.
+- Backend `/docs` is developer documentation. The normal user flow stays inside the desktop window. A Windows installer and bundling a Python runtime are secondary delivery tasks; document source-run setup honestly until a distribution is built and launched.
 
-## Stage 1: minimum page and first real integration, approximately 45–60 minutes
+## Stage 1: the basic desktop flow
 
-This covers `T1-F` and `T1-I` (F1 and first integration):
+1. Create a resizable PlanScope window and load `/api/v1/options` through the bridge. Derive origins, supported date, limits, interests and initial values from the response. Students are the first scenario, not an identity requirement.
+2. Build labelled controls for origin, date, departure, return deadline, budget and interests. Internally use integer pence and exact decimal GBP conversion. Reject fractional pence, empty interests and reversed times. Send aware ISO timestamps for `Europe/London`, using the selected date's offset rather than the machine's timezone. Read supported dates from options.
+3. POST the v0.2 request through `recommend(preferences)`. Disable repeat submissions while active; use request IDs or cancellation so stale responses cannot overwrite a later request. Keep the window responsive.
+4. Show title, venue, category, event times, arrival, return, ticket + return fare = total, and factual reasons. Include up to two alternatives. Format GBP to two decimals and all times in `Europe/London`; the travel fare already includes both legs.
+5. Keep 'Simulated demo data' visible. Show source provider labels, update timestamps, requested travel origin and warnings. The timestamps describe fictional data, not live freshness.
+6. Integrate immediately against the actual API: campus / games / GBP 10 selects Board Game Night at GBP 5; GBP 4 selects Acoustic Hour; GBP 0 produces no match. City centre at 16:00 excludes Board Game Night because its outbound journey takes 35 minutes. No automatic fixture fallback.
 
-1. Fetch `GET /api/v1/options` for `origins[{id,label}]`, `supported_dates`, `demo_date`, `timezone`, `max_budget_pence`, interests, and `default_request`. `demo_date` is only a default. Do not read the obsolete singular `origin_id/origin_label`. An options-loading failure needs a clear message and retry, not an unusable submission form.
-2. Build a complete simple form for origin, supported date, budget in GBP, departure time, return deadline, and at least one interest. Use server defaults and short English labels/buttons. Even if only one date is supported, read it from options rather than hardcoding a campus or date in JavaScript.
-3. Validate money to at most two decimal places and convert precisely to integer pence; reject scientific notation, negatives, and values over `max_budget_pence`. Send ISO timestamps with UTC offsets, independent of browser timezone. The current single supported date may use the corresponding offset in `default_request`; do not treat `+01:00` as correct for arbitrary dates. Future additional dates require tested conversion for `options.timezone` or coordinated date-offset metadata.
-4. In normal mode POST to the real `/api/v1/recommendations`. Start with one card showing title, total cost, event/arrival/return times, reasons, and sources. Keep “Simulated demo data” visible. Show a real 501 as “Recommendation engine is not ready yet”; never substitute a success fixture.
-5. You may offer explicit `?demo=success|empty|error` fixture modes with a persistent “Campus fixture preview — not calculated” label. Normal mode must not fall back to fixtures. The static error file is fetched with HTTP 200 but represents a real 503 response.
-6. Deliver the first integration before visual polishing: on the same synchronised revision, verify the real default request returns `event-board-games`, £5, and 18:15 return; £4 returns `event-music`. Inspect Network for correct fields/units. Record actual API status and issues, then continue Stage 2.
+## Stage 2: reliable states and launch
 
-## Stage 2: complete states, accessibility, and handoff
+1. Handle initial/options loading, options failure, submitting, success, no match, validation (422), invalid source (502), unavailable source (503), unexpected errors and connection failure. Preserve inputs, offer retry, and clear old recommendations or visibly mark them stale after a new failed request.
+2. A 200 `recommended: null` result is a successful no-match search. Error bodies use `data: null`, `error: {code,message,details}`, and warnings. Preserve the HTTP status across IPC. A visibly labelled development fixture preview is optional and must never activate automatically on failure.
+3. Implement and verify the managed backend lifecycle and one `npm run desktop` command. Test close/reopen, an unavailable backend, a failed start and a busy port. Initial setup may require `uv sync`; avoid absolute developer paths or dependence on global Python.
+4. Check keyboard focus, tab order, labelled controls, readable resize behaviour, long explanations, loading, simulation labels and retry on Windows. Confirm city-centre results use its own journeys.
+5. Add useful tests for state transitions, stale responses, IPC status preservation and owned-process shutdown. Run applicable JS checks plus repository Python lint/format/tests. Record actual desktop checks separately from backend coverage.
+6. Coordinate packaging after the flow works. If an executable is built, include the Python backend, fixtures and runtime paths and actually launch it. Do not call a source-run window an installer.
+7. Update `docs/AI_USAGE.md` with actual tools/models, generated work, human decisions/edits and verification. No invented review or final AI-level claims. Rehearse a short English demo together.
 
-This covers `T2-F`, `T2-I`, and `T3` (F2/S1):
+## Contract reminders
 
-1. Complete the recommendation card with ticket + return travel = total, venue, category, event times, arrival/return, and explanations; show at most two alternatives. Display times in `Europe/London` and GBP with two decimals. Travel fare already includes the return journey.
-2. Handle initial, options-loading failure, submitting, success, no match, 422, 502, 503, 501, and network-error states. Distinguish a successful no-match search from a system error. Show actionable errors, warnings, provenance, and simulation labels without raw stack traces.
-3. Prevent duplicate submissions and stale responses overwriting newer results. Clear old results on failure or clearly mark them stale; preserve inputs for retry. Block invalid submission before options load, without interests, or with reversed times and explain the issue.
-4. Populate origins from `options.origins`. Selecting `glasgow-city-centre` sends that ID, with general return wording. Display the travel source's `origin_id` or readable label for verification; do not retain campus-only fields/copy. Do not calculate recommendations or invent travel in the frontend.
-5. Build a clear branded responsive page and check desktop and approximately 390px widths. Use labels, aria-live async status, readable errors, keyboard support, and visible focus. Prioritise a complete readable flow before visual polish.
-6. Check £0/£4/£10, missing interests, malformed/reversed times, every fixture state, real source failure, initial 501, stale responses, and repeat clicks. Once the backend works, verify real default/£4/£0 and second-origin requests produce actual changed results. State explicitly if a failure was checked only with an injected transport or fixture.
-7. Lightweight tests for genuine money/time helper risks are welcome; do not add a heavy build pipeline. Run the required `uv run ruff check .`, `uv run ruff format --check .`, and `uv run pytest`. Report browser checks separately; Python checks do not verify the UI.
-8. Coordinate README instructions, demo steps, and `docs/AI_USAGE.md`. Record actual tools/models, AI-generated work, human decisions/edits, and checks. Mark unperformed human review, editing, and final AI-level decisions as outstanding rather than claiming them.
+- Request: `origin_id`, `budget_pence`, `depart_at`, `return_by`, `interests`.
+- Options: `origins`, `supported_dates`, `timezone`, `max_budget_pence`, `interests`, `default_request`.
+- Success: `{data: ..., error: null, warnings: [...]}`. `data.recommended` is one object or null; alternatives has at most two.
+- `return_at` means return to the selected origin. All money is integer pence.
+- Exact schemas are `app/schemas.py` and `docs/openapi.json`; no silent field/unit changes.
 
-Report files changed in each stage, actual browser/command checks, the distinction between live API and fixture previews, remaining issues, and the conversion/request-state/rendering code I should personally understand. Keep small clear commits, follow the session's Git authorisation, and do not force-push or rewrite a teammate's history.
+References: [preload](https://www.electronjs.org/docs/latest/tutorial/tutorial-preload), [context isolation](https://www.electronjs.org/docs/latest/tutorial/context-isolation), [IPC](https://www.electronjs.org/docs/latest/tutorial/ipc).
+
+Report files, actual startup commands, tested outcomes and remaining work. Keep readable commits and preserve teammate changes.

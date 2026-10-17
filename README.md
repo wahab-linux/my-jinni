@@ -1,60 +1,58 @@
-# AfterClass
+# PlanScope
 
-Choose an activity that fits your interests, budget, and journey back.
+A desktop activity planner that combines activity and return-travel information to recommend a feasible plan and explain the cost and timing. Students are the first MVP audience; the decision core does not require student identity.
 
-Combine activity and travel information to help anyone choose a feasible plan. Students choosing after-class activities are the first MVP audience.
+DYHTG 2026 BlackRock challenge. Backend: roXy. Desktop interface: Wahab.
+Repository: [wahab-linux/my-jinni](https://github.com/wahab-linux/my-jinni). Local checkout: `my-jinni`.
 
-DYHTG 2026 · BlackRock challenge · Backend: roXy · Frontend: Wahab
+## Current delivery
 
-Repository: [wahab-linux/my-jinni](https://github.com/wahab-linux/my-jinni). The checkout directory is `my-jinni`; the product name remains AfterClass.
+The Python backend calculates recommendations from two independently shaped simulated HTTP feeds. The product interface is an Electron desktop client using HTML/CSS/JavaScript; Wahab owns that implementation. No desktop window or installer is delivered by the backend command below.
 
-## Run
+All activities, venues, travel times, fares and availability are fictional. The configured demo day is **20 October 2026**, in `Europe/London`. Campus and city-centre origins have different travel data. This prototype is a team submission to the challenge and is not an official BlackRock or Aladdin product.
 
-Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then run from the repository root. The first run prepares Python and the locked dependencies:
+## Run the backend
+
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then run from the repository root:
 
 ```sh
 uv run python -m app
 ```
 
-- Website: <http://127.0.0.1:8000>
-- Interactive API: <http://127.0.0.1:8000/docs>
-- OpenAPI JSON: <http://127.0.0.1:8000/openapi.json>
+This starts the local API at `http://127.0.0.1:8000`. It binds to loopback only. No browser is needed to use a desktop client. `/docs` and `/openapi.json` are optional developer documentation, not the product interface.
 
-The initial scaffold serves the landing page, options, two mock source APIs, and frontend fixtures. The recommendation endpoint deliberately returns **501 NOT_IMPLEMENTED** until the backend task is completed. A running server does not mean the decision engine is finished.
+```powershell
+$request = Get-Content -Raw contracts/fixtures/recommendation-request.json
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/api/v1/recommendations -ContentType 'application/json' -Body $request
+```
 
-All event names, venues, travel times, fares, and availability are fictional simulated data. The first scenario supports **20 October 2026**, in `Europe/London`; this is scenario configuration, not a core decision-model restriction or live information. It includes campus and city-centre origins to check that the architecture is not tied to student identity.
+- Default campus request, budget 1000p: Board Game Night, total 500p, return 18:15.
+- Budget 400p: Acoustic Hour. Budget 0p: successful no-match result.
+- City-centre departure at 16:00 misses the 16:30 Board Game Night; its actual travel data is used.
+- Every calculated success includes simulated-data provenance and warnings where records or journeys were excluded.
 
-## Start development
+Dependencies are locked in `uv.lock`. After initial dependency setup, normal calculations and tests need no Internet, API keys, database or runtime AI service.
 
-1. Read the [project plan](docs/PROJECT_PLAN.md), [requirements](docs/REQUIREMENTS.md), [architecture](docs/ARCHITECTURE.md), [API contract](docs/API.md), and [task packages](docs/TASKS.md).
-2. Backend owner: copy the [backend development prompt](docs/prompts/backend.md) into your AI coding session.
-3. Wahab: copy the [frontend development prompt](docs/prompts/frontend.md) into your AI coding session.
-4. Use separate Git branches. Coordinate changes to shared schemas or fixtures and integrate the first working flow at the early checkpoints in `docs/TASKS.md`.
+## Structure and ownership
 
 ```text
 app/
-  main.py               API routing and application wiring
-  schemas.py            Shared request/response models
-  errors.py             Consistent error responses
-  settings.py           Runtime paths
-  scenario.py           Supported origins/dates and application policy
-  sources/              Source APIs and future adapters
-  decision/             Future pure decision engine
-data/                   Simulated event and origin-specific travel datasets
-web/                    Wahab's HTML, CSS, JavaScript
-  fixtures/             Shared contract examples
-tests/                  Backend and contract verification
-scripts/                OpenAPI export
-docs/
-  API.md                API contract
-  openapi.json          Committed machine-readable contract
-  PROJECT_PLAN.md       Scope, architecture, and task ownership
-  REQUIREMENTS.md       Identified requirements and acceptance scenarios
-  ARCHITECTURE.md       Reusable activity core and scenario boundaries
-  TASKS.md              Small, ordered development packages
-  AI_USAGE.md           Development log and submission draft
-  prompts/              Copyable development prompts
+  main.py                 API orchestration and result explanations
+  schemas.py              Shared JSON models
+  scenario.py             Coverage, origins, supported dates and limits
+  sources/adapters.py     HTTP deadlines, source validation and normalisation
+  sources/mock_api.py     Independently shaped simulated feeds
+  decision/domain.py      Normalised immutable records
+  decision/engine.py      Pure feasibility and deterministic ranking
+data/                     Fictional source datasets
+contracts/fixtures/       Shared request/response examples, not fallback answers
+desktop/                  Wahab's client implementation boundary and handoff
+tests/                    Contract, source, rule and integration checks
+scripts/                  OpenAPI export
+docs/                     Requirements, architecture, tasks, prompts and AI log
 ```
+
+Read [requirements](docs/REQUIREMENTS.md), [architecture](docs/ARCHITECTURE.md), [API](docs/API.md), and [tasks](docs/TASKS.md). The [backend prompt](docs/prompts/backend.md) and [desktop interface prompt](docs/prompts/frontend.md) define separate responsibilities. Coordinate shared schemas, examples and dependency changes before merging. All repository content must be English.
 
 ## Check
 
@@ -62,23 +60,11 @@ docs/
 uv run ruff check .
 uv run ruff format --check .
 uv run pytest
-```
-
-After an agreed schema change, regenerate and commit the API snapshot:
-
-```sh
 uv run python -m scripts.export_openapi
 ```
 
-Dependencies are locked in `uv.lock`. No database, account, API key, or paid runtime AI service is required for this scaffold. Keep repository files in English.
+Required source calls each have a two-second deadline. A failed feed returns 503; malformed/ambiguous data returns 502; valid data with no feasible activity returns 200 with `recommended: null`. There is no automatic fixture fallback. Exact budget, outbound-arrival and return-deadline boundaries are accepted. Ranking is interest match, total cost, total travel time, then event ID.
 
-## Contract v0.2 migration
+## Remaining delivery work
 
-Activity output now uses `return_at` instead of `back_on_campus_at`. Options expose `origins` and `supported_dates`; use `default_request` for initial values rather than the removed single-origin fields. Read `docs/API.md` before merging frontend work based on v0.1. The core supports general activity decisions; other industries or a universal plugin platform are outside this MVP.
-
-## Remaining work
-
-- Implement source fetching/normalisation and the deterministic decision engine.
-- Build the interactive frontend and connect it to the recommendation endpoint.
-- Add business-rule unit tests and integration tests covering source failure.
-- Complete demo practice, architecture/trade-off notes, and the factual AI usage report.
+Wahab must implement and verify the desktop window, asynchronous API calls, results, loading/error/retry states, and the launcher/backend lifecycle. Together, verify the real client flow, source failure and retry, packaging if time permits, code understanding, demo rehearsal and the factual AI report. Backend automated checks do not establish that these human and UI acceptance steps are complete.

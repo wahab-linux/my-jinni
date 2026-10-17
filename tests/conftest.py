@@ -4,7 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import create_app
-from app.settings import WEB_DIR
+from app.settings import FIXTURES_DIR
 
 
 @pytest.fixture
@@ -15,4 +15,4 @@ def client():
 
 @pytest.fixture
 def valid_request():
-    return json.loads((WEB_DIR / "fixtures" / "recommendation-request.json").read_text())
+    return json.loads((FIXTURES_DIR / "recommendation-request.json").read_text())

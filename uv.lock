@@ -3,7 +3,7 @@ revision = 3
 requires-python = ">=3.11, <3.15"
 
 [[package]]
-name = "afterclass"
+name = "planscope"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

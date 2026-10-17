@@ -1,13 +1,13 @@
-# AfterClass requirements
+# PlanScope requirements
 
-This document is the product and acceptance baseline, not a claim of completed functionality. It describes application behaviour without defining final JSON field names. Coordinated field definitions live in `docs/API.md`, `app/schemas.py`, `docs/openapi.json`, and `web/fixtures/`.
+This document is the product and acceptance baseline, not a claim of completed functionality. It describes application behaviour without defining final JSON field names. Coordinated field definitions live in `docs/API.md`, `app/schemas.py`, `docs/openapi.json`, and `contracts/fixtures/`.
 
 ## 1. Decisions and implementation status
 
-- **Confirmed by the team:** build AfterClass; roXy owns the backend; Wahab owns the frontend; students are the MVP audience, not the boundary of the architecture.
+- **Confirmed by the team:** build PlanScope as a desktop application; roXy owns the backend and Wahab owns the desktop interface. The user approved frontend-technology reuse; the selected client is Electron with HTML/CSS/JavaScript. Students are the MVP audience, not the architecture's identity requirement.
 - **Selected MVP:** a person chooses one activity using budget, available time, and interests, combining event and travel feeds. Return to the same selected origin is the first-version journey model.
-- **Current scaffold, inspected 2026-10-17:** source endpoints, schemas, fixtures, and contract tests exist; the recommendation endpoint deliberately returns HTTP 501. A fixture result, a passing scaffold test, or a mock feed is not a completed recommendation engine.
-- **Pending implementation:** actual source adaptation, calculated filtering/ranking, integrated UI behaviour, and the business acceptance scenarios below. Leave their completion unchecked until verified.
+- **Verified backend, 2026-10-17:** both-source HTTP adaptation, exact money conversion, feasibility/ranking, factual explanations and error handling replace the former 501 stub. All 175 tests and Ruff lint/format passed. An actual loopback server served normal/lower/zero-budget and second-origin requests, then shut down cleanly. The existing Starlette/httpx TestClient deprecation warning remains.
+- **Pending delivery:** Electron window, restricted IPC bridge, asynchronous UI states, managed backend launcher, desktop integration, human review/rehearsal and packaging if time permits. The backend command opens no client. Keep human acceptance unchecked until actually performed; passing backend checks does not establish a completed product.
 - **Evidence boundary:** this document adds team product choices and implementation requirements. It does not establish new official sponsor rules. Recheck the opening-ceremony material and later notices for submission/assessment requirements.
 
 ## 2. Product and configurable MVP
@@ -32,9 +32,9 @@ Generality means separating data/configuration from rules. It does **not** mean 
 
 | Priority | Scope | Exit condition |
 | --- | --- | --- |
-| **P0: complete flow** | Configured options → preference form → two actual mock HTTP feeds → normalisation/join → feasibility/ranking → recommendation and reasons. | Both sources materially affect the calculated answer; the browser uses the real API. |
+| **P0: complete flow** | Desktop controls → restricted preload/main bridge → configured API → two mock HTTP feeds → normalisation/join → feasibility/ranking → recommendation and reasons. | Both sources materially affect the calculated answer; the Electron client uses the real API. |
 | **P0: honest failures** | Validation, no match, missing/invalid records, source failure, loading and retry. | Every outcome has a distinguishable API/UI state; no hidden fixture fallback. |
-| **P0: delivery** | Tests, contract parity, one-command startup, README/architecture/trade-offs, factual AI log and a short demo. | Acceptance scenarios pass and both teammates can explain the flow. |
+| **P0: delivery** | Tests, contract parity, one-command desktop startup with managed local backend, README/architecture/trade-offs, factual AI log and a short demo. | Acceptance scenarios pass, owned processes close cleanly and both teammates explain the flow. |
 | **P1: only after P0** | Better visual polish, richer rejection summaries, additional configured origins beyond the two demo cases, explicit fixture demo selector. | No contract break or loss of test/demo time; team agrees. |
 | **Deferred** | Live providers, arbitrary geocoding, maps, transport schedules/routing, different return destination, multi-activity itineraries, overnight windows, group planning, accounts, database, payments, scraping, runtime LLM, multi-currency and production deployment. | Separate future decisions; none required for this MVP. |
 
@@ -44,16 +44,16 @@ All requirements below are P0 unless marked P1. IDs are stable so code, tasks, a
 
 | ID | Requirement | Evidence |
 | --- | --- | --- |
-| **FR-01** | Supply supported origin(s), date/window, timezone, interests, currency, limits, and defaults through application options/configuration. Frontend labels/defaults derive from these values. | AC-01, AC-12 |
+| **FR-01** | Supply supported origin(s), date/window, timezone, interests, currency, limits, and defaults through application options/configuration. Desktop labels/defaults derive from these values. | AC-01, AC-12 |
 | **FR-02** | Accept an origin, departure, return deadline, integer-pence budget and supported interests. Validate before fetching sources; show correctable input errors. | AC-02 |
 | **FR-03** | Fetch both independently shaped event and travel APIs, normalise them through adapters, and join event venues to available journeys for the selected origin. | AC-03, AC-08, AC-09 |
 | **FR-04** | Apply every hard feasibility constraint before ranking; check outbound arrival and return-to-origin separately. | AC-04, AC-05, AC-06 |
 | **FR-05** | Deterministically rank feasible candidates, showing one recommendation and up to two distinct alternatives; produce a valid no-match response if none qualify. | AC-07, AC-10 |
 | **FR-06** | Explain the actual match: ticket price, return travel fare, total price, arrival/return times and interest match. Reasons must follow calculated facts, including when there is no matching interest. | AC-03, AC-07 |
 | **FR-07** | Preserve a single documented application contract and error envelope; static fixtures stay explicitly separate from calculated results. | AC-11, AC-13 |
-| **FR-08** | Show initial, submitting, success, no-match, validation, source-error and not-yet-implemented states. Prevent stale results from being presented as a newly successful response; allow correction or retry. | AC-11 |
+| **FR-08** | Show initial/options loading, submitting, success, no-match, validation, source-error and connection/startup-error states without freezing the desktop window. Prevent stale results from appearing newly successful; allow correction or retry. | AC-11 |
 | **FR-09** | Show that both datasets are simulated, with their source names and update timestamps. Preserve warnings for excluded records/missing journeys. | AC-08, AC-09, AC-11 |
-| **FR-10** | Provide reproducible startup and demo instructions plus an architecture diagram, known limitations, trade-offs, verification and factual AI-usage records. | AC-13, AC-14 |
+| **FR-10** | Provide reproducible desktop startup and backend lifecycle instructions plus an architecture diagram, known limitations, trade-offs, verification, demo and factual AI-usage records. | AC-13, AC-14 |
 
 ## 5. Business and data rules
 
@@ -74,23 +74,23 @@ All requirements below are P0 unless marked P1. IDs are stable so code, tasks, a
 
 | ID | Requirement |
 | --- | --- |
-| **QR-01: separation** | Experience → application orchestration → source integration + pure decision engine. Engine imports no FastAPI/frontend code and performs no file/network I/O. |
-| **QR-02: bounded failure** | Source calls have explicit finite timeout bounds; test failure paths without real sleeps or Internet. Set and document the actual timeout before handoff. |
-| **QR-03: contract consistency** | Runtime schemas, OpenAPI snapshot, docs, fixtures and frontend all use the same version and money/time units. Shared changes are coordinated; no silent rename. |
-| **QR-04: usable interface** | Readable on mobile and desktop; labelled controls, keyboard operation, visible focus/error messages, clear GBP/time formatting and simulated-data label. |
+| **QR-01: separation** | Electron renderer → restricted preload/main IPC → local application API → source integration + pure engine. Enable context isolation and disable Node integration in the renderer. Engine imports no FastAPI/client code and performs no I/O. The trusted main process calls only permitted API operations; renderer CORS relaxation is unnecessary. |
+| **QR-02: bounded failure** | Both source calls run concurrently with an explicit two-second deadline per call; test failure paths without real sleeps or Internet. Keep client networking asynchronous and bounded. |
+| **QR-03: contract consistency** | Runtime schemas, OpenAPI snapshot, docs, fixtures and desktop bridge/client use the same v0.2 fields and money/time units. Coordinate shared Node manifests, lockfiles and Python dependency changes; no silent rename. |
+| **QR-04: usable interface** | Resizable Windows desktop window with labelled native HTML form controls, keyboard/tab operation, visible focus/errors, readable long reasons, GBP/time formatting, loading feedback and simulated-data label. No standalone website or mobile layout is required. |
 | **QR-05: meaningful verification** | Test budget and both travel-time boundaries, ranking/ties, actual two-source integration and bad/failed sources. Scaffold-only checks are insufficient. Run required lint/format/test commands before handoff. |
-| **QR-06: reproducibility** | Existing one-command startup works from documented dependency setup. Demo and core tests require no API key, external credentials or live Internet source. |
+| **QR-06: reproducibility** | Documented setup supports one-command desktop startup, readiness and shutdown of only its owned backend, without auto-reload. `uv run python -m app` already starts the backend; planned `npm run desktop` requires client implementation. Normal demo/core tests need no credentials or live Internet. An installer is optional and must be tested before being claimed. |
 | **QR-07: honest AI reporting** | Record actual tool/model use, human decisions/edits and checks. Planned Level 4 is not a claim of final classification or completed human review. |
 
 ## 7. Executable acceptance scenarios
 
-All scenarios are **pending** until observed against the implemented application/tests. The baseline below is a synthetic test setup, not live event information. Substitute the configured demo day when constructing aware timestamps.
+Treat each scenario as accepted only after observing its actual checks. The backend full run and HTTP smoke passed; scenarios containing desktop or human steps remain only partially verified. Desktop and human checks remain pending. The baseline below is a synthetic test setup, not live event information. Substitute the configured demo day when constructing aware timestamps.
 
 **Baseline:** one games event A, 17:00–18:00, ticket 300p; journey 15 minutes each way, return fare 200p, available; depart 16:00, return deadline 19:00, budget 1000p, interest games. Expected total 500p, arrival 16:15, return 18:15. Event and travel fixtures are supplied through both source routes/transport in the integration test.
 
 | ID | Given → action → expected result | Verify |
 | --- | --- | --- |
-| **AC-01** | Student default config is loaded → open options/form → configured campus and city-centre origins, date, limits and timezone appear; no student login/status required. | API + browser |
+| **AC-01** | Launch the desktop client → load options into labelled controls → configured campus/city-centre origins, date, limits and timezone appear; no student login/status required. | API + desktop |
 | **AC-02** | Submit malformed JSON, boolean/fractional/negative budget, missing offset, reversed window, unsupported origin/date/interest, duplicate interests or unknown fields → structured validation error and no calculated result. Correct the inputs → request can be resubmitted. | API tests + form |
 | **AC-03** | Baseline → real recommendation POST → A, 500p, 16:15 arrival and 18:15 return, actual reasons and both source labels. Change only fare to 1200p → A is no longer feasible; change only event price to 1100p → also infeasible. | Integration |
 | **AC-04** | Baseline → budget 500p → A qualifies; budget 499p → A excluded. | Unit |
@@ -98,11 +98,11 @@ All scenarios are **pending** until observed against the implemented application
 | **AC-06** | A ends 18:00; return 15 min → deadline 18:15 qualifies; deadline 18:14 excludes A. | Unit |
 | **AC-07** | Multiple feasible candidates → matching interest wins; ties break by cost, total travel, then ID. Shuffle source order → identical result. All interests unmatched → no false match claim. More than three feasible events → only one recommendation plus at most two unique alternatives. | Unit |
 | **AC-08** | A lacks a journey or journey is unavailable → exclude A with the documented warning; missing duration is never zero. Add one safely malformed record alongside valid records → keep valid recommendations and show warning. Conflicting duplicate keys or an all-invalid nonempty feed → invalid-source error. | Source + API |
-| **AC-09** | Event or travel source separately times out/fails → structured source-unavailable error; invalid top-level structure or wrong travel origin → invalid-source error. No hidden fixture/partial success; UI offers retry. | Integration + browser |
-| **AC-10** | No feasible candidates, valid empty event feed, or valid empty travel feed → successful no-match response with empty results and a clear message; it is distinguishable from failed sources. | API + browser |
-| **AC-11** | Browser uses real endpoint → see loading then correct success/no-match/error. Initial 501 is shown honestly while scaffold remains. Force failure after previous success → previous result is cleared or explicitly marked stale. Any explicit fixture mode is visibly labelled and never automatic. | Manual browser check |
-| **AC-12** | Select the configured city-centre origin → its travel source origin and journeys are used, and output/UI say return to that origin with no campus-specific assumption. Separately inject another supported date and consistently shifted synthetic events → same relative budget/time outcomes without decision-rule edits. | Config + integration test + browser |
-| **AC-13** | Clean documented setup → one command starts app → health, options, page, both feeds and real POST work; generated OpenAPI matches snapshot and fixtures validate against current schemas. Required lint/format/tests pass. | Automated checks + smoke |
+| **AC-09** | Event/travel source separately times out/fails → structured source-unavailable error within its two-second deadline; invalid structure/wrong origin → invalid-source error. No hidden fixture/partial success; desktop offers retry without blocking. | Integration + desktop |
+| **AC-10** | No feasible candidates, valid empty event feed, or valid empty travel feed → successful no-match response with empty results and a clear desktop message; distinguish it from failed sources. | API + desktop |
+| **AC-11** | Desktop uses restricted IPC and real endpoint → responsive loading then correct success/no-match/error. Force failure after success → old result is cleared or marked stale. Retry works; later requests cannot be overwritten by stale responses. Any explicit fixture preview is labelled and never automatic. Check keyboard focus, tab order, labels and resizing. | Manual desktop check |
+| **AC-12** | Select city centre → its travel origin/journeys are used; departure 16:00 excludes the 16:30 Board Game Night, and output says return to the selected origin. Separately shift synthetic engine data to another date → same relative outcomes without rule edits; this does not extend current app coverage. | Config + integration + desktop |
+| **AC-13** | Clean setup → documented desktop launch command opens a window and starts/reuses the local backend → health/options/both feeds/real POST work. Close/reopen leaves no owned backend behind and never kills a separately started service; startup/port failures are clear. OpenAPI/fixtures match schemas and required lint/format/tests pass. `/` is JSON health; `/docs` is developer-only. | Automated checks + desktop/lifecycle smoke |
 | **AC-14** | Rehearse normal recommendation → lower-budget change → source-failure handling. Both teammates explain three layers, hard constraints, deterministic ranking and simulated-data limitations; AI record contains actual work/checks, with outstanding review explicitly noted. | Team rehearsal |
 
 ## 8. Work packages and ownership
@@ -112,12 +112,12 @@ Read this with `docs/PROJECT_PLAN.md` and the assigned prompt. Coordinate shared
 | Package | Owner | Requirement IDs | Concrete output and dependency |
 | --- | --- | --- | --- |
 | **S0: scope + contract** | Together | FR-01/02/07; BR-01–04; QR-03 | Agree origin/return semantics, configurable date and exact fields/errors; synchronise schema, docs, OpenAPI and fixtures. Do this before separate implementation. |
-| **B1: data adapters** | roXy backend | FR-03/09; BR-01/05–10; QR-02 | Fetch and normalise both sources, preserve provenance and warnings, reject ambiguous/failed sources; source tests. Can run alongside F1 after S0. |
-| **B2: pure engine** | roXy backend | FR-04/05/06; BR-01–05; QR-01/05 | Pure feasibility/ranking with fact-based reasons; budget/arrival/return/tie tests. Can begin on normalised synthetic records before B1 is finished. |
-| **B3: application wiring** | roXy backend | FR-01/02/07; QR-02/03/06 | Config-driven options and validation; wire B1+B2 into real POST, replace obsolete 501 assertions, update readiness only when implemented; source-failure/config portability integration tests. |
-| **F1: preference form** | Wahab frontend | FR-01/02/08; QR-04 | Responsive form using options; labelled controls, clear GBP/time input and validation. Develop against agreed contract fixtures with explicit demo label. |
-| **F2: result and states** | Wahab frontend | FR-05/06/08/09; QR-04 | Result/alternatives, cost/time/reasons/provenance; loading/no-match/error/501/retry and stale-result handling. Then connect real POST after B3. |
-| **S1: integrated acceptance** | Together | FR-10; QR-03/05–07; AC-01–14 | Run checks, browser flow and rehearsal; review limitations, README, architecture, AI log and final submission instructions. Backend owns automated backend checks; Wahab owns UI checks; both explain complete flow. |
+| **B1: data adapters** | roXy backend | FR-03/09; BR-01/05–10; QR-02 | Implemented both-source fetching/normalisation, two-second per-source deadlines, provenance/warnings and rejection of ambiguous/failed feeds. Source checks passed in full verification. |
+| **B2: pure engine** | roXy backend | FR-04/05/06; BR-01–05; QR-01/05 | Implemented pure feasibility/ranking and match facts; application renders reasons. Budget/arrival/return/tie and generic-origin/date checks exist. |
+| **B3: application wiring** | roXy backend | FR-01/02/07; QR-02/03/06 | Implemented options/validation, actual B1+B2 POST, readiness and source-failure/origin integration. Full backend verification and live HTTP smoke passed; share outcomes with Wahab. |
+| **F1: preference form** | Wahab desktop | FR-01/02/08; QR-04 | Electron main/preload/renderer, options-driven labelled controls and precise GBP/time input. Restricted IPC; asynchronous main-process API calls; real endpoint integration. |
+| **F2: result and states** | Wahab desktop | FR-05/06/08/09; QR-04 | Results/alternatives, cost/time/reasons/provenance, loading/no-match/error/retry, stale-response handling, resizing and keyboard operation. Add and test owned-backend lifecycle. |
+| **S1: integrated acceptance** | Together | FR-10; QR-03/05–07; AC-01–14 | Run backend and desktop checks, lifecycle smoke and rehearsal; review limitations, AI log and final submission requirements. Wahab owns UI checks; both actually explain the flow. |
 
 **Integration gate:** do not add P1 work until normal, changed-budget, no-match and failed-source flows work together. Keep the official Sunday 12:00 UK code freeze as the hard deadline; leave a protected rehearsal/documentation period beforehand.
 
@@ -132,3 +132,4 @@ Read this with `docs/PROJECT_PLAN.md` and the assigned prompt. Coordinate shared
 | **A-05** | No actual student/user research or usability validation is recorded yet. | Present as a prototype hypothesis, not a validated market need. |
 | **A-06** | Judging format, exact demo duration and final submission details remain subject to official clarification. | Prepare a short adaptable demo; follow confirmed announcements. |
 | **A-07** | Team intends AI Level 4; exact models/plans, actual manual edits and final classification are not yet fully recorded. | Keep factual running logs and report the actual process. |
+| **A-08** | Electron reuses the team's frontend skills for the desktop deliverable. Window, launcher and packaging are not implemented in this backend increment. | Coordinate Node manifests/lockfile; keep restricted IPC, context isolation and no renderer Node integration. Bundle Python/package only after real integration works. |

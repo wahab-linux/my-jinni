@@ -5,13 +5,15 @@ from pydantic import ValidationError
 
 from app.main import create_app
 from app.schemas import ErrorEnvelope, RecommendationEnvelope, RecommendationRequest
-from app.settings import ROOT, WEB_DIR
+from app.settings import FIXTURES_DIR, ROOT
 
 
-def test_app_serves_scaffold_and_defaults(client):
+def test_app_serves_backend_health_and_defaults(client):
     assert client.get("/").status_code == 200
     health = client.get("/health").json()
-    assert health["data"]["recommendations_ready"] is False
+    assert health["data"]["recommendations_ready"] is True
+    assert client.get("/").json() == health
+    assert client.get("/static/index.html").status_code == 404
     options = client.get("/api/v1/options").json()["data"]
     assert options["demo_date"] == "2026-10-20"
     assert options["supported_dates"] == ["2026-10-20"]
@@ -26,11 +28,14 @@ def test_app_serves_scaffold_and_defaults(client):
     assert options["is_simulated"] is True
 
 
-def test_valid_request_exposes_explicit_unimplemented_engine(client, valid_request):
+def test_valid_request_returns_calculated_result(client, valid_request):
     response = client.post("/api/v1/recommendations", json=valid_request)
-    assert response.status_code == 501
-    assert response.json()["data"] is None
-    assert response.json()["error"]["code"] == "NOT_IMPLEMENTED"
+    assert response.status_code == 200
+    result = RecommendationEnvelope.model_validate(response.json())
+    assert result.error is None
+    assert result.data.recommended.event_id == "event-board-games"
+    assert result.data.recommended.total_cost_pence == 500
+    assert result.data.recommended.return_at.isoformat() == "2026-10-20T18:15:00+01:00"
 
 
 @pytest.mark.parametrize(
@@ -123,7 +128,7 @@ def test_openapi_snapshot_matches_running_app():
 
 
 def test_success_example_contains_consistent_money_and_time():
-    data = json.loads((WEB_DIR / "fixtures" / "recommendation-success.json").read_text("utf-8"))
+    data = json.loads((FIXTURES_DIR / "recommendation-success.json").read_text("utf-8"))
     recommendation = RecommendationEnvelope.model_validate(data).data.recommended
     assert recommendation.total_cost_pence == (
         recommendation.ticket_cost_pence + recommendation.travel_cost_pence

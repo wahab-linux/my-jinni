@@ -12,9 +12,27 @@ router = APIRouter(prefix="/mock", tags=["Simulated source APIs"])
 
 
 @router.get("/events", response_model=Envelope[EventFeed])
-def events() -> Envelope[EventFeed]:
-    payload = json.loads((DATA_DIR / "events.json").read_text(encoding="utf-8"))
-    return Envelope(data=EventFeed.model_validate(payload))
+def events() -> JSONResponse:
+    return read_source("events.json")
+
+
+def read_source(filename: str, origin_id: str | None = None) -> JSONResponse:
+    try:
+        payload = json.loads((DATA_DIR / filename).read_text(encoding="utf-8"))
+        response = JSONResponse(content={"data": payload, "error": None, "warnings": []})
+    except OSError:
+        return error_response(503, "SOURCE_UNAVAILABLE", "The simulated source is unavailable.")
+    except (ValueError, UnicodeError):
+        return error_response(
+            502, "INVALID_SOURCE_DATA", "The simulated source contains invalid JSON."
+        )
+    if origin_id is not None and (
+        not isinstance(payload, dict) or payload.get("origin_id") != origin_id
+    ):
+        return error_response(
+            502, "INVALID_SOURCE_DATA", "Travel source origin does not match the requested origin."
+        )
+    return response
 
 
 @router.get(
@@ -22,7 +40,7 @@ def events() -> Envelope[EventFeed]:
     response_model=Envelope[TravelFeed],
     responses={502: {"model": ErrorEnvelope, "description": "Travel source origin mismatch"}},
 )
-def travel(origin_id: OriginId = DEFAULT_ORIGIN_ID) -> Envelope[TravelFeed] | JSONResponse:
+def travel(origin_id: OriginId = DEFAULT_ORIGIN_ID) -> JSONResponse:
     origin = find_origin(origin_id)
     if origin is None:
         return error_response(
@@ -35,10 +53,4 @@ def travel(origin_id: OriginId = DEFAULT_ORIGIN_ID) -> Envelope[TravelFeed] | JS
                 )
             ],
         )
-    payload = json.loads((DATA_DIR / origin.travel_filename).read_text(encoding="utf-8"))
-    feed = TravelFeed.model_validate(payload)
-    if feed.origin_id != origin_id:
-        return error_response(
-            502, "INVALID_SOURCE_DATA", "Travel source origin does not match the requested origin."
-        )
-    return Envelope(data=feed)
+    return read_source(origin.travel_filename, origin_id)

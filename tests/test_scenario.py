@@ -20,12 +20,16 @@ def test_request_model_has_no_student_origin_date_or_budget_cap(valid_request):
     assert preferences.return_by.date() > preferences.depart_at.date()
 
 
-def test_city_centre_is_supported_but_engine_is_still_a_stub(client, valid_request):
+def test_city_centre_uses_its_own_travel_in_calculation(client, valid_request):
     response = client.post(
         "/api/v1/recommendations", json=valid_request | {"origin_id": "glasgow-city-centre"}
     )
-    assert response.status_code == 501
-    assert response.json()["error"]["code"] == "NOT_IMPLEMENTED"
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["recommended"]["event_id"] != "event-board-games"
+    assert next(source for source in data["sources"] if source["id"] == "travel")["origin_id"] == (
+        "glasgow-city-centre"
+    )
 
 
 @pytest.mark.parametrize(
@@ -63,7 +67,7 @@ def test_scenario_checks_dates_in_london_time(client, valid_request):
             "return_by": "2026-10-20T18:00:00+00:00",
         },
     )
-    assert response.status_code == 501
+    assert response.status_code == 200
 
 
 def test_travel_origin_selects_its_own_dataset(client):
