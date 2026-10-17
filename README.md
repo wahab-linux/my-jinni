@@ -20,13 +20,21 @@ uv sync
 npm ci
 ```
 
-Then launch the desktop window and its local backend with one command:
+On Windows, double-click `start-my-jinni.cmd`, or launch it from PowerShell:
+
+```powershell
+.\start-my-jinni.cmd
+```
+
+This uses the installed project-local Electron executable and works even when `node` and `npm` are absent from your terminal's PATH. The dependencies above must already be installed. It changes no system PATH settings and also works when invoked from another directory.
+
+For development with Node/npm available in the terminal, the desktop window and local backend also start with:
 
 ```sh
 npm run desktop
 ```
 
-After dependencies are installed, Node 22+ can also launch it with `node --run desktop`. Initial dependency installation needs Internet access. Activity planning and local source import/view/delete work without an AI key; optional questions send selected evidence to OpenAI. Enter your own key in **AI settings**; it stays in main-process memory for this app session. Saving it does not verify model/account access. Never commit or share a key.
+After dependencies are installed, Node 22+ can also launch it with `node --run desktop`. If PowerShell reports that `node` is not recognised, use the Windows launcher above. A Node runtime available inside Codex does not imply it is on an ordinary PowerShell PATH. Initial dependency installation needs Internet access. Activity planning and local source import/view/delete work without an AI key; optional questions send selected evidence to OpenAI. Enter your own key in **AI settings**; it stays in main-process memory for this app session. Saving it does not verify model/account access. Never commit or share a key.
 
 The default local API is `http://127.0.0.1:8000`. An existing backend is reused only after health and identity checks. A busy port produces a visible retryable error. Optional `MY_JINNI_BACKEND_URL` selects another loopback HTTP origin; `MY_JINNI_DATA_DIR` explicitly overrides local storage. Normal launches preserve the backend's canonical library location and legacy-data compatibility.
 

@@ -4,7 +4,7 @@ The implemented Electron client uses local HTML/CSS/JavaScript. It provides acti
 
 ## Setup and launch
 
-From the repository root, install Python dependencies with `uv sync` and Node dependencies with `npm ci`. Node 22+ and uv are required. Launch with `npm run desktop`, or `node --run desktop` after setup. Electron 44.9.0 and the verification tools are pinned in `package-lock.json`.
+From the repository root, install Python dependencies with `uv sync` and Node dependencies with `npm ci`. Node 22+ and uv are required for initial setup. On Windows, double-click the root `start-my-jinni.cmd` or run `.\start-my-jinni.cmd` in PowerShell. It launches project-local Electron without requiring Node/npm on the terminal PATH and resolves its working directory from the script location. A missing Electron dependency produces an explicit setup message. The script changes no system PATH settings. With Node on PATH, `npm run desktop` or Node 22+ `node --run desktop` are also available. A runtime available only inside Codex does not make these developer commands available in an ordinary terminal. Electron 44.9.0 and the verification tools are pinned in `package-lock.json`.
 
 The launcher checks `/health` and the OpenAPI title before reusing `http://127.0.0.1:8000`. Otherwise it starts the repository's `.venv` Python interpreter, or `uv run --no-sync`, with loopback binding, no shell and no reload. Closing the client stops only its owned backend. A separately started `uv run python -m app` remains running. Startup failures and port conflicts appear in the window with a retry action.
 
