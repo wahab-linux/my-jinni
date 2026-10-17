@@ -76,7 +76,7 @@ function showError(id, error, retry = null) {
 
 async function call(name, ...args) {
   if (!bridge || typeof bridge[name] !== "function") {
-    throw new ServiceError("The desktop connection is unavailable. Restart my-jinni and try again.");
+    throw new ServiceError("The desktop connection is unavailable. Restart jinni and try again.");
   }
   try {
     return await bridge[name](...args);

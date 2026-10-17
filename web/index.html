@@ -6,7 +6,7 @@
   <meta name="description" content="Compare travel, market, student, sustainability and your own ideas. Explainable decisions from fictional data, with a private local source library.">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <meta name="theme-color" content="#f5f5fa">
-  <title>my-jinni · Decisions with context</title>
+  <title>jinni · Decisions with context</title>
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <script src="theme.js"></script>
   <link rel="stylesheet" href="styles.css">
@@ -16,7 +16,7 @@
 <body>
   <a class="skip" href="#decision-workspace">Skip to decisions</a>
   <header class="header wrap">
-    <a class="brand" href="./" aria-label="my-jinni home"><span class="mark" aria-hidden="true">j</span>my-jinni<span class="dot">.</span></a>
+    <a class="brand" href="./" aria-label="jinni home"><span class="mark lamp-badge" aria-hidden="true"><svg class="lamp-mark" viewBox="0 0 64 64" focusable="false"><path class="lamp-body" d="M19 33H47C45 44 38 49 27 48C20 47 16 42 15 38L6 33L18 35"/><path d="M19 33C23 30 29 28 36 29L43 33M47 34C60 30 61 43 46 43"/><path class="lamp-gold" d="M23 52H42M32 24C23 19 39 15 31 9C28 6 30 3 33 2"/></svg></span><span class="brand-label">jinni</span></a>
     <nav aria-label="Main navigation">
       <a href="#decision-workspace" class="nav-link">Decisions</a><button id="library-open" class="nav-link" type="button" aria-haspopup="dialog" aria-controls="library-dialog" aria-label="Notes &amp; files"><svg class="library-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h6a3 3 0 0 1 2 1 3 3 0 0 1 2-1h6v14h-6a3 3 0 0 0-2 1 3 3 0 0 0-2-1H4zm8 1v14"/></svg><span class="library-nav-label">Notes &amp; files</span></button>
       <details class="nav-dropdown dropdown"><summary>Explore <svg class="chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m6 8 4 4 4-4"/></svg></summary><div class="dropdown-panel"><a href="#planner">Activity planner</a><a href="#library">My library</a><a href="#how-it-works">How it works</a><a href="https://github.com/wahab-linux/my-jinni" rel="noreferrer">View on GitHub <span aria-hidden="true">↗</span></a><a href="https://github.com/wahab-linux/my-jinni#run-the-desktop-application">Desktop edition <span aria-hidden="true">↗</span></a></div></details>
@@ -38,13 +38,13 @@
   <main class="wrap">
     <section class="intro" aria-labelledby="title">
       <div class="intro-copy"><p class="hero-badge"><span class="status-dot" aria-hidden="true"></span>A LITTLE HELP WITH EVERYDAY CHOICES</p><h1 id="title">Big choices.<br><span>Made a little easier.</span></h1><p class="lead">Pick what you’re choosing, tell us what matters,<br>and we’ll help you compare your options.</p><div class="hero-points"><span><b aria-hidden="true">✓</b> No account needed</span><span><b aria-hidden="true">✓</b> Free to explore</span><span><b aria-hidden="true">✓</b> Your files stay local</span></div></div>
-      <aside class="intro-visual" aria-label="Plan around what matters to you"><div class="visual-orbit orbit-one"></div><div class="visual-orbit orbit-two"></div><div class="visual-spark spark-one" aria-hidden="true">✦</div><div class="visual-spark spark-two" aria-hidden="true">✧</div><div class="visual-card"><div class="visual-card-top"><span class="visual-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="4"/><path d="M8 3v4m8-4v4M4 11h16m-11 5 2 2 4-4"/></svg></span><span>A clearer way to choose</span></div><p>One decision.<br><em>The whole picture.</em></p><div class="visual-tags"><span>Your budget</span><span>Your time</span><span>Your choice</span></div></div><div class="floating-note"><span aria-hidden="true">✓</span> A little help choosing.</div></aside>
+      <aside class="intro-visual" aria-label="jinni, your decision assistant"><div class="visual-orbit orbit-one"></div><div class="visual-orbit orbit-two"></div><div class="visual-spark spark-one" aria-hidden="true">✦</div><div class="visual-spark spark-two" aria-hidden="true">✧</div><div class="visual-card"><div class="visual-card-top"><span class="visual-icon assistant-lamp" aria-hidden="true"><svg class="lamp-mark" viewBox="0 0 64 64" focusable="false"><path class="lamp-body" d="M19 33H47C45 44 38 49 27 48C20 47 16 42 15 38L6 33L18 35"/><path d="M19 33C23 30 29 28 36 29L43 33M47 34C60 30 61 43 46 43"/><path class="lamp-gold" d="M23 52H42M32 24C23 19 39 15 31 9C28 6 30 3 33 2"/></svg></span><span class="assistant-label">Your decision assistant</span></div><p>A little clarity.<br><em>For your next choice.</em></p><div class="visual-tags"><span>Your budget</span><span>Your time</span><span>Your choice</span></div></div><div class="floating-note"><span aria-hidden="true">✓</span> A little help choosing.</div></aside>
     </section>
     <div class="demo-banner"><span class="info-icon" aria-hidden="true">i</span><span><strong>You’re exploring a fictional demo.</strong> These examples use made-up prices and information. They are not real offers, predictions or advice.</span><span class="demo-pill">DEMO WORKSPACE</span></div>
     <noscript><p class="feedback error">Enable JavaScript to use the planner and browser library.</p></noscript>
     <section id="decision-workspace" aria-labelledby="decision-heading">
       <div class="workspace-heading"><div><p class="eyebrow">1. PICK WHAT YOU’RE CHOOSING</p><h2 id="decision-heading">What can we help you choose?</h2></div><span class="local-badge">No account needed</span></div>
-      <div id="scenario-tabs" class="scenario-tabs" role="group" aria-label="What are you choosing?s"></div>
+      <div id="scenario-tabs" class="scenario-tabs" role="group" aria-label="What are you choosing?"></div>
       <p id="decision-load-status" class="feedback" role="status" aria-live="polite">Getting your choices ready…</p><button id="decision-retry" class="button secondary" type="button" hidden>Retry decision data</button>
       <div class="decision-grid">
         <section class="panel decision-preferences" aria-label="Decision preferences">
@@ -98,7 +98,7 @@
     <section id="how-it-works" class="how-it-works" aria-labelledby="how-title"><div><p class="eyebrow">SMALL STEPS. GOOD PLANS.</p><h2 id="how-title">A decision you can explain.</h2></div><div class="steps"><article><span>01</span><h3>Make it yours</h3><p>Pick a topic, choose what matters, and add your budget.</p></article><article><span>02</span><h3>See what fits</h3><p>Compare the prices and details, and see why each choice fits.</p></article><article><span>03</span><h3>Keep your context</h3><p>Save useful guides and find the original passages whenever you need them.</p></article></div></section>
     <section class="about" aria-label="About this browser edition"><p><strong>Made to explore.</strong> The example prices and information are made up. If you add your own information, check it before relying on the result. Files and searches stay in your browser.</p><p>Want AI help with your notes? Try the <a href="https://github.com/wahab-linux/my-jinni#run-the-desktop-application">desktop edition</a> with OpenAI, DeepSeek, Gemini or Claude. Cloud AI generation is not available on this site.</p></section>
   </main>
-  <footer class="wrap footer"><span>my-jinni · A little more possible.</span><span>A team prototype. Not an official BlackRock or Aladdin product.</span></footer>
+  <footer class="wrap footer"><span>jinni · A little help choosing.</span><span>A team prototype. Not an official BlackRock or Aladdin product.</span></footer>
   <dialog id="library-dialog" class="tools-dialog" aria-labelledby="tools-title"><div class="dialog-top"><h2 id="tools-title">Your notes &amp; files</h2><button id="library-close" type="button" class="button secondary">Close tools</button></div>
     <section id="library" class="panel library-panel" aria-labelledby="library-title">
       <div class="library-heading"><div class="section-title"><span class="section-icon mint" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h6a3 3 0 0 1 3 3v13a4 4 0 0 0-3-2H4zm16 0h-4a3 3 0 0 0-3 3m7-3v14h-3"/></svg></span><div><p class="eyebrow">KEEP THE USEFUL STUFF CLOSE</p><h2 id="library-title">Your little library</h2></div></div><span class="privacy-badge">Private to this browser</span></div>

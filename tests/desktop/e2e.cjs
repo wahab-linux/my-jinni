@@ -5,7 +5,7 @@ const path = require('node:path');
 const http = require('node:http');
 const { _electron: electron } = require('playwright');
 const {
-  TEST_KEY, tempDirectory, freePort, waitUntil, startMockBackend, launchDesktop, screenshot,
+  SCREENSHOTS, TEST_KEY, tempDirectory, freePort, waitUntil, startMockBackend, launchDesktop, screenshot,
 } = require('./helpers.cjs');
 
 let checks = 0;
@@ -18,6 +18,13 @@ async function check(name, action) {
 async function contains(locator, text) {
   await waitUntil(async () => (await locator.innerText()).toLowerCase().includes(text.toLowerCase()),
     { message: `Expected visible text: ${text}` });
+}
+
+async function viewportScreenshot(page, name) {
+  await page.evaluate(() => Promise.all(document.getAnimations()
+    .filter((animation) => animation.effect?.getComputedTiming().iterations !== Infinity)
+    .map((animation) => animation.finished.catch(() => {}))));
+  await page.screenshot({ path: path.join(SCREENSHOTS, name), scale: 'css' });
 }
 
 async function sources(baseUrl) {
@@ -152,6 +159,10 @@ async function applyDefinition(page, definition) {
 async function exerciseGeneralDecisions(page, baseUrl) {
   await waitUntil(() => page.getByTestId('decision-submit').isEnabled());
   await check('decision workspace is primary and optional tools start collapsed', async () => {
+    assert.equal(await page.title(), 'jinni');
+    assert.equal(await page.locator('.brand').innerText(), 'jinni');
+    assert.equal(await page.getByTestId('jinni-lamp').getAttribute('viewBox'), '0 0 64 64');
+    assert.equal(await page.getByTestId('jinni-lamp').locator('path').count(), 3);
     assert.equal(await page.getByTestId('library-drawer').isVisible(), false);
     assert.equal(await page.getByTestId('chat-drawer').isVisible(), false);
     assert.equal(await page.getByTestId('legacy-planner').evaluate((node) => node.open), false);
@@ -176,7 +187,11 @@ async function exerciseGeneralDecisions(page, baseUrl) {
       await contains(page.getByTestId('decision-results'), expected.sources[0].label);
       assert.equal(await page.getByTestId('decision-table').locator('tbody tr').count(), expected.ranked.length);
       if (id === 'market') await contains(page.locator('#scenario-notice'), 'no live prices');
-      if (id === 'travel') await screenshot(page, '09-travel-comparison.png');
+      if (id === 'travel') {
+        await screenshot(page, '09-travel-comparison.png');
+        await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+        await viewportScreenshot(page, 'jinni-desktop-light.png');
+      }
     });
   }
   await check('custom criteria change domains and a weight flip changes the actual winner', async () => {
@@ -252,6 +267,7 @@ async function exerciseGeneralDecisions(page, baseUrl) {
     await page.getByTestId('theme-toggle').click();
     assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'dark');
     await screenshot(page, '11-decision-dark-reduced-motion.png');
+    await viewportScreenshot(page, 'jinni-desktop-dark.png');
     await page.getByTestId('theme-toggle').click();
     await page.emulateMedia({ reducedMotion: 'no-preference' });
   });
@@ -264,6 +280,7 @@ async function exerciseMockedProviderDesktop() {
   let page;
   try {
     ({ application: desktop, page } = await launchDesktop(electron, backend.baseUrl, directory));
+    await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1440, 1000));
     await contains(page.getByTestId('backend-status'), 'ready');
     await waitUntil(() => page.getByTestId('plan-submit').isEnabled());
 
@@ -271,6 +288,9 @@ async function exerciseMockedProviderDesktop() {
 
     await check('actual Electron isolation and planner GBP 10 / 4 / 0', async () => {
       await openLegacy(page);
+      const applicationInfo = await desktop.evaluate(({ app }) => ({ name: app.getName(), userData: app.getPath('userData') }));
+      assert.equal(applicationInfo.name, 'jinni');
+      assert.equal(applicationInfo.userData, path.join(directory, 'desktop'));
       const isolation = await desktop.evaluate(({ BrowserWindow }) => {
         const preferences = BrowserWindow.getAllWindows()[0].webContents.getLastWebPreferences();
         return { contextIsolation: preferences.contextIsolation, nodeIntegration: preferences.nodeIntegration, sandbox: preferences.sandbox };
@@ -354,12 +374,15 @@ async function exerciseMockedProviderDesktop() {
       assert.equal(status.store_disabled, true);
       assert.equal((await page.getByTestId('chat-result').innerText()).includes('OMITTED-8672'), false);
       await screenshot(page, '02-chat-mocked-provider.png');
+      await page.getByTestId('chat-result').scrollIntoViewIfNeeded();
+      await viewportScreenshot(page, 'jinni-desktop-ai-mocked.png');
       await page.getByTestId('citation-reference').first().click();
       await contains(page.getByTestId('source-dialog-content'), '11:00');
       await contains(page.getByTestId('citation-quote'), '11:00');
       assert.match(await page.getByTestId('source-dialog-content').innerText(), /page\s*1/i);
       assert.match(await page.getByTestId('source-dialog-content').locator('mark').first().innerText(), /11:00/);
       await screenshot(page, '03-original-citation.png');
+      await viewportScreenshot(page, 'jinni-desktop-citation-mocked.png');
       await page.getByTestId('source-dialog').getByRole('button', { name: 'Close', exact: true }).click();
     });
 

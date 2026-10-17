@@ -4,14 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
-    <title>my-jinni</title>
+    <title>jinni</title>
     <link rel="stylesheet" href="styles.css">
     <script src="decisions.js" defer></script>
     <script src="app.js" defer></script>
   </head>
   <body>
     <header class="app-header">
-      <div class="brand"><span class="brand-mark" aria-hidden="true">j</span><span>my-jinni<span class="brand-dot">.</span></span></div>
+      <div class="brand"><span class="brand-mark" aria-hidden="true"><svg data-testid="jinni-lamp" class="lamp-mark" viewBox="0 0 64 64" fill="none" focusable="false"><path class="lamp-body" d="M19 33 H47 C45 44 38 49 27 48 C20 47 16 42 15 38 L6 33 L18 35"/><path d="M19 33 C23 30 29 28 36 29 L43 33 M47 34 C60 30 61 43 46 43"/><path class="lamp-gold" d="M23 52 H42 M32 24 C23 19 39 15 31 9 C28 6 30 3 33 2"/></svg></span><span>jinni</span></div>
       <span class="workspace-label">YOUR LOCAL WORKSPACE</span>
       <div class="header-actions">
         <button id="sound-toggle" data-testid="sound-toggle" class="button small outline" type="button" aria-pressed="false">Sound off</button>
@@ -27,7 +27,7 @@
     <main>
       <section class="workspace-intro" aria-labelledby="workspace-title">
         <div><p class="eyebrow">YOUR CHOICE, WITH A CLEARER VIEW.</p><h1 id="workspace-title">A clearer way to choose.</h1><p class="intro-copy">Compare options, set your priorities, and see the trade-offs behind your next move.</p></div>
-        <div class="workspace-note"><span class="small-orbit" aria-hidden="true">✦</span><span>Deterministic decisions. No key needed.<br>Optional sources and AI, when you need them.</span></div>
+        <div class="workspace-note"><span class="small-orbit" aria-hidden="true">✦</span><span><strong>Your decision assistant</strong><br>Deterministic comparisons. No key needed.<br>Optional sources and AI, when you need them.</span></div>
       </section>
 
       <section class="decision-workspace" aria-labelledby="decision-heading">
@@ -76,7 +76,7 @@
 
 
       </div></details>
-      <footer class="app-footer"><span>my-jinni · DYHTG 2026 prototype</span><span>Built-in data is fictional · Relative fit is not a probability or forecast</span></footer>
+      <footer class="app-footer"><span>jinni · DYHTG 2026 prototype</span><span>Built-in data is fictional · Relative fit is not a probability or forecast</span></footer>
     </main>
 
     <dialog id="library-drawer" data-testid="library-drawer" class="tool-drawer library-drawer" aria-labelledby="library-heading"><div class="drawer-toolbar"><span>YOUR OPTIONAL TOOLS</span><button id="library-close" data-testid="library-close" class="icon-button" aria-label="Close sources" type="button">×</button></div>

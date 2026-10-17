@@ -75,6 +75,11 @@ try {
   await check('general decisions are primary while library, questions and itinerary start closed', async () => {
     await page.goto(base);
     await waitText(page.locator('#decision-load-status'), 'Ready to explore');
+    assert.equal(await page.locator('.brand').innerText(), 'jinni');
+    assert.equal(await page.locator('.brand').getAttribute('aria-label'), 'jinni home');
+    assert.match(await page.title(), /^jinni ·/);
+    assert.equal(await page.locator('.brand .lamp-mark path').count(), 3);
+    assert.match(await page.locator('.footer').innerText(), /^jinni ·/);
     assert.equal(await page.locator('#decision-scenario option').count(), 5);
     assert.equal(await page.locator('#scenario-tabs button').count(), 5);
     assert.equal(await page.locator('#library-dialog').isVisible(), false);
@@ -431,7 +436,7 @@ try {
   await check('source text can be downloaded before browser data is cleared', async () => {
     await row('notes.md').getByText('Read saved text').click();
     const downloadPromise = page.waitForEvent('download'); await page.locator('#download-source').click();
-    const download = await downloadPromise; assert.equal(download.suggestedFilename(), 'my-jinni-source.txt');
+    const download = await downloadPromise; assert.equal(download.suggestedFilename(), 'jinni-source.txt');
     const file = await download.path(); assert.match(await readFile(file, 'utf8'), /acoustic music/);
     await page.locator('#viewer-close').click();
   });

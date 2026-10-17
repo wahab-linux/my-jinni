@@ -1,7 +1,7 @@
 [project]
 name = "my-jinni"
 version = "0.1.0"
-description = "Recommend feasible activities using activity and travel data, budget, time, and interests"
+description = "jinni: explainable multi-source decisions with optional cited AI questions"
 requires-python = ">=3.11,<3.15"
 dependencies = [
     "fastapi>=0.115,<1",

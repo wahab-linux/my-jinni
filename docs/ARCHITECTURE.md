@@ -1,4 +1,6 @@
-# my-jinni architecture
+# jinni architecture
+
+The visible product name is `jinni`. The Electron display name changes while explicitly preserving its previous user-data path; configured data-directory overrides still apply. Repository paths, library locations, browser storage keys, IPC names and the API identity remain compatible. Original lamp SVG/CSS artwork is local and decorative; it cannot change ranking or imply that data is verified.
 
 The general decision path is additive v0.5, defined in [GENERAL_DECISIONS.md](GENERAL_DECISIONS.md):
 
@@ -24,7 +26,7 @@ The desktop renderer presents comparison choices/results first and opens source/
 
 The user also requested a GitHub Pages browser edition on 2026-10-17. Its separate static experience, pure JavaScript decision layer, build-time use of validated backend adapters, browser-local IndexedDB library and PDF extraction are described in [BROWSER.md](BROWSER.md). Cross-language parity tests guard planner equivalence. It uses no live Python service; selected-source keyword excerpts replace cloud AI generation in this edition. The desktop architecture below remains supported.
 
-my-jinni combines deterministic option comparisons and a precise activity example with a local source library and optional cited AI questions. OpenAI, DeepSeek, Google Gemini and Anthropic Claude remain supported through additive v0.4; see `docs/AI_PROVIDERS.md`. Existing planner/library/citation fields stay unchanged. Students are one example audience, with no identity requirement in either core. Comparisons and planning need no key; live account/model verification must be recorded separately from mocked tests.
+jinni combines deterministic option comparisons and a precise activity example with a local source library and optional cited AI questions. OpenAI, DeepSeek, Google Gemini and Anthropic Claude remain supported through additive v0.4; see `docs/AI_PROVIDERS.md`. Existing planner/library/citation fields stay unchanged. Students are one example audience, with no identity requirement in either core. Comparisons and planning need no key; live account/model verification must be recorded separately from mocked tests.
 
 ```mermaid
 flowchart LR

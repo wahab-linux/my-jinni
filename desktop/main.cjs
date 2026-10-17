@@ -19,7 +19,9 @@ let api = null;
 let configurationError = null;
 let quitting = false;
 
-app.setName('my-jinni');
+const existingUserData = app.getPath('userData');
+app.setName('jinni');
+app.setPath('userData', existingUserData);
 if (process.env.MY_JINNI_DATA_DIR) {
   const userData = path.join(path.resolve(process.env.MY_JINNI_DATA_DIR), 'desktop');
   fs.mkdirSync(userData, { recursive: true });
@@ -145,7 +147,7 @@ function registerBridge() {
 
 async function createWindow() {
   mainWindow = new BrowserWindow({
-    title: 'my-jinni', width: 1440, height: 980, minWidth: 860, minHeight: 650,
+    title: 'jinni', width: 1440, height: 980, minWidth: 860, minHeight: 650,
     backgroundColor: '#f4f5f7', show: false, autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true,
@@ -187,7 +189,7 @@ if (!app.requestSingleInstanceLock()) {
     if (!configurationError) void backend.start();
     await createWindow();
   }).catch(() => {
-    dialog.showErrorBox('my-jinni could not start', 'The desktop interface could not be loaded. Check the project setup and try again.');
+    dialog.showErrorBox('jinni could not start', 'The desktop interface could not be loaded. Check the project setup and try again.');
     app.quit();
   });
   app.on('window-all-closed', () => app.quit());

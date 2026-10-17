@@ -1,5 +1,7 @@
 # API contract v0.5
 
+The user-facing product name is `jinni`. The technical OpenAPI title `my-jinni API`, routes, source IDs and response field names remain unchanged for existing clients and backend identity checks. Branding introduces no API migration.
+
 v0.5 adds configurable option comparisons, five initial scenarios and optional calculated comparison evidence in chat. Read [GENERAL_DECISIONS.md](GENERAL_DECISIONS.md) for complete models, ranking, limits, source routes, failure handling and browser export. Existing activity, library and provider operations below are retained unchanged.
 
 | Method | Added path | Result data |
@@ -28,7 +30,7 @@ Here **v0.2 is the contract revision**, not a package release. Application packa
 
 ## Boundaries
 
-my-jinni compares supplied options using configurable criteria and separate source data. `app/comparison/` owns the reusable general comparison. The activity example still helps anyone choose an activity using budget, time, interests and return travel. `app/scenario.py` configures that example's two origins, source-data day, timezone and budget cap. See `docs/ARCHITECTURE.md`.
+jinni compares supplied options using configurable criteria and separate source data. `app/comparison/` owns the reusable general comparison. The activity example still helps anyone choose an activity using budget, time, interests and return travel. `app/scenario.py` configures that example's two origins, source-data day, timezone and budget cap. See `docs/ARCHITECTURE.md`.
 
 GBP, five activity categories, return to the same origin, fixed travel durations and fictional feeds remain limits of the detailed activity endpoint. They do not constrain the general comparison endpoint, whose criteria and datasets can describe other domains. No preset establishes live service coverage.
 

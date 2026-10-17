@@ -1,4 +1,6 @@
-# my-jinni requirements
+# jinni requirements
+
+**Brand update, 2026-10-18:** the user selected the visible name `jinni` and a lamp motif. Preserve existing repository/storage/IPC/API identifiers for compatibility and existing source libraries. Multilingual UI is a separate scope choice; original source quotations, calculation IDs and money/time units must remain intact.
 
 **Latest user request, 2026-10-17:** generalize beyond after-class activities to the challenge's market, travel, student, sustainability and own-idea examples. Add configurable comparisons with criteria/weights/hard limits, decision-first desktop/browser presentation, collapsed source/question tools, reduced-motion-aware animation and optional sound. [GENERAL_DECISIONS.md](GENERAL_DECISIONS.md) defines additive v0.5. Existing FR-01-16/AC-01-25 still cover the preserved activity/library/provider features; FR-17-20 and AC-26-30 below cover the new workspace. All presets are visibly simulated; no live service coverage is implied.
 
@@ -8,7 +10,7 @@ This document is the product and acceptance baseline, not a claim of completed f
 
 ## 1. Decisions and implementation status
 
-- **Confirmed by the team:** build my-jinni as a desktop application; roXy owns the backend and Wahab owns the desktop interface. The user approved frontend-technology reuse; the selected client is Electron with HTML/CSS/JavaScript. Students are the MVP audience, not the architecture's identity requirement.
+- **Confirmed by the team:** build jinni as a desktop application; roXy owns the backend and Wahab owns the desktop interface. The user approved frontend-technology reuse; the selected client is Electron with HTML/CSS/JavaScript. Students are the MVP audience, not the architecture's identity requirement.
 - **Selected MVP:** a person chooses one activity using budget, available time, and interests, combining event and travel feeds. Return to the same selected origin is the first-version journey model.
 - **Confirmed extension, 2026-10-17:** keep the activity planner and add one local source library with cited AI questions using OpenAI. The planner remains deterministic and requires no key. The optional AI feature uses selected source snippets and, when explicitly supplied, the current activity form preferences.
 - **Verified backend, 2026-10-17:** both-source HTTP adaptation, exact money conversion, feasibility/ranking, factual explanations and error handling replace the former 501 stub. All 175 tests and Ruff lint/format passed. An actual loopback server served normal/lower/zero-budget and second-origin requests, then shut down cleanly. The existing Starlette/httpx TestClient deprecation warning remains.

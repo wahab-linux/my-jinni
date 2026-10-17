@@ -1,9 +1,11 @@
-# my-jinni
+# jinni
 
 A decision workspace that combines independent option and measurement sources, applies your hard limits and priorities, and explains a clear recommendation with comparable alternatives. Students are one example audience; the core works with configurable criteria and datasets.
 
 DYHTG 2026 BlackRock challenge. Backend: roXy. Desktop interface: Wahab.
 Repository: [wahab-linux/my-jinni](https://github.com/wahab-linux/my-jinni). Local checkout: `my-jinni`.
+
+The product is named **jinni**. Its original lamp mark connects the idea of a helpful genie with making an informed choice. It is the team's independent prototype, not an official BlackRock or Aladdin product. Existing repository URLs, launcher filename, local storage identifiers and API identity retain `my-jinni` so existing installations and source libraries continue to work.
 
 ## Browser edition on GitHub Pages
 

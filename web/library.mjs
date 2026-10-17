@@ -29,7 +29,7 @@ export async function openLibrary() {
     request.onupgradeneeded = () => request.result.createObjectStore('sources', { keyPath: 'id' });
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(new Error('Browser storage is unavailable. Allow site storage to save a library. Planning still works.'));
-    request.onblocked = () => reject(new Error('Close other my-jinni tabs and reload to open the library.'));
+    request.onblocked = () => reject(new Error('Close other jinni tabs and reload to open the library.'));
   });
   db.onversionchange = () => db.close();
   const transaction = (mode, action) => new Promise((resolve, reject) => {

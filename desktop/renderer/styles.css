@@ -8,6 +8,7 @@
   --cream: #f5f5fa;
   --paper: #ffffff;
   --soft: #efecfc;
+  --lamp-gold: #9b6a17;
   --orange: #ac602d;
   --danger: #9b3e35;
   font-family: "Segoe UI", system-ui, sans-serif;
@@ -27,8 +28,10 @@ button, input, select, textarea, summary { outline-offset: 4px; }
 button { transition: background .15s, border-color .15s, transform .15s; }
 .app-header { height: 76px; padding: 0 32px; display: flex; align-items: center; gap: 28px; border-bottom: 1px solid var(--line); background: #fcfbf5; }
 .brand { display: flex; align-items: center; gap: 9px; font-size: 25px; font-weight: 750; letter-spacing: -1.2px; white-space: nowrap; }
-.brand-mark { display: grid; place-items: center; width: 33px; height: 36px; padding-bottom: 3px; border-radius: 12px 12px 12px 3px; background: var(--teal); color: #fff9dc; font-size: 29px; font-family: Georgia, serif; font-style: italic; }
-.brand-dot { color: #d09a43; }
+.brand-mark { display: grid; place-items: center; width: 40px; height: 40px; flex-shrink: 0; border-radius: 12px; background: var(--soft); color: var(--teal); }
+.lamp-mark { width: 34px; height: 34px; overflow: visible; stroke: currentColor; stroke-width: 2.8; stroke-linecap: round; stroke-linejoin: round; }
+.lamp-body { fill: var(--soft); }
+.lamp-gold { stroke: var(--lamp-gold); }
 .workspace-label { font-size: 10px; color: var(--muted); letter-spacing: 1.65px; border-left: 1px solid var(--line); padding-left: 25px; }
 .header-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
 .connection-badge { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; color: var(--muted); max-width: 240px; }
@@ -44,7 +47,8 @@ h3 { margin: 0 0 7px; font-size: 16px; font-weight: 600; letter-spacing: -.25px;
 p { margin: 0; }
 .intro-copy { margin-top: 5px; color: var(--muted); font-size: 12px; }
 .workspace-note { display: flex; align-items: center; gap: 12px; font-size: 11px; line-height: 1.65; color: var(--muted); }
-.small-orbit { color: var(--teal); font-size: 25px; }
+.small-orbit { color: var(--lamp-gold); font-size: 25px; }
+.workspace-note strong { color: var(--ink); font-weight: 600; }
 .workspace-grid { display: grid; grid-template-columns: minmax(230px, .76fr) minmax(375px, 1.4fr) minmax(335px, 1.1fr); align-items: start; gap: 18px; }
 .panel { border: 1px solid var(--line); background: var(--paper); border-radius: 18px; padding: 23px; min-width: 0; box-shadow: 0 3px 4px #24372c02; }
 .panel-heading { display: flex; align-items: center; gap: 11px; margin-bottom: 12px; }
@@ -198,7 +202,7 @@ summary { cursor: pointer; }
 .chat-planner h4 { font-size: 10px; color: #70856b; margin: 0 0 9px; }
 .app-footer { display: flex; justify-content: space-between; gap: 18px; padding: 19px 4px 22px; color: #94a08f; font-size: 9px; }
 dialog { color: var(--ink); border: 1px solid #d6dfd0; border-radius: 17px; padding: 25px; background: var(--paper); width: 470px; max-width: calc(100vw - 40px); max-height: calc(100vh - 60px); box-shadow: 0 20px 90px #153e3033; }
-dialog::backdrop { background: #12392a55; backdrop-filter: blur(3px); }
+dialog::backdrop { background: #12392a55; }
 .dialog-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 15px; margin-bottom: 15px; }
 .dialog-heading h2 { overflow-wrap: anywhere; }
 .icon-button { border: 1px solid #dae2d5; border-radius: 7px; width: 29px; height: 29px; background: #f1f4e9; color: #647d5e; font-size: 21px; line-height: 1; flex-shrink: 0; }
@@ -215,13 +219,13 @@ mark { background: #e6d994; color: inherit; }
 @media (max-width: 900px) { .app-header { padding: 0 20px; gap: 10px; } .connection-badge { max-width: 180px; font-size: 10px; } .workspace-grid { grid-template-columns: 215px minmax(325px, 1fr); gap: 12px; } .panel { padding: 17px; } .panel-heading { gap: 8px; } h2 { font-size: 17px; } .panel-heading > .tag { font-size: 8px; padding: 3px 5px; } .app-footer { font-size: 8px; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 
-:root[data-theme="dark"] { color-scheme: dark; --ink: #efedf9; --muted: #b1aec4; --teal: #b3a4ff; --teal-dark: #c5baff; --line: #343547; --cream: #10121c; --paper: #1a1c29; --soft: #2d2848; --danger: #ffb6a8; }
+:root[data-theme="dark"] { color-scheme: dark; --ink: #efedf9; --muted: #b1aec4; --teal: #b3a4ff; --teal-dark: #c5baff; --line: #343547; --cream: #10121c; --paper: #1a1c29; --soft: #2d2848; --lamp-gold: #e9c779; --danger: #ffb6a8; }
 .app-header { background: var(--paper); gap: 18px; }
 .workspace-label { display: none; }
 .header-actions { gap: 8px; }
 .header-actions .button { white-space: nowrap; }
-.brand-mark, .button.primary { color: #fff; }
-[data-theme="dark"] .brand-mark, [data-theme="dark"] .button.primary { color: #19132e; }
+.button.primary { color: #fff; }
+[data-theme="dark"] .button.primary { color: #19132e; }
 .button.outline { border-color: var(--line); color: var(--ink); }
 .button.outline:hover:not(:disabled) { background: var(--soft); }
 .workspace-intro { padding-block: 8px 27px; }

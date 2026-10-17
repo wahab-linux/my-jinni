@@ -425,7 +425,7 @@ $('download-source').addEventListener('click', () => {
   const text = [source.title, source.is_simulated ? 'Fictional / AI-generated source' : 'Source accuracy not independently verified',
     ...source.chunks.map((chunk) => `${chunk.page ? `Page ${chunk.page}\n` : ''}${chunk.text}`)].join('\n\n');
   const url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
-  const link = document.createElement('a'); link.href = url; link.download = 'my-jinni-source.txt'; link.click();
+  const link = document.createElement('a'); link.href = url; link.download = 'jinni-source.txt'; link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 });
 void loadScenario();

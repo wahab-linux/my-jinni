@@ -1,5 +1,7 @@
 # Development tasks and integration checkpoints
 
+Current brand is `jinni` (user decision, 2026-10-18). Verify the original lamp mark and product title in both experiences, keep the actual decision flow central, and inspect fresh light/dark/mobile screenshots. Preserve existing data paths and technical contracts. Distinguish mocked-provider checks from any separately observed real-key test. Language choice remains a separate decision under the repository's English-content rule.
+
 The latest scope is additive v0.5: a general comparison workspace across market, travel, student, sustainability and custom criteria/data. [GENERAL_DECISIONS.md](GENERAL_DECISIONS.md) owns its frozen contract. Preserve all previous activity/library/provider/browser work, and treat the detailed activity flow below as a retained example rather than the product boundary.
 
 | New package | Owner and files | Acceptance |
@@ -18,7 +20,7 @@ This executes `docs/REQUIREMENTS.md`. The activity and confirmed library/AI back
 
 The user subsequently approved multiple mainstream providers, specifically DeepSeek. `docs/AI_PROVIDERS.md` defines additive v0.4, preserving planner/library/citation contracts. All four adapters, defaults, isolated keys, header compatibility, recipient disclosure and stale-answer clearing are implemented. Verification passed 474 Python tests, 46 JavaScript unit tests and 20 actual Electron checks plus lint/format, with all cloud transports mocked. Live account/model access remains separate. Existing baseline counts below describe earlier verified increments.
 
-my-jinni compares options from separate catalog and measurement sources using configurable priorities and hard limits. Domain assumptions remain in scenario configuration. The precise activity example still checks budget, time, interests and return to the selected origin. Electron with HTML/CSS/JavaScript remains the desktop stack, with a separately supported static browser edition.
+jinni compares options from separate catalog and measurement sources using configurable priorities and hard limits. Domain assumptions remain in scenario configuration. The precise activity example still checks budget, time, interests and return to the selected origin. Electron with HTML/CSS/JavaScript remains the desktop stack, with a separately supported static browser edition.
 
 The user also confirmed keeping the planner while adding one local source library and cited AI questions using OpenAI. The deterministic planner remains keyless. `docs/AI_EXTENSION.md` defines additive contract v0.3; every v0.2 activity field is preserved. Local SQLite, lexical retrieval and optional AI are now approved scope, with no cloud notebooks/sync, OCR, URL ingestion or embeddings.
 

@@ -1,6 +1,8 @@
-# my-jinni desktop client
+# jinni desktop client
 
 The Electron client uses local HTML/CSS/JavaScript. Its main workspace compares options across market context, travel, student opportunities, sustainability and your own decisions. Scenario-defined importance weights and hard limits drive actual two-source calculations, with measurements, relative-fit rankings, exclusions and provenance. Built-in datasets are fictional; market examples are informational synthetic comparisons, not live prices, predictions or buy/sell advice.
+
+The visible product name is **jinni**. Its original violet-and-gold lamp mark is inline SVG, with no third-party artwork or external assets. Technical `my-jinni` bridge, storage, repository and launcher identifiers remain unchanged for compatibility.
 
 Sources and cited AI questions start closed in optional side drawers. The precise activity itinerary remains in a collapsed detailed example. Provider selection, import/view/delete, original quotes and separate session keys for OpenAI, DeepSeek, Google Gemini and Anthropic Claude remain available. The general comparison and activity planner need no AI key.
 

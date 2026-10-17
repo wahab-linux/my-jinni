@@ -390,3 +390,17 @@ body { background: radial-gradient(ellipse at 5% 3%, var(--wash-one), transparen
 .comparison-table th, .comparison-table td { font-size: 12px; }.decision-metrics dt { font-size: 12px; }.decision-metrics dd { font-size: 17px; }
 @media (max-width: 1000px) { .scenario-tab { flex-direction: column; align-items: start; gap: 9px; }.scenario-tab strong { font-size: 12px; } }
 @media (max-width: 560px) { .scenario-tab { flex-direction: row; align-items: center; min-height: 72px; }.criterion-control { padding: 15px; }.intro .hero-badge { font-size: 9px; }.priority-choice, .constraint-controls select, .constraint-controls input, .constraint-controls .currency-input input, .constraint-controls .limit-input input { font-size: 16px; } }
+
+/* The shared lamp follows the active violet and gold palette. */
+:root { --lamp-gold: #9b6a17; }
+:root[data-theme="dark"] { --lamp-gold: #e9c779; }
+.brand .lamp-badge { padding: 2px; background: var(--accent-soft); color: var(--accent-ink); border: 1px solid var(--line); transform: none; }
+.lamp-mark { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 2.8; stroke-linecap: round; stroke-linejoin: round; }
+.lamp-mark .lamp-body { fill: var(--accent-soft); }
+.lamp-mark .lamp-gold { stroke: var(--lamp-gold); }
+.brand-label { letter-spacing: -.9px; }
+.visual-icon.assistant-lamp { width: 44px; height: 44px; padding: 3px; border: 1px solid var(--line); }
+.assistant-lamp .lamp-mark { width: 100%; height: 100%; }
+.assistant-label { color: var(--accent-ink); font-weight: 650; }
+.intro-visual .spark-two { color: var(--lamp-gold); }
+.intro-visual .visual-card { border-top-color: var(--lamp-gold); }

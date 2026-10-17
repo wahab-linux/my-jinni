@@ -1,8 +1,9 @@
 {
   "name": "my-jinni",
+  "productName": "jinni",
   "version": "0.1.0",
   "private": true,
-  "description": "Personalized option comparisons with local sources and cited AI questions",
+  "description": "jinni: personalized option comparisons with local sources and cited AI questions",
   "main": "desktop/main.cjs",
   "engines": {
     "node": ">=22"

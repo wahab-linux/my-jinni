@@ -1,6 +1,8 @@
-# my-jinni project plan
+# jinni project plan
 
 ## Product and delivery
+
+On 2026-10-18 the user renamed the visible product to `jinni` and requested a lamp motif, fresh verification and frontend screenshots. Use original vector/CSS artwork with restrained violet/gold accents. Preserve the decision-first layout and honest source/AI boundaries. Existing technical repository/storage/API identifiers remain compatible with `my-jinni`. Language support is being evaluated separately from the brand; UI translation must not alter numeric units, source quotes or ranking.
 
 The latest user-approved scope is a **general decision workspace**: market, travel, student, sustainability and custom scenarios, with configurable priorities and hard limits. [GENERAL_DECISIONS.md](GENERAL_DECISIONS.md) defines additive v0.5. `app/comparison/engine.py` remains pure and domain-independent; presets live in a catalog and ten fictional option/measurement feeds. New domains can supply custom criteria/data without editing the scoring rules. No preset connects a live market, route, university or environmental service.
 
@@ -10,7 +12,7 @@ Current automated verification passes 566 Python tests, 50 desktop and 31 browse
 
 The user requested a GitHub Pages browser edition on 2026-10-17, superseding the earlier desktop-only restriction for this additional deliverable. [BROWSER.md](BROWSER.md) defines its static planner, browser-local source library/PDF import and exact passage search. Provider-backed AI remains in the desktop edition. The existing backend and Electron contracts are preserved.
 
-my-jinni includes a local source library and optional cited AI questions using OpenAI, DeepSeek, Google Gemini and Anthropic Claude; `docs/AI_PROVIDERS.md` defines separate session keys. Its general comparisons and detailed activity planner run deterministically without a key. The activity example accepts origin, budget, time window and interests and preserves its precise cost/return checks.
+jinni includes a local source library and optional cited AI questions using OpenAI, DeepSeek, Google Gemini and Anthropic Claude; `docs/AI_PROVIDERS.md` defines separate session keys. Its general comparisons and detailed activity planner run deterministically without a key. The activity example accepts origin, budget, time window and interests and preserves its precise cost/return checks.
 
 The activity backend is implemented: two independently shaped simulated feeds are fetched, normalised, joined and used in actual deterministic decisions. The user confirmed the additive library/AI scope on 2026-10-17 and selected OpenAI. The latest backend baseline passed lint/format and 348 Python tests. The user also authorised agents to implement the Electron interface and its verification: window, planner/library/chat controls, restricted IPC, session-key settings and managed backend modules now exist. Sixteen real Windows Electron end-to-end checks passed with only the OpenAI transport mocked; live OpenAI and human acceptance remain pending. This is a source-run client with no bundled Python runtime or installer.
 
@@ -37,7 +39,7 @@ A running API or passing backend test does not establish a finished desktop prod
 - One local SQLite source library outside the checkout: pasted text, UTF-8 TXT/Markdown and text PDFs, with page-aware extracted chunks, view/delete and selected-source lexical retrieval. Optional `is_simulated` import metadata labels fictional/generated demo guides and follows citations; false is not a truth guarantee.
 - Optional OpenAI questions with checked quote/source citations, or insufficient evidence. Passing current form preferences explicitly adds the real calculated planner result as ephemeral simulated evidence; questions do not infer or mutate form values.
 
-The second origin demonstrates the detailed activity core without student identity. It does not imply arbitrary-place/date coverage or live routing. General comparisons support arbitrary declared criteria/data, including fictional market examples; they do not implement live financial advice, shopping feeds or a universal route planner. The source library is one local collection, with no OCR, URL ingestion, embeddings or cloud sync. Accounts, maps and payments remain outside scope. my-jinni is the team's prototype, not an official BlackRock or Aladdin product.
+The second origin demonstrates the detailed activity core without student identity. It does not imply arbitrary-place/date coverage or live routing. General comparisons support arbitrary declared criteria/data, including fictional market examples; they do not implement live financial advice, shopping feeds or a universal route planner. The source library is one local collection, with no OCR, URL ingestion, embeddings or cloud sync. Accounts, maps and payments remain outside scope. jinni is the team's prototype, not an official BlackRock or Aladdin product.
 
 ## Architecture and ownership
 

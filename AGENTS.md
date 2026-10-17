@@ -1,4 +1,6 @@
-# my-jinni development instructions
+# jinni development instructions
+
+- The product's visible name is `jinni`, as requested on 2026-10-18. Use an original lamp motif and keep decisions central. Repository paths, existing storage/IPC identifiers and the technical API identity retain `my-jinni` for compatibility; a visible brand update must not move or discard existing user data.
 
 - Keep all tracked repository content in English, including documentation, prompts, comments, UI copy, metadata, and AI usage records.
 - Read `docs/PROJECT_PLAN.md`, `docs/REQUIREMENTS.md`, `docs/ARCHITECTURE.md`, `docs/API.md`, `docs/TASKS.md`, and your assigned prompt before editing.

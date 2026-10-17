@@ -22,7 +22,7 @@ test('an existing compatible backend is reused and never terminated', async () =
     spawnImpl: () => { spawned++; throw new Error('Must not spawn'); },
     terminateImpl: async () => { terminated++; },
   });
-  assert.deepEqual(await manager.start(), { state: 'ready', message: 'Connected to the local my-jinni backend.', owned: false });
+  assert.deepEqual(await manager.start(), { state: 'ready', message: 'Connected to the local jinni backend.', owned: false });
   await manager.stop();
   assert.equal(spawned, 0);
   assert.equal(terminated, 0);

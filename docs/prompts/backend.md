@@ -1,6 +1,8 @@
 # Backend development and integration prompt
 
-You are maintaining my-jinni in `wahab-linux/my-jinni` for the DYHTG 2026 BlackRock challenge. I own the Python backend; Wahab owns the Electron desktop client. The product compares options across configurable domains; students and detailed activity planning are examples. All repository content must be English.
+Current visible product name is `jinni`. Preserve the existing repository, storage, IPC and API identity for compatibility; a branding change must not migrate or discard user data. UI language support cannot silently translate source evidence or alter units and ranking.
+
+You are maintaining jinni in `wahab-linux/my-jinni` for the DYHTG 2026 BlackRock challenge. I own the Python backend; Wahab owns the Electron desktop client. The product compares options across configurable domains; students and detailed activity planning are examples. All repository content must be English.
 
 Read `docs/GENERAL_DECISIONS.md` for additive v0.5 before editing. Preserve the generic pure comparison in `app/comparison/engine.py`, configured catalog, two differently shaped source feeds per preset, custom criteria/datasets and full browser/Python parity. Keep domains out of core rules; enforce bounded inputs, known availability, hard limits, nonnegative integer pence, deterministic weighted min/max scoring and stable ties. Never promote simulation into live market/routing claims. `decision_request` chat inclusion must call the real endpoint, return its exact result and use bounded ephemeral `decision-context`; preserve the older activity context and all citation/provider/key controls.
 

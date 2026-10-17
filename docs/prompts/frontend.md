@@ -1,10 +1,12 @@
 # Desktop interface development prompt
 
+Current visible product name is `jinni`, with an original lamp mark and restrained violet/gold accents. Existing repository/storage/bridge/API identifiers remain `my-jinni` for compatibility. Preserve current data and technical contracts. Language support is a separate explicit choice; never translate citation quotes or calculation identifiers.
+
 The latest user-approved experience is decision-first, defined in `docs/GENERAL_DECISIONS.md`. Keep scenario choice, priorities/hard limits, recommendations and comparable alternatives central. Market, travel, student, sustainability and custom criteria/data use named comparison bridge methods; do not duplicate Python scoring in the Electron renderer. Library and questions start closed in dialogs; the original activity controls remain in a collapsed detailed example. Preserve light/dark themes, keyboard/focus behaviour, source/PDF/citation/provider features, safe text rendering and stale responses. Short animations respect reduced motion; local synthesized sounds start off and require user opt-in. Optional decision-context questions return the actual authoritative comparison, and ephemeral citations never fetch a saved library source. Keep browser and desktop boundaries distinct.
 
-You are building my-jinni's desktop client in `wahab-linux/my-jinni` for the DYHTG 2026 BlackRock challenge. I am Wahab and own the interface. My teammate owns the Python backend. The user explicitly wants a desktop application and permits Electron/Tauri to reuse frontend skills. Use Electron with HTML/CSS/JavaScript. Deliver a working application window.
+You are building jinni's desktop client in `wahab-linux/my-jinni` for the DYHTG 2026 BlackRock challenge. I am Wahab and own the interface. My teammate owns the Python backend. The user explicitly wants a desktop application and permits Electron/Tauri to reuse frontend skills. Use Electron with HTML/CSS/JavaScript. Deliver a working application window.
 
-Read `AGENTS.md`, `docs/AI_EXTENSION.md`, `docs/REQUIREMENTS.md`, `docs/ARCHITECTURE.md`, `docs/API.md`, `docs/TASKS.md`, `docs/openapi.json` and `contracts/fixtures/`. All code, comments, UI copy and documentation must be English. Product name: my-jinni. Keep the repository/directory name `my-jinni`.
+Read `AGENTS.md`, `docs/AI_EXTENSION.md`, `docs/REQUIREMENTS.md`, `docs/ARCHITECTURE.md`, `docs/API.md`, `docs/TASKS.md`, `docs/openapi.json` and `contracts/fixtures/`. All code, comments, UI copy and documentation must be English unless the user approves a narrow translation-resource exception. Product name: jinni. Keep the repository/directory name `my-jinni`.
 
 The desktop implementation is now present in `desktop/`, including the launcher, restricted bridge, planner/library/chat renderer and tests in `tests/desktop/`. Preserve it and inspect current behaviour before changing files. This prompt defines the acceptance boundary; it is not an instruction to rebuild the app. Run `npm run desktop` or, after setup, Node 22+ `node --run desktop`. See `desktop/README.md` and the frozen `docs/DESKTOP_BRIDGE.md`. Automated end-to-end provider success is mocked; actual OpenAI account access remains a separate check.
 
@@ -35,7 +37,7 @@ The user confirmed activity planning plus a local library and cited AI chat, the
 
 ## Stage 1: the basic desktop flow
 
-1. Create a resizable my-jinni window and load `/api/v1/options` through the bridge. Derive origins, supported date, limits, interests and initial values from the response. Students are the first scenario, not an identity requirement.
+1. Create a resizable jinni window and load `/api/v1/options` through the bridge. Derive origins, supported date, limits, interests and initial values from the response. Students are the first scenario, not an identity requirement.
 2. Build labelled controls for origin, date, departure, return deadline, budget and interests. Internally use integer pence and exact decimal GBP conversion. Reject fractional pence, empty interests and reversed times. Send aware ISO timestamps for `Europe/London`, using the selected date's offset rather than the machine's timezone. Read supported dates from options.
 3. POST the v0.2 request through `recommend(preferences)`. Disable repeat submissions while active; use request IDs or cancellation so stale responses cannot overwrite a later request. Keep the window responsive.
 4. Show title, venue, category, event times, arrival, return, ticket + return fare = total, and factual reasons. Include up to two alternatives. Format GBP to two decimals and all times in `Europe/London`; the travel fare already includes both legs.
