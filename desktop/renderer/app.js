@@ -15,6 +15,10 @@ const state = {
   chatBusy: false,
   libraryBusy: false,
   keyConfigured: false,
+  provider: "openai",
+  providers: [],
+  models: new Map(),
+  keySettingsToken: 0,
   planData: null,
   chatData: null,
 };
@@ -429,7 +433,7 @@ async function refreshSources() {
     state.selectedSources = new Set([...state.selectedSources].filter((id) => available.has(id)));
     if (previousCount !== state.selectedSources.size) invalidateChat("A selected source was removed. Choose sources and ask again.");
     state.library = envelope.data;
-    if (!$("model").value) $("model").value = envelope.data.default_model;
+    populateProviders(envelope.data);
     $("library-limits").textContent = `TXT, Markdown, text PDFs · ${Math.floor(envelope.data.max_upload_bytes / 1024 / 1024)} MiB · ${envelope.data.max_sources} sources max`;
     renderSources();
     showFeedback("library-status");
@@ -614,7 +618,8 @@ function renderChat(envelope, preferences) {
   }
   clear($("chat-warnings"));
   renderWarnings($("chat-warnings"), envelope.warnings);
-  $("chat-model-label").textContent = data.model ? `${data.model} · This question has no chat history.` : "No AI call was needed for this response.";
+  const recipient = providerLabel(data.provider || state.provider);
+  $("chat-model-label").textContent = data.model ? `${recipient} · ${data.model} · This question has no chat history.` : `${recipient} selected · No AI call was needed for this response.`;
 }
 
 async function submitChat(event) {
@@ -626,8 +631,9 @@ async function submitChat(event) {
     if (!question || question.length > 2000) throw new ServiceError("Enter a question of up to 2,000 characters.", 422);
     if (!state.selectedSources.size && !$("include-plan").checked) throw new ServiceError("Select a source or include your activity preferences first.", 422);
     const model = $("model").value.trim();
-    if (!/^[a-zA-Z0-9._:-]{1,100}$/.test(model)) throw new ServiceError("Choose a valid OpenAI model in Model settings. Refresh the library to load its default.", 422);
-    request = { question, source_ids: [...state.selectedSources], model };
+    if (!state.providers.some((provider) => provider.id === state.provider)) throw new ServiceError("Load the available AI providers before asking a question.", 422);
+    if (!/^[a-zA-Z0-9._:-]{1,100}$/.test(model)) throw new ServiceError("Choose a valid provider model in Model settings. Refresh the library to load its default.", 422);
+    request = { question, source_ids: [...state.selectedSources], provider: state.provider, model };
     if ($("include-plan").checked) request.preferences = currentPreferences();
   } catch (error) {
     resetChatResult();
@@ -643,6 +649,7 @@ async function submitChat(event) {
   try {
     const envelope = unwrap(await call("askQuestion", request));
     if (token !== state.chatToken) return;
+    if (envelope.data.provider && envelope.data.provider !== request.provider) throw new ServiceError("The answer did not match the selected provider. Please try again.", 502);
     renderChat(envelope, request.preferences);
     showFeedback("chat-feedback", envelope.data.status === "answered" ? "Answer ready. Open a citation to check its context." : "No supported answer was found in the selected evidence.", envelope.data.status === "answered" ? "success" : "");
   } catch (error) {
@@ -669,6 +676,64 @@ function setKeyIndicator(configured) {
   $("key-indicator").classList.toggle("configured", Boolean(configured));
 }
 
+function providerLabel(providerId = state.provider) {
+  return state.providers.find((provider) => provider.id === providerId)?.label || (providerId === "openai" ? "OpenAI" : providerId);
+}
+
+function populateProviders(capabilities) {
+  const catalog = capabilities.providers === undefined
+    ? [{ id: capabilities.provider, label: "OpenAI", default_model: capabilities.default_model }]
+    : capabilities.providers;
+  const allowed = ["openai", "deepseek", "gemini", "anthropic"];
+  if (!Array.isArray(catalog) || !catalog.length
+      || catalog.some((provider) => !allowed.includes(provider.id) || typeof provider.label !== "string" || typeof provider.default_model !== "string")
+      || new Set(catalog.map((provider) => provider.id)).size !== catalog.length
+      || !catalog.some((provider) => provider.id === state.provider)) {
+    throw new ServiceError("The local service returned an unsupported provider catalog. Refresh the library to retry.");
+  }
+  state.providers = catalog;
+  for (const provider of catalog) {
+    if (!state.models.has(provider.id)) state.models.set(provider.id, provider.default_model);
+  }
+  for (const id of ["provider", "settings-provider"]) {
+    clear($(id));
+    for (const provider of catalog) $(id).append(new Option(provider.label, provider.id));
+    $(id).value = state.provider;
+    $(id).disabled = false;
+  }
+  renderProviderChoice();
+  void refreshKeySettings();
+}
+
+function renderProviderChoice() {
+  $("provider").value = state.provider;
+  $("settings-provider").value = state.provider;
+  $("model").value = state.models.get(state.provider) || "";
+  $("settings-model").value = state.models.get(state.provider) || "";
+  $("cloud-recipient").textContent = providerLabel();
+  $("api-key-label").textContent = `${providerLabel()} API key`;
+}
+
+function chooseProvider(providerId) {
+  if (providerId === state.provider) return;
+  if (!state.providers.some((provider) => provider.id === providerId)) return;
+  state.models.set(state.provider, $("model").value);
+  state.provider = providerId;
+  $("api-key").value = "";
+  $("save-key").disabled = false;
+  $("clear-key").disabled = false;
+  renderProviderChoice();
+  invalidateChat("AI provider changed. Ask again to use the selected provider.");
+  void refreshKeySettings();
+}
+
+function updateModel(input) {
+  state.models.set(state.provider, input.value);
+  $("model").value = input.value;
+  $("settings-model").value = input.value;
+  invalidateChat("Model changed. Ask again for an updated answer.");
+}
+
 function sessionSettings(result) {
   if (result?.body?.error || result?.status === 0) unwrap(result);
   if (typeof result?.configured !== "boolean") throw new ServiceError("The desktop service returned an unexpected session-setting response.");
@@ -677,13 +742,27 @@ function sessionSettings(result) {
 
 async function openSettings() {
   $("api-key").value = "";
-  showFeedback("key-status", state.keyConfigured ? "A key is saved for this session. Account access has not been checked." : "No key is saved. Planning and your library are still available.");
-  $("settings-dialog").showModal();
+  if (!$("settings-dialog").open) $("settings-dialog").showModal();
+  await refreshKeySettings();
+}
+
+async function refreshKeySettings() {
+  const token = ++state.keySettingsToken;
+  const provider = state.provider;
+  $("save-key").disabled = false;
+  $("clear-key").disabled = false;
+  state.keyConfigured = false;
+  $("key-indicator").textContent = "Checking session key…";
+  $("key-indicator").classList.remove("configured");
+  showFeedback("key-status", `Checking the ${providerLabel(provider)} session key…`, "loading");
   try {
-    const settings = sessionSettings(await call("getSessionSettings"));
+    const settings = sessionSettings(await call("getSessionSettings", provider));
+    if (token !== state.keySettingsToken || provider !== state.provider) return;
     setKeyIndicator(settings.configured);
-    showFeedback("key-status", settings.configured ? "A key is saved for this session. Account access has not been checked." : "No key is saved. Planning and your library are still available.");
+    showFeedback("key-status", settings.configured ? `${providerLabel(provider)} key saved for this session. Account access has not been checked.` : `No ${providerLabel(provider)} key is saved. Planning and your library are still available.`);
   } catch (error) {
+    if (token !== state.keySettingsToken || provider !== state.provider) return;
+    setKeyIndicator(false);
     showError("key-status", error);
   }
 }
@@ -696,26 +775,37 @@ async function saveKey(event) {
     showError("key-status", new ServiceError("Enter an API key, or use Clear session key."));
     return;
   }
+  const provider = state.provider;
+  const token = ++state.keySettingsToken;
   $("save-key").disabled = true;
   try {
-    const settings = sessionSettings(await call("setSessionApiKey", key));
+    const settings = sessionSettings(await call("setSessionApiKey", { provider, key }));
+    if (token !== state.keySettingsToken || provider !== state.provider) return;
     setKeyIndicator(settings.configured);
-    showFeedback("key-status", "Key saved for this session. Access is checked when you ask an AI question.", "success");
+    showFeedback("key-status", `${providerLabel(provider)} key saved for this session. Access is checked when you ask an AI question.`, "success");
   } catch (error) {
+    if (token !== state.keySettingsToken || provider !== state.provider) return;
     showError("key-status", error);
   } finally {
-    $("save-key").disabled = false;
+    if (token === state.keySettingsToken && provider === state.provider) $("save-key").disabled = false;
   }
 }
 
 async function clearKey() {
   $("api-key").value = "";
+  const provider = state.provider;
+  const token = ++state.keySettingsToken;
+  $("clear-key").disabled = true;
   try {
-    const settings = sessionSettings(await call("clearSessionApiKey"));
+    const settings = sessionSettings(await call("clearSessionApiKey", provider));
+    if (token !== state.keySettingsToken || provider !== state.provider) return;
     setKeyIndicator(settings.configured);
-    showFeedback("key-status", "Session key cleared. The planner and library still work.", "success");
+    showFeedback("key-status", `${providerLabel(provider)} session key cleared. Other providers, the planner and library are unchanged.`, "success");
   } catch (error) {
+    if (token !== state.keySettingsToken || provider !== state.provider) return;
     showError("key-status", error);
+  } finally {
+    if (token === state.keySettingsToken && provider === state.provider) $("clear-key").disabled = false;
   }
 }
 
@@ -776,9 +866,14 @@ $("add-text-toggle").addEventListener("click", () => {
   if (!form.hidden) $("source-title").focus();
 });
 $("chat-form").addEventListener("submit", submitChat);
-for (const id of ["question", "model", "include-plan"]) {
+for (const id of ["question", "include-plan"]) {
   $(id).addEventListener("input", () => invalidateChat("Question context changed. Ask again for an updated answer."));
   $(id).addEventListener("change", () => invalidateChat("Question context changed. Ask again for an updated answer."));
+}
+for (const id of ["provider", "settings-provider"]) $(id).addEventListener("change", () => chooseProvider($(id).value));
+for (const id of ["model", "settings-model"]) {
+  $(id).addEventListener("input", () => updateModel($(id)));
+  $(id).addEventListener("change", () => updateModel($(id)));
 }
 $("settings-button").addEventListener("click", openSettings);
 $("settings-form").addEventListener("submit", saveKey);
@@ -791,4 +886,4 @@ updateSelection();
 renderSources();
 updateChatButton();
 pollBackend();
-call("getSessionSettings").then((settings) => setKeyIndicator(sessionSettings(settings).configured)).catch(() => setKeyIndicator(false));
+void refreshKeySettings();

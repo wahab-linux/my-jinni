@@ -1,9 +1,9 @@
 'use strict';
 
-const { validateBackendUrl, validateSessionKey } = require('./validation.cjs');
+const { validateBackendUrl, validateSessionKey, validateProvider, validateSessionKeySetting } = require('./validation.cjs');
 
 class ApiClient {
-  #sessionApiKey = '';
+  #sessionApiKeys = new Map();
 
   constructor({ baseUrl = 'http://127.0.0.1:8000', fetchImpl = globalThis.fetch,
     timeoutMs = 5000, chatTimeoutMs = 40000, maxResponseBytes = 4 * 1024 * 1024 } = {}) {
@@ -14,18 +14,27 @@ class ApiClient {
     this.maxResponseBytes = maxResponseBytes;
   }
 
-  setSessionApiKey(key) {
-    this.#sessionApiKey = validateSessionKey(key);
-    return this.getSessionSettings();
+  setSessionApiKey(value) {
+    const setting = validateSessionKeySetting(value);
+    const provider = typeof setting === 'string' ? 'openai' : setting.provider;
+    const key = validateSessionKey(typeof setting === 'string' ? setting : setting.key);
+    if (key) this.#sessionApiKeys.set(provider, key);
+    else this.#sessionApiKeys.delete(provider);
+    return this.getSessionSettings(provider);
   }
 
-  clearSessionApiKey() {
-    this.#sessionApiKey = '';
-    return this.getSessionSettings();
+  clearSessionApiKey(provider = 'openai') {
+    this.#sessionApiKeys.delete(validateProvider(provider));
+    return this.getSessionSettings(provider);
   }
 
-  getSessionSettings() {
-    return { configured: this.#sessionApiKey.length > 0 };
+  clearAllSessionApiKeys() {
+    this.#sessionApiKeys.clear();
+    return { configured: false };
+  }
+
+  getSessionSettings(provider = 'openai') {
+    return { configured: this.#sessionApiKeys.has(validateProvider(provider)) };
   }
 
   async request(path, { method = 'GET', json, body, headers = {}, timeoutMs } = {}) {
@@ -37,6 +46,9 @@ class ApiClient {
     if (!Object.hasOwn(allowed, method) || typeof path !== 'string' || !allowed[method].test(path)) {
       throw new Error('This local API operation is not supported.');
     }
+    const provider = path === '/api/v1/chat'
+      ? validateProvider(json && Object.hasOwn(json, 'provider') ? json.provider : 'openai')
+      : null;
     const controller = new AbortController();
     const deadline = timeoutMs ?? (path === '/api/v1/chat' ? this.chatTimeoutMs : this.timeoutMs);
     if (!Number.isFinite(deadline) || deadline <= 0) throw new Error('The request deadline must be positive and finite.');
@@ -48,10 +60,10 @@ class ApiClient {
     try {
       const requestHeaders = { Accept: 'application/json', ...headers };
       for (const header of Object.keys(requestHeaders)) {
-        if (header.toLowerCase() === 'x-openai-api-key') delete requestHeaders[header];
+        if (['x-openai-api-key', 'x-ai-api-key'].includes(header.toLowerCase())) delete requestHeaders[header];
       }
-      if (path === '/api/v1/chat' && this.#sessionApiKey) {
-        requestHeaders['X-OpenAI-API-Key'] = this.#sessionApiKey;
+      if (provider && this.#sessionApiKeys.has(provider)) {
+        requestHeaders['X-AI-API-Key'] = this.#sessionApiKeys.get(provider);
       }
       if (json !== undefined) requestHeaders['Content-Type'] = 'application/json';
       response = await Promise.race([this.fetchImpl(`${this.baseUrl}${path}`, {

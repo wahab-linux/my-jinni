@@ -10,7 +10,8 @@ from starlette.concurrency import run_in_threadpool
 
 from app.errors import error_response
 from app.knowledge.ingestion import IngestionError, extract_upload
-from app.knowledge.openai_client import AIServiceError, generate_answer
+from app.knowledge.openai_client import AIServiceError
+from app.knowledge.providers import generate_answer
 from app.knowledge.schemas import (
     MAX_RETRIEVED_CHUNKS,
     MAX_UPLOAD_BYTES,
@@ -181,12 +182,12 @@ def checked_citations(draft, chunks: list[SourceChunk]) -> list[Citation]:
     responses={
         status: {"model": ErrorEnvelope, "description": description}
         for status, description in (
-            (401, "OpenAI key missing or access denied"),
+            (401, "AI provider key missing or access denied"),
             (404, "Selected source not found"),
-            (429, "OpenAI quota or rate limit"),
+            (429, "AI provider quota or rate limit"),
             (502, "Invalid or refused AI response"),
-            (503, "OpenAI unavailable"),
-            (504, "OpenAI generation timed out"),
+            (503, "AI provider unavailable"),
+            (504, "AI generation timed out"),
         )
     },
 )
@@ -196,7 +197,10 @@ async def chat(
     store: Store,
     ai_client: AIClient,
     api_key: Annotated[SecretStr | None, Header(alias="X-OpenAI-API-Key")] = None,
+    provider_api_key: Annotated[SecretStr | None, Header(alias="X-AI-API-Key")] = None,
 ) -> Envelope[ChatData] | JSONResponse:
+    if api_key is not None and provider_api_key is not None:
+        return error_response(422, "VALIDATION_ERROR", "Supply only one API key header.")
     for source_id in body.source_ids:
         if await run_in_threadpool(store.get_source, source_id) is None:
             return error_response(404, "NOT_FOUND", "A selected source no longer exists.")
@@ -223,6 +227,7 @@ async def chat(
         return Envelope(
             data=ChatData(
                 answer="The selected sources do not contain matching evidence for this question.",
+                provider=body.provider,
                 status="insufficient_evidence",
                 citations=[],
                 model=None,
@@ -231,20 +236,29 @@ async def chat(
             ),
             warnings=warnings,
         )
-    key = api_key.get_secret_value() if api_key is not None else ""
+    selected_key = provider_api_key or (api_key if body.provider == "openai" else None)
+    key = selected_key.get_secret_value() if selected_key is not None else ""
     if not key or len(key) > 1024 or not key.isascii() or any(ord(char) <= 32 for char in key):
         return error_response(
-            401, "AI_AUTH_ERROR", "Enter a valid OpenAI API key in session settings."
+            401,
+            "AI_AUTH_ERROR",
+            "Enter a valid key for the selected AI provider in session settings.",
         )
     try:
         draft = await generate_answer(
-            ai_client, api_key=key, model=body.model, question=body.question, chunks=chunks
+            ai_client,
+            provider=body.provider,
+            api_key=key,
+            model=body.model,
+            question=body.question,
+            chunks=chunks,
         )
         citations = checked_citations(draft, chunks) if draft.supported else []
     except AIServiceError as exc:
         return error_response(exc.status_code, exc.code, exc.message)
     return Envelope(
         data=ChatData(
+            provider=body.provider,
             answer=(
                 draft.answer
                 if draft.supported

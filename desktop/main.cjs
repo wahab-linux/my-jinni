@@ -112,8 +112,8 @@ function registerBridge() {
     deleteSource: (id) => request(`/api/v1/sources/${id}`, { method: 'DELETE' }),
     askQuestion: (question) => request('/api/v1/chat', { method: 'POST', json: question }),
     setSessionApiKey: (key) => api.setSessionApiKey(key),
-    clearSessionApiKey: () => api.clearSessionApiKey(),
-    getSessionSettings: () => api.getSessionSettings(),
+    clearSessionApiKey: (provider) => api.clearSessionApiKey(provider),
+    getSessionSettings: (provider) => api.getSessionSettings(provider),
     getBackendStatus: backendStatus,
     retryBackend: async () => {
       if (configurationError) return backendStatus();
@@ -192,7 +192,7 @@ if (!app.requestSingleInstanceLock()) {
     if (quitting) return;
     event.preventDefault();
     quitting = true;
-    api?.clearSessionApiKey();
+    api?.clearAllSessionApiKeys();
     Promise.resolve(backend?.stop()).finally(() => app.quit());
   });
 }

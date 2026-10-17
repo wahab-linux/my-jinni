@@ -5,6 +5,7 @@ const path = require('node:path');
 const {
   validateBackendUrl, validatePreferences, validateTextSource, validateChatRequest,
   validateSourceId, validateImportOptions, validateSessionKey, validateIpcInput,
+  validateProvider, validateSessionKeySetting,
 } = require('../../desktop/validation.cjs');
 
 const preferences = JSON.parse(fs.readFileSync(path.join(__dirname, '../../contracts/fixtures/recommendation-request.json'), 'utf8'));
@@ -53,4 +54,42 @@ test('session key validation exposes no key in error text and permits clearing',
   for (const key of ['bad key', 'bad\nkey', 'x'.repeat(1025), '\u2603']) {
     assert.throws(() => validateSessionKey(key), (error) => !error.message.includes(key));
   }
+});
+
+test('provider allowlist is fixed and chat remains compatible with omitted provider/model', () => {
+  const legacy = { question: 'Opening hours?', source_ids: ['source-1'] };
+  assert.deepEqual(validateChatRequest(legacy), legacy);
+  for (const provider of ['openai', 'deepseek', 'gemini', 'anthropic']) {
+    assert.equal(validateProvider(provider), provider);
+    const chat = { ...legacy, provider, model: 'editable-model:1' };
+    assert.deepEqual(validateChatRequest(chat), chat);
+  }
+  for (const provider of [null, undefined, '', 'unknown', 'https://example.com', 1, {}]) {
+    assert.throws(() => validateProvider(provider));
+    assert.throws(() => validateChatRequest({ ...legacy, provider }));
+  }
+  for (const model of [null, undefined, '', 'name with spaces', 'x'.repeat(101)]) {
+    assert.throws(() => validateChatRequest({ ...legacy, model }));
+  }
+  assert.throws(() => validateChatRequest({ ...legacy, provider: 'deepseek', base_url: 'https://example.com' }));
+});
+
+test('session IPC accepts provider-key objects and preserves legacy OpenAI-only inputs', () => {
+  assert.equal(validateIpcInput('setSessionApiKey', 'legacy-openai-key'), 'legacy-openai-key');
+  assert.equal(validateSessionKeySetting(''), '');
+  for (const provider of ['openai', 'deepseek', 'gemini', 'anthropic']) {
+    const value = { provider, key: 'provider-test-key' };
+    assert.deepEqual(validateSessionKeySetting(value), value);
+    assert.deepEqual(validateIpcInput('setSessionApiKey', value), value);
+    assert.equal(validateIpcInput('getSessionSettings', provider), provider);
+    assert.equal(validateIpcInput('clearSessionApiKey', provider), provider);
+  }
+  assert.equal(validateIpcInput('getSessionSettings'), undefined);
+  assert.equal(validateIpcInput('clearSessionApiKey'), undefined);
+  for (const input of [{ provider: 'unknown', key: 'secret' }, { provider: 'deepseek', key: 'bad key' }, { provider: 'deepseek' }, { provider: 'openai', key: 'x', base_url: 'https://example.com' }, null]) {
+    assert.throws(() => validateIpcInput('setSessionApiKey', input));
+  }
+  assert.throws(() => validateIpcInput('getSessionSettings', null));
+  assert.throws(() => validateIpcInput('clearSessionApiKey', {}));
+  assert.throws(() => validateIpcInput('clearAllSessionApiKeys'));
 });

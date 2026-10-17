@@ -89,14 +89,16 @@ function validateImportOptions(value) {
 }
 
 function validateChatRequest(value) {
-  object(value, ['question', 'source_ids', 'model', 'preferences'], ['question', 'source_ids', 'model']);
+  object(value, ['question', 'source_ids', 'provider', 'model', 'preferences'], ['question', 'source_ids']);
   text(value.question, 1, 2000);
   if (!Array.isArray(value.source_ids) || value.source_ids.length > 20
       || new Set(value.source_ids).size !== value.source_ids.length) {
     throw new ValidationError('Select up to twenty distinct sources.');
   }
   const ids = value.source_ids.map(validateSourceId);
-  if (typeof value.model !== 'string' || !/^[a-zA-Z0-9._:-]{1,100}$/.test(value.model)) {
+  if (Object.hasOwn(value, 'provider')) validateProvider(value.provider);
+  if (Object.hasOwn(value, 'model')
+      && (typeof value.model !== 'string' || !/^[a-zA-Z0-9._:-]{1,100}$/.test(value.model))) {
     throw new ValidationError('Enter a supported model name.');
   }
   if (ids.length === 0 && value.preferences === undefined) {
@@ -105,16 +107,30 @@ function validateChatRequest(value) {
   return {
     question: value.question,
     source_ids: ids,
-    model: value.model,
+    ...(Object.hasOwn(value, 'provider') ? { provider: value.provider } : {}),
+    ...(Object.hasOwn(value, 'model') ? { model: value.model } : {}),
     ...(value.preferences === undefined ? {} : { preferences: validatePreferences(value.preferences) }),
   };
 }
 
 function validateSessionKey(value) {
   if (typeof value !== 'string' || value.length > 1024 || /[^\x21-\x7e]/.test(value)) {
-    throw new ValidationError('Enter a valid OpenAI API key without spaces.');
+    throw new ValidationError('Enter a valid provider API key without spaces.');
   }
   return value;
+}
+
+function validateProvider(value) {
+  if (typeof value !== 'string' || !['openai', 'deepseek', 'gemini', 'anthropic'].includes(value)) {
+    throw new ValidationError('Choose one of the supported AI providers.');
+  }
+  return value;
+}
+
+function validateSessionKeySetting(value) {
+  if (typeof value === 'string') return validateSessionKey(value);
+  object(value, ['provider', 'key']);
+  return { provider: validateProvider(value.provider), key: validateSessionKey(value.key) };
 }
 
 function validateIpcInput(method, value) {
@@ -125,11 +141,12 @@ function validateIpcInput(method, value) {
     getSource: validateSourceId,
     deleteSource: validateSourceId,
     askQuestion: validateChatRequest,
-    setSessionApiKey: validateSessionKey,
+    setSessionApiKey: validateSessionKeySetting,
+    getSessionSettings: (input) => input === undefined ? undefined : validateProvider(input),
+    clearSessionApiKey: (input) => input === undefined ? undefined : validateProvider(input),
   };
   if (Object.hasOwn(validators, method)) return validators[method](value);
-  if (!['getOptions', 'listSources', 'clearSessionApiKey', 'getSessionSettings',
-    'getBackendStatus', 'retryBackend'].includes(method) || value !== undefined) {
+  if (!['getOptions', 'listSources', 'getBackendStatus', 'retryBackend'].includes(method) || value !== undefined) {
     throw new ValidationError('This desktop operation is not supported.');
   }
   return undefined;
@@ -137,5 +154,6 @@ function validateIpcInput(method, value) {
 
 module.exports = {
   ValidationError, validateBackendUrl, validatePreferences, validateSourceId, validateTextSource,
-  validateImportOptions, validateChatRequest, validateSessionKey, validateIpcInput,
+  validateImportOptions, validateChatRequest, validateSessionKey, validateProvider,
+  validateSessionKeySetting, validateIpcInput,
 };

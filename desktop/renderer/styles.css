@@ -170,6 +170,7 @@ summary { cursor: pointer; }
 .include-plan small { display: block; font-size: 9px; color: #7e8d79; margin-top: 3px; }
 .model-settings { font-size: 10px; color: #75866f; margin: 10px 0 13px; }
 .model-settings label { margin-top: 10px; }
+.provider-select, .provider-model { margin-bottom: 13px; }
 #ask-submit { width: 100%; justify-content: space-between; margin-top: 2px; }
 #ask-submit > span { font-size: 18px; }
 .chat-empty { text-align: center; padding: 25px 14px 15px; }

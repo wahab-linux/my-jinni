@@ -75,12 +75,13 @@
         <section class="panel chat-panel" aria-labelledby="chat-heading">
           <div class="panel-heading"><span class="section-number">03</span><div><p class="eyebrow">ASK. CHECK. DECIDE.</p><h2 id="chat-heading">Ask your sources</h2></div><span class="tag ai-tag">Optional AI</span></div>
           <p class="section-copy">Get a concise answer with source quotes you can open and read for yourself.</p>
-          <div class="cloud-notice"><span aria-hidden="true">↗</span><p>Questions and selected evidence snippets are sent to OpenAI. <span>API processing is subject to the provider's data policies.</span></p></div>
+          <div class="cloud-notice"><span aria-hidden="true">↗</span><p>Questions and selected evidence snippets are sent to <strong id="cloud-recipient" data-testid="cloud-recipient">the selected provider</strong>. <span>API processing is subject to that provider's data policies.</span></p></div>
           <div class="chat-context"><span id="chat-selection" data-testid="chat-selection">No sources selected</span><span id="key-indicator" class="key-indicator">Key not set</span></div>
           <form id="chat-form" data-testid="chat-form" novalidate>
+            <label for="provider">AI provider</label><select id="provider" data-testid="provider" class="provider-select" disabled><option value="">Loading providers…</option></select>
             <label for="question">Your question</label><textarea id="question" data-testid="question" maxlength="2000" rows="4" placeholder="What do these sources say about access or opening hours?" required></textarea>
             <label class="check-row include-plan"><input id="include-plan" data-testid="include-plan" type="checkbox"><span>Include my current activity preferences<small>Calculates a plan from the form beside this chat.</small></span></label>
-            <details class="model-settings"><summary>Model settings</summary><label for="model">OpenAI model</label><input id="model" data-testid="model" maxlength="100" autocomplete="off" placeholder="Loaded from service"><p class="micro-copy">Requires a compatible model your API account can access.</p></details>
+            <details class="model-settings"><summary>Model settings</summary><label for="model">Provider model</label><input id="model" data-testid="model" maxlength="100" autocomplete="off" placeholder="Loaded from service"><p class="micro-copy">Editable for each provider. Requires a compatible model your API account can access.</p></details>
             <button id="ask-submit" data-testid="ask-submit" class="button dark" type="submit">Ask with selected context <span aria-hidden="true">↑</span></button>
           </form>
           <div id="chat-feedback" data-testid="chat-feedback" class="feedback" role="status" aria-live="polite"></div>
@@ -99,9 +100,9 @@
     </main>
 
     <dialog id="settings-dialog" data-testid="settings-dialog" aria-labelledby="settings-title">
-      <div class="dialog-heading"><div><p class="eyebrow">OPTIONAL OPENAI</p><h2 id="settings-title">A key for this session</h2></div><button id="settings-close" data-testid="settings-close" class="icon-button" aria-label="Close" type="button">×</button></div>
-      <p class="section-copy">Your activity planner and local library work without a key. AI answers use your own OpenAI API account.</p>
-      <form id="settings-form" novalidate><label for="api-key">OpenAI API key</label><input id="api-key" data-testid="api-key" type="password" autocomplete="off" spellcheck="false" placeholder="Enter a key to enable AI answers"><p class="micro-copy">Held in desktop memory for this session only. Never saved to your library. The field clears after saving.</p><div class="dialog-actions"><button id="save-key" data-testid="save-key" class="button primary" type="submit">Use for this session</button><button id="clear-key" data-testid="clear-key" class="button outline" type="button">Clear session key</button></div></form>
+      <div class="dialog-heading"><div><p class="eyebrow">OPTIONAL AI PROVIDERS</p><h2 id="settings-title">A key for this session</h2></div><button id="settings-close" data-testid="settings-close" class="icon-button" aria-label="Close" type="button">×</button></div>
+      <p class="section-copy">Your activity planner and local library work without a key. Each AI provider uses its own API account and session key.</p>
+      <form id="settings-form" novalidate><label for="settings-provider">AI provider</label><select id="settings-provider" data-testid="settings-provider" class="provider-select" disabled><option value="">Loading providers…</option></select><label for="settings-model">Model for this provider</label><input id="settings-model" data-testid="settings-model" class="provider-model" maxlength="100" autocomplete="off" placeholder="Loaded from service"><label id="api-key-label" for="api-key">Provider API key</label><input id="api-key" data-testid="api-key" type="password" autocomplete="off" spellcheck="false" placeholder="Enter a key to enable AI answers"><p class="micro-copy">Held in desktop memory for this session only. Never shared with another provider or saved to your library. The field clears after saving.</p><div class="dialog-actions"><button id="save-key" data-testid="save-key" class="button primary" type="submit">Use for this session</button><button id="clear-key" data-testid="clear-key" class="button outline" type="button">Clear this provider's key</button></div></form>
       <div id="key-status" data-testid="key-status" class="feedback" role="status" aria-live="polite"></div>
     </dialog>
 

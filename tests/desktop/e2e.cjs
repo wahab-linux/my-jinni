@@ -62,8 +62,9 @@ async function selectOnly(page, selectedIds) {
   }
 }
 
-async function saveKey(page, key) {
+async function saveKey(page, key, provider = 'openai') {
   await page.getByTestId('settings-button').click();
+  await page.getByTestId('settings-provider').selectOption(provider);
   await page.getByTestId('api-key').fill(key);
   await page.getByTestId('save-key').click();
   await waitUntil(async () => await page.getByTestId('api-key').inputValue() === '');
@@ -223,6 +224,72 @@ async function exerciseMockedProviderDesktop() {
       assert.equal((await page.getByTestId('chat-result').innerText()).includes('11:00'), false);
     });
 
+    await check('DeepSeek selection uses its model and never borrows the OpenAI key', async () => {
+      await page.getByTestId('provider').selectOption('deepseek');
+      assert.equal(await page.getByTestId('model').inputValue(), 'deepseek-flash');
+      await contains(page.getByTestId('cloud-recipient'), 'DeepSeek');
+      assert.deepEqual(await page.evaluate(() => window.myJinni.getSessionSettings('deepseek')), { configured: false });
+      assert.deepEqual(await page.evaluate(() => window.myJinni.getSessionSettings('openai')), { configured: true });
+      await ask(page, 'When does the fictional museum open?', 'deepseek-flash');
+      await contains(page.getByTestId('chat-feedback'), 'key');
+      await saveKey(page, 'sk-deepseek-test-placeholder', 'deepseek');
+      await ask(page, 'When does the fictional museum open?', 'deepseek-flash');
+      await contains(page.getByTestId('chat-answer'), '11:00');
+      const status = await (await fetch(`${backend.baseUrl}/__test__/provider-status`)).json();
+      assert.equal(status.last_provider, 'deepseek');
+      assert.equal(status.header_used, true);
+      assert.equal(status.body_key_free, true);
+      await screenshot(page, '06-deepseek-mocked-provider.png');
+    });
+
+    await check('Gemini and Anthropic also use isolated keys and checked original citations', async () => {
+      for (const [provider, model] of [['gemini', 'gemini-3.8-flash'], ['anthropic', 'claude-sonnet-4-6']]) {
+        await page.getByTestId('provider').selectOption(provider);
+        assert.equal(await page.getByTestId('model').inputValue(), model);
+        await saveKey(page, `sk-${provider}-test-placeholder`, provider);
+        await ask(page, 'When does the fictional museum open?', model);
+        await contains(page.getByTestId('chat-answer'), '11:00');
+        const status = await (await fetch(`${backend.baseUrl}/__test__/provider-status`)).json();
+        assert.equal(status.last_provider, provider);
+        assert.equal(status.header_used, true);
+        assert.equal(status.body_key_free, true);
+      }
+    });
+
+    await check('DeepSeek failure/retry is explicit and clearing its key leaves OpenAI configured', async () => {
+      await page.getByTestId('provider').selectOption('deepseek');
+      await ask(page, 'When does the fictional museum open?', 'test-provider-error');
+      await contains(page.getByTestId('chat-feedback'), 'unavailable');
+      await page.getByTestId('ask-submit').click();
+      await contains(page.getByTestId('chat-answer'), '11:00');
+      await page.getByTestId('settings-button').click();
+      await page.getByTestId('settings-provider').selectOption('deepseek');
+      await page.getByTestId('clear-key').click();
+      await waitUntil(async () => !(await page.evaluate(() => window.myJinni.getSessionSettings('deepseek'))).configured);
+      assert.deepEqual(await page.evaluate(() => window.myJinni.getSessionSettings('openai')), { configured: true });
+      await page.getByTestId('settings-dialog').getByRole('button', { name: 'Close', exact: true }).click();
+      await ask(page, 'When does the fictional museum open?', 'deepseek-flash');
+      await contains(page.getByTestId('chat-feedback'), 'key');
+      await page.getByTestId('plan-submit').click();
+      await contains(page.getByTestId('planner-result'), 'Short Film Club');
+    });
+
+    await check('switching provider invalidates a slow MOCKED answer and clears unsaved key entry', async () => {
+      await saveKey(page, 'sk-deepseek-test-placeholder', 'deepseek');
+      await ask(page, 'When does the fictional museum open?', 'test-slow');
+      await page.getByTestId('provider').selectOption('openai');
+      await page.waitForTimeout(650);
+      assert.equal((await page.getByTestId('chat-result').innerText()).includes('11:00'), false);
+      await page.getByTestId('settings-button').click();
+      await page.getByTestId('api-key').fill('unsaved-placeholder');
+      await page.getByTestId('settings-provider').selectOption('deepseek');
+      assert.equal(await page.getByTestId('api-key').inputValue(), '');
+      assert.equal(await page.getByTestId('provider').inputValue(), 'deepseek');
+      await screenshot(page, '07-deepseek-session-settings.png');
+      await page.getByTestId('settings-dialog').getByRole('button', { name: 'Close', exact: true }).click();
+      await page.getByTestId('provider').selectOption('openai');
+    });
+
     await check('keyboard navigation and resized window remain usable', async () => {
       await page.getByTestId('origin').focus();
       await page.keyboard.press('Tab');
@@ -249,7 +316,9 @@ async function exerciseMockedProviderDesktop() {
       const saved = await sources(backend.baseUrl);
       assert.ok(saved.some((source) => source.id === guide.id));
       assert.ok(saved.some((source) => source.id === imported.id));
-      assert.deepEqual(await page.evaluate(() => window.myJinni.getSessionSettings()), { configured: false });
+      for (const provider of ['openai', 'deepseek', 'gemini', 'anthropic']) {
+        assert.deepEqual(await page.evaluate((id) => window.myJinni.getSessionSettings(id), provider), { configured: false });
+      }
     });
   } catch (error) {
     if (page && !page.isClosed()) await screenshot(page, 'failure.png').catch(() => {});
@@ -299,10 +368,10 @@ async function exerciseOwnedBackendRecovery() {
 }
 
 async function main() {
-  console.log('Actual Electron + IPC + HTTP + SQLite + planner verification; OpenAI provider is MOCKED.');
+  console.log('Actual Electron + IPC + HTTP + SQLite + planner verification; all AI providers are MOCKED.');
   await exerciseMockedProviderDesktop();
   await exerciseOwnedBackendRecovery();
-  console.log(`DESKTOP E2E PASSED: ${checks} checks. Live OpenAI account access was not tested.`);
+  console.log(`DESKTOP E2E PASSED: ${checks} checks. Live provider account access was not tested.`);
 }
 
 main().catch((error) => { console.error(error.stack || error.message); process.exitCode = 1; });

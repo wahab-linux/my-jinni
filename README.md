@@ -7,7 +7,7 @@ Repository: [wahab-linux/my-jinni](https://github.com/wahab-linux/my-jinni). Loc
 
 ## Current delivery
 
-The Electron desktop client includes activity planning, a local source library, original-text citation viewing and optional source-grounded OpenAI questions. Its restricted bridge calls the Python backend, which calculates recommendations from two independently shaped simulated HTTP feeds. The launcher starts a local backend when needed and stops only the process it owns. This is a source-run application; a Windows installer and bundled Python runtime are not included.
+The Electron desktop client includes activity planning, a local source library, original-text citation viewing and optional source-grounded questions using OpenAI, DeepSeek, Google Gemini or Anthropic Claude. Its restricted bridge calls the Python backend, which calculates recommendations from two independently shaped simulated HTTP feeds. The launcher starts a local backend when needed and stops only the process it owns. This is a source-run application; a Windows installer and bundled Python runtime are not included.
 
 All activities, venues, travel times, fares and availability are fictional. The configured demo day is **20 October 2026**, in `Europe/London`. Campus and city-centre origins have different travel data. This prototype is a team submission to the challenge and is not an official BlackRock or Aladdin product.
 
@@ -34,7 +34,7 @@ For development with Node/npm available in the terminal, the desktop window and 
 npm run desktop
 ```
 
-After dependencies are installed, Node 22+ can also launch it with `node --run desktop`. If PowerShell reports that `node` is not recognised, use the Windows launcher above. A Node runtime available inside Codex does not imply it is on an ordinary PowerShell PATH. Initial dependency installation needs Internet access. Activity planning and local source import/view/delete work without an AI key; optional questions send selected evidence to OpenAI. Enter your own key in **AI settings**; it stays in main-process memory for this app session. Saving it does not verify model/account access. Never commit or share a key.
+After dependencies are installed, Node 22+ can also launch it with `node --run desktop`. If PowerShell reports that `node` is not recognised, use the Windows launcher above. A Node runtime available inside Codex does not imply it is on an ordinary PowerShell PATH. Initial dependency installation needs Internet access. Activity planning and local source import/view/delete work without an AI key; optional questions send selected evidence to the selected provider. Choose a provider in **AI settings** and enter its own key. Keys stay separately in main-process memory for this session; switching provider never copies a key. Saving a key does not verify account/model access. Never commit or share a key.
 
 The default local API is `http://127.0.0.1:8000`. An existing backend is reused only after health and identity checks. A busy port produces a visible retryable error. Optional `MY_JINNI_BACKEND_URL` selects another loopback HTTP origin; `MY_JINNI_DATA_DIR` explicitly overrides local storage. Normal launches preserve the backend's canonical library location and legacy-data compatibility.
 
@@ -62,16 +62,16 @@ Dependencies are locked in `uv.lock`. After initial setup, activity calculations
 
 ## Local library and cited AI questions
 
-The user confirmed this extension while retaining activity planning. [AI_EXTENSION.md](docs/AI_EXTENSION.md) specifies its additive v0.3 contract, ownership, errors and desktop handoff.
+The user confirmed this extension while retaining activity planning, then requested multiple providers including DeepSeek. [AI_EXTENSION.md](docs/AI_EXTENSION.md) and [AI_PROVIDERS.md](docs/AI_PROVIDERS.md) specify additive v0.4, preserving the planner and library/citation fields.
 
-The backend baseline has 348 passing tests. Real Electron checks cover planner results, source import/view/delete, source selection, session-key clearing, persistence, error/retry and managed backend startup/shutdown. Automated cited-answer checks use a mocked OpenAI transport while exercising the real window, IPC, HTTP, SQLite and citation validator. A successful request with a real OpenAI account/model remains unverified.
+Verification passes: 474 Python tests, 46 desktop unit tests, Ruff lint/format, desktop ESLint and 20 actual Electron end-to-end checks. The latter exercise real window/IPC/HTTP/SQLite/planner/citation code, including four-provider selection, key isolation, failure/retry and stale-answer clearing. Every cloud provider transport is mocked. A successful request with a real provider account/model remains unverified.
 
 - Import pasted text, UTF-8 TXT/Markdown or a text PDF. Select sources for each question and open citations to inspect the exact extracted quote and PDF page.
 - New source libraries default to `%LOCALAPPDATA%/my-jinni/library.sqlite3` when `LOCALAPPDATA` is available, or `~/.my-jinni/library.sqlite3` otherwise. Set `MY_JINNI_DATA_DIR` to choose another local data directory. No key or chat history is stored there.
 - Data compatibility: the legacy `PLANSCOPE_DATA_DIR` setting remains supported. An existing database under `%LOCALAPPDATA%/PlanScope/` or `~/.planscope/` is reused if the new default database is absent; no data is automatically moved or deleted.
 - Limits: 20 sources, 5 MiB per upload, 150,000 extracted characters and 40 PDF pages. Retrieval is local lexical search over at most six chunks, not embeddings or cross-language semantic search. One library and stateless chat are the MVP; no OCR, cloud sync or URL imports.
-- OpenAI requests send the question and selected evidence snippets to the fixed Responses endpoint with `store: false`. This is not a blanket provider retention guarantee. The default model is `gpt-4.1-mini`; actual model/account access must be checked with the team's own key.
-- The client passes its session key in `X-OpenAI-API-Key` for chat, never JSON or URLs. The backend does not save or log it. Without matching evidence, it returns insufficient evidence without contacting the model. A failed provider never becomes a fabricated answer.
+- Provider selection offers OpenAI (`gpt-4.1-mini`), DeepSeek (`deepseek-flash`), Google Gemini (`gemini-3.8-flash`) and Anthropic Claude (`claude-sonnet-4-6`) with editable model IDs. Defaults are suggestions; account access requires a real-key check. Question and bounded selected snippets go only to that provider's fixed official HTTPS endpoint. OpenAI uses `store: false`; do not infer this option or a blanket retention guarantee for every provider. There is no automatic provider fallback or custom base URL.
+- The client passes only the selected provider's session key in `X-AI-API-Key` for chat, never JSON or URLs. Legacy `X-OpenAI-API-Key` is accepted for OpenAI only; sending both headers returns 422. The backend does not save or log keys. Without matching evidence, it returns insufficient evidence without contacting any model. A failed provider never becomes a fabricated answer.
 - Chat can include the current activity form's `preferences`. The actual planner result is supplied as citable simulated evidence and returned separately; it remains the authoritative cost/time/ranking display.
 
 `GET /api/v1/sources` provides the list and capabilities. Add text with `POST /api/v1/sources`, upload multipart files to `/api/v1/sources/upload`, view/delete `/api/v1/sources/{id}`, and ask through `POST /api/v1/chat`. All use the existing data/error/warnings envelope. The named desktop operations are defined in [DESKTOP_BRIDGE.md](docs/DESKTOP_BRIDGE.md).
@@ -81,10 +81,10 @@ For a demo, import [venue-guide.md](contracts/fixtures/venue-guide.md) and mark 
 An optional separate account check uses a hidden prompt, or the process environment, for the key:
 
 ```sh
-uv run python -m scripts.verify_openai
+uv run python -m scripts.verify_ai --provider deepseek
 ```
 
-It makes one real billable request using a fictional fact and checks the returned citation. It prints no key or raw provider response. This is separate from desktop usability verification.
+It makes one real billable request to the selected provider using a fictional fact and checks the returned citation. It prints no key or raw provider response. This is separate from desktop usability verification. The original `scripts.verify_openai` remains available for OpenAI-only checks.
 
 ## Structure and ownership
 
@@ -120,10 +120,10 @@ npm run test:desktop
 npm run test:e2e
 ```
 
-The Electron end-to-end suite opens actual Windows app windows on isolated temporary storage and ports. OpenAI transport is mocked; no account key is needed. Screenshots are written under ignored `tmp/desktop/`. See [desktop/README.md](desktop/README.md) for the test boundary and launch details.
+The Electron end-to-end suite opens actual Windows app windows on isolated temporary storage and ports. All provider transports are mocked; no account key is needed. Screenshots are written under ignored `tmp/desktop/`. See [desktop/README.md](desktop/README.md) for the test boundary and launch details.
 
 Required source calls each have a two-second deadline. A failed feed returns 503; malformed/ambiguous data returns 502; valid data with no feasible activity returns 200 with `recommended: null`. There is no automatic fixture fallback. Exact budget, outbound-arrival and return-deadline boundaries are accepted. Ranking is interest match, total cost, total travel time, then event ID.
 
 ## Remaining delivery work
 
-Together, check the application with the team's own OpenAI account, inspect answer quality and citations, read the code you need to explain, rehearse the demo and complete the factual AI report. Record real manual edits and reviews before deciding the final AI-usage level. A packaged installer is deferred. Automated checks do not establish these human acceptance steps.
+Together, check the application with the team's own selected-provider account, inspect answer quality and citations, read the code you need to explain, rehearse the demo and complete the factual AI report. Record real manual edits and reviews before deciding the final AI-usage level. A packaged installer is deferred. Automated checks do not establish these human acceptance steps.

@@ -122,7 +122,7 @@ def test_source_lifecycle_persists_across_new_store_instances(knowledge_clients)
     assert initial.json()["data"]["sources"] == []
     assert initial.json()["data"]["storage"] == "local"
     assert initial.json()["data"]["retrieval"] == "lexical"
-    assert "OpenAI" in initial.json()["data"]["cloud_notice"]
+    assert "selected AI provider" in initial.json()["data"]["cloud_notice"]
 
     source = add_source(client)
     assert source["title"] == "Launch information"

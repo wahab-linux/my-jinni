@@ -4,6 +4,8 @@ This executes `docs/REQUIREMENTS.md`. The activity and confirmed library/AI back
 
 ## Current status and ownership
 
+The user subsequently approved multiple mainstream providers, specifically DeepSeek. `docs/AI_PROVIDERS.md` defines additive v0.4, preserving planner/library/citation contracts. All four adapters, defaults, isolated keys, header compatibility, recipient disclosure and stale-answer clearing are implemented. Verification passed 474 Python tests, 46 JavaScript unit tests and 20 actual Electron checks plus lint/format, with all cloud transports mocked. Live account/model access remains separate. Existing baseline counts below describe earlier verified increments.
+
 my-jinni chooses a feasible activity from two sources using budget, time and interests. Origins, date, timezone, categories and limits are scenario configuration; students are the first audience. Return is to the selected origin. The user changed the deliverable to a desktop client and approved reuse of frontend technology; Electron with HTML/CSS/JavaScript is the selected stack.
 
 The user also confirmed keeping the planner while adding one local source library and cited AI questions using OpenAI. The deterministic planner remains keyless. `docs/AI_EXTENSION.md` defines additive contract v0.3; every v0.2 activity field is preserved. Local SQLite, lexical retrieval and optional AI are now approved scope, with no cloud notebooks/sync, OCR, URL ingestion or embeddings.

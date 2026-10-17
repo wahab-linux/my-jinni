@@ -129,8 +129,12 @@ def _parse_answer(response: httpx.Response, chunks: list[SourceChunk]) -> DraftA
             texts.append(content["text"])
     if not texts:
         raise _invalid_response()
+    return validate_draft_answer("".join(texts), chunks)
+
+
+def validate_draft_answer(text: str, chunks: list[SourceChunk]) -> DraftAnswer:
     try:
-        draft = DraftAnswer.model_validate_json("".join(texts))
+        draft = DraftAnswer.model_validate_json(text)
     except (ValueError, ValidationError):
         raise _invalid_response() from None
     if not draft.answer.strip() or (draft.supported and not draft.citations):

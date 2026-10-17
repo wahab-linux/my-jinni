@@ -1,6 +1,6 @@
-# API contract v0.3
+# API contract v0.4
 
-v0.3 adds the source-library and cited OpenAI endpoints defined in [AI_EXTENSION.md](AI_EXTENSION.md). Every v0.2 activity request/response field below is preserved. The optional AI feature uses a session key; the activity planner does not require one. The OpenAPI snapshot includes both sets of endpoints.
+v0.3 added the source-library and cited-answer endpoints in [AI_EXTENSION.md](AI_EXTENSION.md). v0.4 adds OpenAI, DeepSeek, Google Gemini and Anthropic Claude selection as specified in [AI_PROVIDERS.md](AI_PROVIDERS.md): optional chat `provider`, selected-provider default model, response provider identity and source-list provider catalog. `X-AI-API-Key` is canonical; legacy `X-OpenAI-API-Key` remains OpenAI-only and supplying both is 422. Every v0.2 activity field and v0.3 library/citation field is preserved. AI uses the selected provider's separate session key; the activity planner needs none. The OpenAPI snapshot includes all endpoints.
 
 Read together before implementation. `docs/openapi.json` is the machine-readable snapshot; it must match `app/schemas.py` and the running API. v0.2 is an explicitly coordinated breaking scaffold update; URLs remain `/api/v1` because the first completed API has not shipped.
 

@@ -689,6 +689,24 @@
               ],
               "title": "X-Openai-Api-Key"
             }
+          },
+          {
+            "name": "X-AI-API-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "writeOnly": true,
+                  "format": "password"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Ai-Api-Key"
+            }
           }
         ],
         "requestBody": {
@@ -733,7 +751,7 @@
             }
           },
           "401": {
-            "description": "OpenAI key missing or access denied",
+            "description": "AI provider key missing or access denied",
             "content": {
               "application/json": {
                 "schema": {
@@ -753,7 +771,7 @@
             }
           },
           "429": {
-            "description": "OpenAI quota or rate limit",
+            "description": "AI provider quota or rate limit",
             "content": {
               "application/json": {
                 "schema": {
@@ -773,7 +791,7 @@
             }
           },
           "503": {
-            "description": "OpenAI unavailable",
+            "description": "AI provider unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -783,7 +801,7 @@
             }
           },
           "504": {
-            "description": "OpenAI generation timed out",
+            "description": "AI generation timed out",
             "content": {
               "application/json": {
                 "schema": {
@@ -798,6 +816,36 @@
   },
   "components": {
     "schemas": {
+      "AIProvider": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "enum": [
+              "openai",
+              "deepseek",
+              "gemini",
+              "anthropic"
+            ],
+            "title": "Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "default_model": {
+            "type": "string",
+            "title": "Default Model"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "default_model"
+        ],
+        "title": "AIProvider"
+      },
       "APIError": {
         "properties": {
           "code": {
@@ -881,6 +929,17 @@
             "type": "string",
             "title": "Answer"
           },
+          "provider": {
+            "type": "string",
+            "enum": [
+              "openai",
+              "deepseek",
+              "gemini",
+              "anthropic"
+            ],
+            "title": "Provider",
+            "default": "openai"
+          },
           "status": {
             "type": "string",
             "enum": [
@@ -943,6 +1002,17 @@
             "maxLength": 2000,
             "minLength": 1,
             "title": "Question"
+          },
+          "provider": {
+            "type": "string",
+            "enum": [
+              "openai",
+              "deepseek",
+              "gemini",
+              "anthropic"
+            ],
+            "title": "Provider",
+            "default": "openai"
           },
           "source_ids": {
             "items": {
@@ -2104,6 +2174,13 @@
             "title": "Default Model",
             "default": "gpt-4.1-mini"
           },
+          "providers": {
+            "items": {
+              "$ref": "#/components/schemas/AIProvider"
+            },
+            "type": "array",
+            "title": "Providers"
+          },
           "storage": {
             "type": "string",
             "const": "local",
@@ -2119,7 +2196,7 @@
           "cloud_notice": {
             "type": "string",
             "title": "Cloud Notice",
-            "default": "Questions and selected evidence snippets are sent to OpenAI for AI answers."
+            "default": "Questions and selected evidence snippets are sent to your selected AI provider."
           }
         },
         "additionalProperties": false,

@@ -1,6 +1,6 @@
 # my-jinni architecture
 
-my-jinni combines a deterministic activity planner with a user-confirmed local source library and optional cited OpenAI questions. Students are the first MVP audience; the activity core does not require student identity. Planning still works without a key. The Electron interface, restricted bridge, session settings and managed backend launcher are implemented. Sixteen automated Windows Electron checks passed with mocked OpenAI transport; human review, rehearsal and live OpenAI acceptance remain pending. Contract v0.3 adds source/chat operations while preserving every v0.2 activity field.
+my-jinni combines a deterministic activity planner with a local source library and optional cited AI questions. The user approved OpenAI, DeepSeek, Google Gemini and Anthropic Claude selection in additive v0.4; see `docs/AI_PROVIDERS.md`. Existing planner/library/citation fields stay unchanged. Students are the first MVP audience, with no identity requirement in the core. Planning needs no key. The desktop/launcher baseline passed 16 automated Electron checks with mocked OpenAI transport; new provider checks and live account/model verification must be recorded separately.
 
 ```mermaid
 flowchart LR
@@ -29,17 +29,17 @@ flowchart LR
         Ingestion["Local document extraction and chunking"]
         Store["Local SQLite: extracted text and chunks"]
         Retrieval["Selected-source lexical retrieval"]
-        AI["OpenAI Responses adapter"]
-        OpenAI["OpenAI: selected snippets and question"]
+        AI["Fixed provider adapters and shared citation validation"]
+        Providers["Selected OpenAI / DeepSeek / Gemini / Claude endpoint"]
         Adapters --> Events
         Adapters --> Travel
         Travel --> Campus
         Travel --> City
         Ingestion --> Store
         Store --> Retrieval
-        AI --> OpenAI
+        AI --> Providers
     end
-    Main -->|"loopback HTTP; additive v0.3 JSON"| API
+    Main -->|"loopback HTTP; additive v0.4 JSON"| API
     API --> Adapters
     Adapters -->|"normalised records and provenance"| API
     Knowledge --> Ingestion
@@ -61,7 +61,7 @@ flowchart LR
 | Integration | Fetch independently shaped feeds, validate metadata/records, convert exact GBP text to pence, preserve provenance and check travel origin. | Missing data as zero, mixed origins, invented availability or silently returning partial recommendations after required-source failure. |
 | Local knowledge | Bounded text/PDF extraction, page-aware chunks, SQLite persistence/deletion and selected-source lexical retrieval. | Cloud notebooks/sync, original-file archive, OCR, URL fetch, embeddings, stored keys or chat history. |
 | AI orchestration | Assemble selected evidence, optionally call the existing planner, request a structured answer and verify citation membership/quotes. | Replacing deterministic rules, inferring/changing form values, claiming quote checks prove truth or executing source instructions. |
-| OpenAI adapter | Fixed Responses endpoint, isolated Bearer key, bounded input/output, 30-second deadline and safe provider-error mapping. | Automatic retries/model substitution, remote file/vector-store upload, tools, web browsing or key/body logging. |
+| AI provider adapters | Fixed official HTTPS endpoints, selected key isolation, bounded input/output, structured/JSON protocols, 30-second deadline and safe errors. Shared schema/exact-quote validation applies to all. | Arbitrary base URLs, retries/provider/model substitution, remote file/vector-store upload, tools, browsing or key/body logging. |
 
 These responsibilities fit the challenge's three layers: experience, decision/application and data integration. Scenario configuration is part of the application boundary. The mock feeds are endpoints in the existing backend, not two separately deployed services or independent live organisations. Adapters call them through an injected `httpx.AsyncClient`; default `ASGITransport` reaches the same-process routes without a hardcoded server port.
 
@@ -87,12 +87,12 @@ The user approved this additive feature on 2026-10-17. `docs/AI_EXTENSION.md` de
 2. Local SQLite outside the checkout stores metadata, extracted text and chunks. Optional import `is_simulated` metadata follows the source into evidence/citations; mark fictional/generated demo guides explicitly, while the default false flag does not certify truth. Source detail returns the extracted original text for citation viewing; original file bytes are not retained. Deleting a source removes its chunks and retrieval entries. Keys and chat history are not saved in this database.
 3. A question explicitly names selected source IDs. Local lexical retrieval searches only those sources and supplies at most six bounded chunks. It can miss paraphrases or cross-language matches; this is not vector/semantic retrieval.
 4. If current form preferences are explicitly provided, chat calls the existing recommendation endpoint and returns its exact calculated JSON in `planner`. It reserves one evidence slot for a simulated ephemeral `planner-context` chunk and does not save that chunk to the library. Planner validation/source errors propagate. Question text never infers or changes the form.
-5. No retrieved evidence returns normal `insufficient_evidence` without a model call or key. Otherwise, the selected question/evidence go to the fixed OpenAI Responses endpoint, using the session header key. The request uses Structured Outputs, `store: false`, no tools, a 30-second deadline and bounded output. No provider retry or model substitution occurs automatically.
+5. No retrieved evidence returns normal `insufficient_evidence` without a cloud call or key. Otherwise, selected question/evidence go only to the selected provider's fixed official HTTPS endpoint using its separate session key. OpenAI retains Responses/`store: false`; DeepSeek uses JSON-object Chat Completions with thinking disabled, Gemini official compatible JSON-schema Chat Completions and Claude native Messages JSON output. All use bounded input/output and a 30-second deadline, with no tools, retries or provider/model fallback.
 6. The server accepts a supported answer only with citations whose chunk IDs belong to this request and whose quotes exist verbatim in those chunks. It attaches trusted source/page metadata and preserves simulation labels. Invalid, incomplete or refused output fails safely. These checks establish citation membership, not semantic entailment or factual truth; the user can open evidence and review the claim.
 
 Documents and titles remain untrusted input. Instructions embedded in them are supplied as data and do not authorise actions. An AI explanation must preserve the planner's computed feasibility, costs, times and ranking; the returned planner JSON is the authoritative display.
 
-`gpt-4.1-mini` is the configured default, with a selectable compatible model the user's API account can access. Compatibility and access for an actual account are not established by mocked tests. The OpenAI adapter and source API have separate error paths from activity feeds: authentication, rate limits, unsupported request/model, unavailable provider, timeout and invalid/refused answer remain distinguishable.
+`app/knowledge/provider_catalog.py` supplies provider IDs, labels and editable model defaults. Omitted provider remains OpenAI; an omitted model follows the selected provider. Invalid/null IDs are rejected. Source metadata adds a catalog while retaining legacy default fields; chat responses identify the requested provider, even when no cloud call occurs. Mocked tests do not establish account/model access. Authentication, rate limits, unsupported request/model, unavailable provider, timeout and invalid/refused answer remain distinct from activity-source errors.
 
 ## Desktop implementation and process lifecycle
 
@@ -100,7 +100,7 @@ Wahab owns the desktop experience; the user authorised agents to implement and v
 
 `desktop/api-client.cjs` performs asynchronous local HTTP, preserving `{status, body}` and server error envelopes. Connection failures have status 0 and a safe message. Ordinary requests have a five-second deadline; chat has 40 seconds to cover the backend's bounded 30-second generation and orchestration. Responses are capped at 4 MiB. Main owns the native picker, reads only its selected supported file with a 5 MiB bound and sends multipart data; renderer input cannot supply a path. A cancelled picker is distinct from an error or successful import.
 
-The API client's private session key remains in main-process memory and is added as `X-OpenAI-API-Key` only to chat requests over loopback. Settings return only `{configured: boolean}`; quitting clears the key. It never enters JSON request bodies, renderer persistence, settings files, SQLite, repository or logs. Disclose before generation that questions and selected snippets leave the device. `store: false` concerns Responses object storage and is not a blanket provider-retention guarantee. The planner and local library remain usable without an AI key.
+The API client's private provider-key map stays in main-process memory. Only the selected key enters `X-AI-API-Key` on loopback chat requests; settings return only `{configured:boolean}` for the requested provider. Clearing one key leaves others intact; quitting clears all. No key enters JSON, renderer persistence, files, SQLite, Git or logs. Chat/settings selectors agree; provider changes clear the entry field, invalidate stale answers and restore that provider's model. The cloud notice names the recipient. Legacy HTTP `X-OpenAI-API-Key` works only for OpenAI and both headers together are rejected. `store: false` is OpenAI-specific, not a blanket provider retention guarantee. Planning and local sources remain keyless.
 
 `package.json` and `package-lock.json` pin Electron 44.9.0 and Playwright 1.64.1. Initial setup is `uv sync` and `npm ci` and requires Internet access to obtain dependencies. On Windows, `start-my-jinni.cmd` launches the installed project-local Electron executable from the script's directory, without Node/npm on the launch terminal's PATH or global PATH changes. Developer commands `npm run desktop` and Node 22+ `node --run desktop` require Node in that terminal. Codex's bundled runtime is not automatically available in ordinary PowerShell. `uv run python -m app` remains the backend-only command. This is a source-run application; a bundled Python runtime and Windows installer have not been delivered.
 

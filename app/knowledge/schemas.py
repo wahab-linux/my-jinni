@@ -1,7 +1,8 @@
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import AwareDatetime, Field, StrictBool, field_validator, model_validator
 
+from app.knowledge.provider_catalog import PROVIDER_CATALOG, PROVIDER_DEFAULT_MODELS, ProviderId
 from app.schemas import Model, RecommendationData, RecommendationRequest
 
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024
@@ -40,6 +41,12 @@ class SourceDetail(Model):
     chunks: list[SourceChunk]
 
 
+class AIProvider(Model):
+    id: ProviderId
+    label: str
+    default_model: str
+
+
 class SourceList(Model):
     sources: list[LibrarySource]
     max_sources: int = MAX_SOURCES
@@ -49,10 +56,13 @@ class SourceList(Model):
     supported_extensions: list[str] = [".txt", ".md", ".pdf"]
     provider: Literal["openai"] = "openai"
     default_model: str = DEFAULT_MODEL
+    providers: list[AIProvider] = Field(
+        default_factory=lambda: [AIProvider(**provider) for provider in PROVIDER_CATALOG]
+    )
     storage: Literal["local"] = "local"
     retrieval: Literal["lexical"] = "lexical"
     cloud_notice: str = (
-        "Questions and selected evidence snippets are sent to OpenAI for AI answers."
+        "Questions and selected evidence snippets are sent to your selected AI provider."
     )
 
 
@@ -82,11 +92,21 @@ class SourceDeleted(Model):
 
 class ChatRequest(Model):
     question: Annotated[str, Field(min_length=1, max_length=2000)]
+    provider: ProviderId = "openai"
     source_ids: Annotated[list[SourceId], Field(max_length=MAX_SOURCES)] = []
     model: Annotated[str, Field(min_length=1, max_length=100, pattern=r"^[a-zA-Z0-9._:-]+$")] = (
         DEFAULT_MODEL
     )
     preferences: RecommendationRequest | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def choose_default_model(cls, value: Any) -> Any:
+        if isinstance(value, dict) and "model" not in value:
+            provider = value.get("provider", "openai")
+            if isinstance(provider, str) and provider in PROVIDER_DEFAULT_MODELS:
+                return {**value, "model": PROVIDER_DEFAULT_MODELS[provider]}
+        return value
 
     @model_validator(mode="after")
     def validate_question_and_selection(self) -> "ChatRequest":
@@ -125,6 +145,7 @@ class Citation(Model):
 
 class ChatData(Model):
     answer: str
+    provider: ProviderId = "openai"
     status: Literal["answered", "insufficient_evidence"]
     citations: list[Citation]
     model: str | None
