@@ -2,6 +2,8 @@
 
 ## Product and delivery
 
+The user requested a GitHub Pages browser edition on 2026-10-17, superseding the earlier desktop-only restriction for this additional deliverable. [BROWSER.md](BROWSER.md) defines its static planner, browser-local source library/PDF import and exact passage search. Provider-backed AI remains in the desktop edition. The existing backend and Electron contracts are preserved.
+
 my-jinni is a desktop activity planner with a local source library and optional cited AI questions. The user extended the initial OpenAI feature to DeepSeek, Google Gemini and Anthropic Claude; `docs/AI_PROVIDERS.md` defines additive v0.4 and separate session keys. Given an origin, budget, time window and interests, its deterministic planner recommends a feasible activity and explains cost and return timing without a key. Students are the first MVP audience; no student identity, account or campus-only rule belongs in the reusable activity core.
 
 The activity backend is implemented: two independently shaped simulated feeds are fetched, normalised, joined and used in actual deterministic decisions. The user confirmed the additive library/AI scope on 2026-10-17 and selected OpenAI. The latest backend baseline passed lint/format and 348 Python tests. The user also authorised agents to implement the Electron interface and its verification: window, planner/library/chat controls, restricted IPC, session-key settings and managed backend modules now exist. Sixteen real Windows Electron end-to-end checks passed with only the OpenAI transport mocked; live OpenAI and human acceptance remain pending. This is a source-run client with no bundled Python runtime or installer.

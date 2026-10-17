@@ -5,6 +5,21 @@ A desktop activity planner that combines activity and return-travel information 
 DYHTG 2026 BlackRock challenge. Backend: roXy. Desktop interface: Wahab.
 Repository: [wahab-linux/my-jinni](https://github.com/wahab-linux/my-jinni). Local checkout: `my-jinni`.
 
+## Browser edition on GitHub Pages
+
+The browser edition runs the activity planner, local source library, TXT/Markdown/text-PDF import and selected-source passage search without installing Python or Electron. All activity and travel data is visibly fictional. Sources stay in this browser's IndexedDB; they are separate from the desktop library. Cloud AI questions remain a desktop feature; browser search returns original excerpts, not generated answers.
+
+The Pages workflow tests and builds the site on pushes to `main`. A repository administrator must select **Settings → Pages → Build and deployment → Source: GitHub Actions** once. After a successful deployment, the site is available at **https://wahab-linux.github.io/my-jinni/**. A commit alone does not establish that it is live. See [browser setup and verification](docs/BROWSER.md).
+
+For local development after `uv sync --locked` and `npm ci`:
+
+```sh
+npm run build:pages
+python -m http.server 8080 --directory dist/pages
+```
+
+Open the local server in a modern browser. `npm run lint:web`, `npm run test:web` and `npm run test:web:e2e` check this edition; the last requires a Playwright Chromium installation (`npx playwright install chromium`).
+
 ## Current delivery
 
 The Electron desktop client includes activity planning, a local source library, original-text citation viewing and optional source-grounded questions using OpenAI, DeepSeek, Google Gemini or Anthropic Claude. Its restricted bridge calls the Python backend, which calculates recommendations from two independently shaped simulated HTTP feeds. The launcher starts a local backend when needed and stops only the process it owns. This is a source-run application; a Windows installer and bundled Python runtime are not included.

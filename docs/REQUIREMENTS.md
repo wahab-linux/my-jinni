@@ -1,5 +1,7 @@
 # my-jinni requirements
 
+**Additional user request, 2026-10-17:** provide and commit a usable GitHub Pages browser edition. This supersedes earlier statements excluding a separate website. [BROWSER.md](BROWSER.md) records its acceptance boundary: calculated static-data planning, browser-local text/PDF sources and selected-source passage search, with responsive layouts and automated browser/parity checks. Desktop cloud AI and SQLite remain available separately; the static edition clearly labels their absence rather than pretending to call the Python API.
+
 This document is the product and acceptance baseline, not a claim of completed functionality. Coordinated definitions live in `docs/API.md`, `docs/AI_EXTENSION.md`, `docs/AI_PROVIDERS.md`, runtime schemas, OpenAPI and fixtures. v0.3 added source-library/chat operations; the user approved additive v0.4 with OpenAI, DeepSeek, Google Gemini and Anthropic Claude, independent session keys and explicit recipient/model selection. Every existing planner/library/citation field is preserved. Live provider/account access remains a separate check.
 
 ## 1. Decisions and implementation status

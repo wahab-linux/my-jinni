@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Find a fictional Glasgow activity that fits your budget and time. A free browser planner with a private local source library.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="theme-color" content="#164e47">
+  <title>my-jinni · Your next good plan</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="app.mjs"></script>
+</head>
+<body>
+  <a class="skip" href="#planner">Skip to planner</a>
+  <header class="header wrap">
+    <a class="brand" href="./" aria-label="my-jinni home"><span class="mark" aria-hidden="true">j</span>my-jinni<span class="dot">.</span></a>
+    <nav aria-label="Main navigation"><a href="#planner">Planner</a><a href="#library">Your library</a><a href="https://github.com/wahab-linux/my-jinni" rel="noreferrer">GitHub ↗</a></nav>
+  </header>
+  <main class="wrap">
+    <section class="intro" aria-labelledby="title">
+      <div><p class="eyebrow">A LITTLE CONTEXT. A CLEARER PLAN.</p><h1 id="title">Make room for a<br>good next move.</h1><p class="lead">An activity you can afford. Time to get there and back.<br>A little help choosing what comes next.</p></div>
+      <aside class="intro-note"><span aria-hidden="true">✦</span><p>No downloads. No account.<br>Planning runs in your browser.</p></aside>
+    </section>
+    <div class="demo-banner"><strong>Fictional demo</strong><span>All activities, venues, fares and journeys are simulated. This is not live event or travel information.</span></div>
+    <noscript><p class="feedback error">Enable JavaScript to use the planner and browser library.</p></noscript>
+    <section id="planner" class="planner-grid" aria-labelledby="planner-title">
+      <div class="panel">
+        <div class="section-title"><span class="number">01</span><div><p class="eyebrow">YOUR NEXT MOVE</p><h2 id="planner-title">Find your activity</h2></div></div>
+        <p class="muted" id="coverage">Loading the demo’s supported dates and origins…</p>
+        <p id="setup-status" class="feedback" role="status" aria-live="polite">Loading planner…</p>
+        <button id="reload" type="button" class="button secondary" hidden>Retry loading</button>
+        <form id="planner-form">
+          <fieldset id="preferences" disabled>
+            <legend class="sr-only">Activity preferences</legend>
+            <label for="origin">Start and return location</label><select id="origin" name="origin" required></select>
+            <label for="date">Demo date</label><select id="date" name="date" required></select>
+            <div class="two-columns"><div><label for="depart">Leave at</label><input id="depart" name="depart" type="time" required></div><div><label for="return">Return by</label><input id="return" name="return" type="time" required></div></div>
+            <label for="budget">Total budget (£)</label><input id="budget" name="budget" type="text" inputmode="decimal" required aria-describedby="budget-hint" value="10.00"><p id="budget-hint" class="hint">Includes the activity and return travel.</p>
+            <fieldset class="interest-fieldset"><legend>What are you in the mood for?</legend><div id="interests" class="chips"></div></fieldset>
+            <button id="plan-submit" class="button primary" type="submit">Find a plan <span aria-hidden="true">↗</span></button>
+          </fieldset>
+        </form>
+      </div>
+      <div class="panel results-panel" aria-labelledby="results-title">
+        <p class="eyebrow">A PLAN THAT FITS</p><h2 id="results-title">Your possibilities</h2>
+        <p id="plan-status" class="feedback" role="status" aria-live="polite">Set your preferences, then find a plan.</p>
+        <div id="plan-results"></div>
+      </div>
+    </section>
+    <section id="library" class="panel library-panel" aria-labelledby="library-title">
+      <div class="section-title"><span class="number">02</span><div><p class="eyebrow">YOUR CONTEXT</p><h2 id="library-title">A library that stays with you</h2></div></div>
+      <p class="muted">Save notes and guides in this browser. Select sources to find exact matching passages. Your documents and searches stay on this device; nothing is sent to an AI provider.</p>
+      <p class="hint">Up to 20 sources · TXT, Markdown or text PDF · 5 MiB each · 150,000 characters · 40 PDF pages. Browser data is separate from the desktop library. Clearing site data removes it; download important sources to keep a copy.</p>
+      <p id="library-status" class="feedback" role="status" aria-live="polite">Opening your browser library…</p>
+      <div class="library-grid">
+        <div>
+          <div class="actions"><button id="paste-toggle" type="button" class="button secondary" aria-expanded="false" aria-controls="paste-form">+ Paste text</button><button id="import-button" type="button" class="button secondary">Import file</button><button id="demo-source" type="button" class="text-button">Try a fictional guide ↗</button></div>
+          <input type="file" id="file" accept=".txt,.md,.markdown,.pdf" hidden>
+          <form id="paste-form" hidden>
+            <label for="source-title">Source title</label><input id="source-title" maxlength="200" required>
+            <label for="source-text">Source text</label><textarea id="source-text" rows="6" maxlength="150000" required></textarea>
+            <label class="check"><input id="source-simulated" type="checkbox">Fictional or AI-generated content</label>
+            <button class="button primary" type="submit">Save on this device</button>
+          </form>
+          <label class="check import-label"><input id="import-simulated" type="checkbox">Mark imported files as fictional / AI-generated</label>
+          <p id="source-count" class="hint"></p><div id="sources" class="source-list"></div>
+        </div>
+        <div class="search-panel">
+          <h3>Find it in your sources</h3><p class="muted">Search selected sources by keywords, such as “beginner board games”. Results are original excerpts, not AI-generated answers. Keyword search can miss paraphrases.</p>
+          <form id="search-form"><label for="question">What are you looking for?</label><textarea id="question" maxlength="2000" rows="3" required placeholder="Is Board Game Night suitable for a beginner?"></textarea><button class="button primary" type="submit">Find passages <span aria-hidden="true">→</span></button></form>
+          <p id="search-status" class="feedback" role="status" aria-live="polite"></p><div id="search-results"></div>
+        </div>
+      </div>
+    </section>
+    <section class="about" aria-label="About this browser edition"><p><strong>Your browser workspace.</strong> This free GitHub Pages edition calculates plans from the repository’s fictional datasets. It works without the desktop app or a backend. PDF extraction and keyword search run locally.</p><p>For optional source-grounded AI questions with OpenAI, DeepSeek, Gemini or Claude, use the <a href="https://github.com/wahab-linux/my-jinni#run-the-desktop-application">desktop edition</a>. Cloud AI generation is not available on this static site.</p></section>
+  </main>
+  <footer class="wrap footer"><span>my-jinni · A little more possible.</span><span>A team prototype. Not an official BlackRock or Aladdin product.</span></footer>
+  <dialog id="viewer" aria-labelledby="viewer-title"><div class="dialog-top"><h2 id="viewer-title">Original source</h2><button id="viewer-close" type="button" class="button secondary">Close</button></div><p id="viewer-meta" class="hint"></p><div id="viewer-content"></div><button id="download-source" type="button" class="button secondary">Download extracted text</button></dialog>
+</body>
+</html>

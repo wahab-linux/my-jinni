@@ -18,6 +18,14 @@ This is a working log, not a completed human-review statement. Update it through
 
 For each subsequent task, add the tool/model/paid plan, why it was used, what it generated, specific human decisions or code edits, and the actual check/result. Keep relevant commits or conversation evidence where available. Do not invent review, metrics, or edits.
 
+## Additional browser delivery, 2026-10-17
+
+The user requested a committed GitHub Pages application that users can operate in a browser. Codex implemented the static HTML/CSS/JavaScript planner and browser-local IndexedDB source workspace, local PDF.js import, selected-source keyword excerpts with original text/page viewing, download/delete/persistence, a build from validated existing Python adapters and a tested Pages deployment workflow. This extends the user's earlier desktop-only decision. No new human code review/manual edits, paid plan, exact model identity or final AI-level classification are claimed.
+
+Verification passed: Ruff lint/format; 475 Python tests, including comparison of 226 complete browser/Python planner responses; 46 existing desktop unit tests; six browser unit tests; desktop/browser ESLint; 16 actual Chromium browser checks against the built project-path site; and 20 actual Electron E2E checks. Browser checks used America/Los_Angeles as the visitor timezone, verified London planning, text/PDF ingestion and failure limits, source isolation/safe text, original passages, persistence/download/delete, storage and data-load failures, retry, keyboard source selection and 390/768/1280px layouts. Agent inspected desktop/mobile browser screenshots. No backend service or cloud-provider mocks were needed for browser tests. Existing Electron provider transports remain mocked, and the existing Python TestClient deprecation warning remains.
+
+Browser search is explicitly labelled as original excerpts, not AI generation. Cloud AI remains in the desktop edition. Source datasets remain fictional. Local tests and a commit do not establish successful hosted deployment; GitHub API requests to inspect/activate Pages were blocked by the environment's network policy. The deployment workflow and one-time repository Settings instructions are included in `docs/BROWSER.md`.
+
 ## Failure and checking
 
 - Runtime recommendations now use deterministic rules with no LLM dependency. Automated rule/source/integration tests, lint and actual startup/HTTP checks have been performed. Human code review and desktop/demo checks must be recorded separately when they actually occur.

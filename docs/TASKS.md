@@ -1,5 +1,7 @@
 # Development tasks and integration checkpoints
 
+The user's additional GitHub Pages request is implemented as the browser edition described in [BROWSER.md](BROWSER.md), with a separate static build/deployment workflow and browser/parity tests. The previous desktop-only task boundary is superseded for that deliverable. Hosted activation and actual deployment status must be recorded separately from local validation and committing.
+
 This executes `docs/REQUIREMENTS.md`. The activity and confirmed library/AI backends, Electron interface, restricted bridge and managed launcher are implemented. All 348 Python tests, 39 JavaScript unit tests and 16 real Windows Electron checks pass, alongside lint/format. Electron provider checks mock only OpenAI transport; human/live-provider acceptance remains pending. Checkboxes record actual team acceptance, so none is checked on the humans' behalf. Timeboxes are suggested planning, not official competition timings. Official code freeze is Sunday 18 October at 12:00 UK time. Protect the final 60-90 minutes for fixes, submission and rehearsal.
 
 ## Current status and ownership

@@ -4,18 +4,25 @@
   "private": true,
   "description": "Desktop activity planning and source-grounded AI questions",
   "main": "desktop/main.cjs",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "desktop": "electron .",
     "lint:desktop": "eslint desktop tests/desktop",
     "test:desktop": "node --test tests/desktop/*.test.cjs",
-    "test:e2e": "node tests/desktop/e2e.cjs"
+    "test:e2e": "node tests/desktop/e2e.cjs",
+    "build:pages": "uv run --locked python -m scripts.build_pages",
+    "lint:web": "eslint web tests/web",
+    "test:web": "node --test tests/web/*.test.mjs",
+    "test:web:e2e": "node tests/web/e2e.mjs"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "electron": "44.9.0",
     "eslint": "10.13.0",
     "globals": "17.13.0",
+    "pdfjs-dist": "6.4.299",
     "playwright": "1.64.1"
   }
 }

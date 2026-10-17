@@ -1,5 +1,7 @@
 # my-jinni architecture
 
+The user also requested a GitHub Pages browser edition on 2026-10-17. Its separate static experience, pure JavaScript decision layer, build-time use of validated backend adapters, browser-local IndexedDB library and PDF extraction are described in [BROWSER.md](BROWSER.md). Cross-language parity tests guard planner equivalence. It uses no live Python service; selected-source keyword excerpts replace cloud AI generation in this edition. The desktop architecture below remains supported.
+
 my-jinni combines a deterministic activity planner with a local source library and optional cited AI questions. The user approved OpenAI, DeepSeek, Google Gemini and Anthropic Claude selection in additive v0.4; see `docs/AI_PROVIDERS.md`. Existing planner/library/citation fields stay unchanged. Students are the first MVP audience, with no identity requirement in the core. Planning needs no key. The desktop/launcher baseline passed 16 automated Electron checks with mocked OpenAI transport; new provider checks and live account/model verification must be recorded separately.
 
 ```mermaid
