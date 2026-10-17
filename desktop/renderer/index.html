@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+    <title>my-jinni</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">j</span><span>my-jinni<span class="brand-dot">.</span></span></div>
+      <span class="workspace-label">YOUR LOCAL WORKSPACE</span>
+      <div class="header-actions">
+        <span id="backend-status" data-testid="backend-status" class="connection-badge" role="status">Starting local service…</span>
+        <button id="backend-retry" data-testid="backend-retry" class="button small subtle" type="button" hidden>Retry connection</button>
+        <button id="settings-button" data-testid="settings-button" class="button small outline" type="button"><span aria-hidden="true">⚙</span> AI settings</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="workspace-intro" aria-labelledby="workspace-title">
+        <div><p class="eyebrow">A LITTLE CONTEXT. A CLEARER PLAN.</p><h1 id="workspace-title">Make room for a good next move.</h1><p class="intro-copy">Your sources, a realistic activity plan, and answers you can check.</p></div>
+        <div class="workspace-note"><span class="small-orbit" aria-hidden="true">✦</span><span>Planning works without AI.<br>Your library stays on this device.</span></div>
+      </section>
+
+      <div class="workspace-grid">
+        <aside class="panel library-panel" aria-labelledby="library-heading">
+          <div class="panel-heading"><span class="section-number">01</span><div><p class="eyebrow">YOUR CONTEXT</p><h2 id="library-heading">Source library</h2></div></div>
+          <p class="section-copy">Keep useful notes and guides together. Select the ones your next question can use.</p>
+          <div class="library-actions">
+            <button id="import-source" data-testid="import-source" class="button primary" type="button"><span aria-hidden="true">＋</span> Import a file</button>
+            <button id="add-text-toggle" data-testid="add-text-toggle" class="button outline" type="button" aria-expanded="false" aria-controls="text-source-form">Paste text</button>
+          </div>
+          <label class="check-row import-label"><input id="source-simulated" data-testid="source-simulated" type="checkbox"><span>Imported file is fictional / AI-generated</span></label>
+          <p id="library-limits" class="micro-copy">TXT, Markdown and text PDFs. No scanned documents.</p>
+          <form id="text-source-form" class="paste-form" hidden novalidate>
+            <label for="source-title">Source title</label><input id="source-title" data-testid="source-title" maxlength="200" placeholder="e.g. Venue access notes" required>
+            <label for="source-text">Source text</label><textarea id="source-text" data-testid="source-text" rows="6" maxlength="150000" placeholder="Paste the text you want to ask about…" required></textarea>
+            <label class="check-row"><input id="text-source-simulated" data-testid="text-source-simulated" type="checkbox"><span>Fictional / AI-generated material</span></label>
+            <button id="add-source-submit" data-testid="add-source-submit" class="button primary" type="submit">Add to library</button>
+          </form>
+          <div id="library-status" data-testid="library-status" class="feedback" role="status" aria-live="polite"></div>
+          <div class="library-list-heading"><span id="source-count">YOUR SOURCES</span><button id="library-refresh" class="text-button" type="button">Refresh</button></div>
+          <div id="source-list" data-testid="source-list" class="source-list" aria-label="Sources available for selection"></div>
+          <div class="library-footer"><span aria-hidden="true">⌂</span><p>Stored locally. Only selected evidence is sent when you ask AI.</p></div>
+        </aside>
+
+        <section class="panel planner-panel" aria-labelledby="planner-heading">
+          <div class="panel-heading"><span class="section-number">02</span><div><p class="eyebrow">TURN TIME INTO A PLAN</p><h2 id="planner-heading">Find your next activity</h2></div><span class="tag simulation">Simulated demo data</span></div>
+          <p class="section-copy">Set your starting point, time and budget. We check the activity and the journey back.</p>
+          <div id="options-state" data-testid="options-state" class="feedback" role="status">Loading your planning options…</div>
+          <button id="options-retry" data-testid="options-retry" class="button small outline" type="button" hidden>Retry planning options</button>
+          <form id="planner-form" data-testid="planner-form" novalidate>
+            <fieldset id="planner-fields" disabled>
+              <div class="field"><label for="origin">Start and return to</label><select id="origin" data-testid="origin" required></select></div>
+              <div class="form-grid">
+                <div class="field"><label for="date">Day</label><select id="date" data-testid="date" required></select></div>
+                <div class="field"><label for="budget">Total budget</label><div class="money-input"><span aria-hidden="true">£</span><input id="budget" data-testid="budget" inputmode="decimal" autocomplete="off" placeholder="10.00" aria-describedby="budget-help" required></div></div>
+                <div class="field"><label for="depart">Leave at</label><input id="depart" data-testid="depart" type="time" required></div>
+                <div class="field"><label for="return">Be back by</label><input id="return" data-testid="return" type="time" required></div>
+              </div>
+              <div class="form-help"><span id="timezone-label">Times shown in Europe/London</span><span id="budget-help">Includes return travel</span></div>
+              <fieldset class="interest-fieldset"><legend>What sounds good?</legend><div id="interests" data-testid="interests" class="interest-options"></div></fieldset>
+              <button id="plan-submit" data-testid="plan-submit" class="button primary plan-button" type="submit">Find a feasible plan <span aria-hidden="true">↗</span></button>
+            </fieldset>
+          </form>
+          <div id="planner-feedback" data-testid="planner-feedback" class="feedback" role="status" aria-live="polite"></div>
+          <div id="planner-result" data-testid="planner-result" class="planner-result" aria-live="polite">
+            <div class="empty-plan"><span class="empty-symbol" aria-hidden="true">↗</span><h3>A plan that fits real constraints.</h3><p>We compare your interests, total cost, arrival time and return deadline. No AI key needed.</p><div class="rule-pills"><span>Budget</span><span>Time</span><span>Journey</span></div></div>
+          </div>
+        </section>
+
+        <section class="panel chat-panel" aria-labelledby="chat-heading">
+          <div class="panel-heading"><span class="section-number">03</span><div><p class="eyebrow">ASK. CHECK. DECIDE.</p><h2 id="chat-heading">Ask your sources</h2></div><span class="tag ai-tag">Optional AI</span></div>
+          <p class="section-copy">Get a concise answer with source quotes you can open and read for yourself.</p>
+          <div class="cloud-notice"><span aria-hidden="true">↗</span><p>Questions and selected evidence snippets are sent to OpenAI. <span>API processing is subject to the provider's data policies.</span></p></div>
+          <div class="chat-context"><span id="chat-selection" data-testid="chat-selection">No sources selected</span><span id="key-indicator" class="key-indicator">Key not set</span></div>
+          <form id="chat-form" data-testid="chat-form" novalidate>
+            <label for="question">Your question</label><textarea id="question" data-testid="question" maxlength="2000" rows="4" placeholder="What do these sources say about access or opening hours?" required></textarea>
+            <label class="check-row include-plan"><input id="include-plan" data-testid="include-plan" type="checkbox"><span>Include my current activity preferences<small>Calculates a plan from the form beside this chat.</small></span></label>
+            <details class="model-settings"><summary>Model settings</summary><label for="model">OpenAI model</label><input id="model" data-testid="model" maxlength="100" autocomplete="off" placeholder="Loaded from service"><p class="micro-copy">Requires a compatible model your API account can access.</p></details>
+            <button id="ask-submit" data-testid="ask-submit" class="button dark" type="submit">Ask with selected context <span aria-hidden="true">↑</span></button>
+          </form>
+          <div id="chat-feedback" data-testid="chat-feedback" class="feedback" role="status" aria-live="polite"></div>
+          <div id="chat-result" data-testid="chat-result" class="chat-result" aria-live="polite" hidden>
+            <div class="answer-heading"><span class="answer-mark" aria-hidden="true">✦</span><span id="answer-label">SOURCE-GROUNDED ANSWER</span></div>
+            <div id="chat-answer" data-testid="chat-answer" class="chat-answer"></div>
+            <div id="citations" data-testid="citations" class="citations"></div>
+            <div id="chat-planner" data-testid="chat-planner" class="chat-planner"></div>
+            <div id="chat-warnings"></div><p id="chat-model-label" class="micro-copy"></p>
+          </div>
+          <div id="chat-empty" class="chat-empty"><div class="context-illustration" aria-hidden="true"><span></span><span></span><b>“</b></div><h3>A useful answer starts with context.</h3><p>Select a source, or include your activity preferences. Then ask a specific question.</p></div>
+          <p class="chat-footnote">Each question starts fresh. Quote checks help you verify evidence; they do not prove every claim is true. Local search may miss paraphrases.</p>
+        </section>
+      </div>
+      <footer class="app-footer"><span>my-jinni · DYHTG 2026 prototype</span><span>Fictional activity and travel data · Not a live routing service</span></footer>
+    </main>
+
+    <dialog id="settings-dialog" data-testid="settings-dialog" aria-labelledby="settings-title">
+      <div class="dialog-heading"><div><p class="eyebrow">OPTIONAL OPENAI</p><h2 id="settings-title">A key for this session</h2></div><button id="settings-close" data-testid="settings-close" class="icon-button" aria-label="Close" type="button">×</button></div>
+      <p class="section-copy">Your activity planner and local library work without a key. AI answers use your own OpenAI API account.</p>
+      <form id="settings-form" novalidate><label for="api-key">OpenAI API key</label><input id="api-key" data-testid="api-key" type="password" autocomplete="off" spellcheck="false" placeholder="Enter a key to enable AI answers"><p class="micro-copy">Held in desktop memory for this session only. Never saved to your library. The field clears after saving.</p><div class="dialog-actions"><button id="save-key" data-testid="save-key" class="button primary" type="submit">Use for this session</button><button id="clear-key" data-testid="clear-key" class="button outline" type="button">Clear session key</button></div></form>
+      <div id="key-status" data-testid="key-status" class="feedback" role="status" aria-live="polite"></div>
+    </dialog>
+
+    <dialog id="source-dialog" data-testid="source-dialog" class="source-dialog" aria-labelledby="source-dialog-title">
+      <div class="dialog-heading"><div><p class="eyebrow">CHECK THE ORIGINAL CONTEXT</p><h2 id="source-dialog-title" data-testid="source-dialog-title">Source</h2></div><button id="source-close" data-testid="source-close" class="icon-button" aria-label="Close" type="button">×</button></div>
+      <div id="citation-quote" data-testid="citation-quote" class="citation-quote" hidden></div>
+      <div id="source-dialog-content" data-testid="source-dialog-content" class="source-dialog-content"></div>
+    </dialog>
+  </body>
+</html>

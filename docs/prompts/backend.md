@@ -20,7 +20,7 @@ First integrate TXT/Markdown/text PDFs, source selection, one answer with checke
 - `app/sources/adapters.py` fetches both feeds with injected `httpx.AsyncClient`, concurrent calls and a two-second deadline per source. Same-process mock HTTP routes use ASGITransport without a hardcoded external server. Travel requests explicitly select and verify `origin_id`.
 - `app/decision/domain.py` defines normalised records. `engine.calculate` is pure: no FastAPI, HTTP, file I/O, source-schema or scenario dependency. It checks all hard constraints before deterministic ranking.
 - `app/main.py` validates scenario coverage, fetches sources, calls the engine and renders factual explanations and the response envelope. `app/scenario.py` owns supported origins, fictional dates, timezone and budget cap. The general request model and engine remain independent of these demo limits.
-- The Electron main process will call the local API through fixed IPC methods exposed by preload. The renderer uses HTML/CSS/JavaScript inside the desktop window. No standalone website, wildcard CORS or disabled browser security is needed.
+- The implemented Electron main process calls the local API through fixed IPC methods exposed by preload. See `docs/DESKTOP_BRIDGE.md` for the named operations and `tests/desktop/` for real-window verification. The renderer uses HTML/CSS/JavaScript inside the desktop window. No standalone website, wildcard CORS or disabled browser security is needed.
 
 ## Rules to preserve
 

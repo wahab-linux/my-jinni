@@ -7,13 +7,32 @@ Repository: [wahab-linux/my-jinni](https://github.com/wahab-linux/my-jinni). Loc
 
 ## Current delivery
 
-The Python backend calculates recommendations from two independently shaped simulated HTTP feeds. It also provides a local source library and optional source-grounded OpenAI questions with checked citations. The product interface is an Electron desktop client using HTML/CSS/JavaScript; Wahab owns that implementation. No desktop window or installer is delivered by the backend command below.
+The Electron desktop client includes activity planning, a local source library, original-text citation viewing and optional source-grounded OpenAI questions. Its restricted bridge calls the Python backend, which calculates recommendations from two independently shaped simulated HTTP feeds. The launcher starts a local backend when needed and stops only the process it owns. This is a source-run application; a Windows installer and bundled Python runtime are not included.
 
 All activities, venues, travel times, fares and availability are fictional. The configured demo day is **20 October 2026**, in `Europe/London`. Campus and city-centre origins have different travel data. This prototype is a team submission to the challenge and is not an official BlackRock or Aladdin product.
 
-## Run the backend
+## Run the desktop application
 
-Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then run from the repository root:
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/) and Node.js 22 or later with npm. From the repository root, perform the initial setup:
+
+```sh
+uv sync
+npm ci
+```
+
+Then launch the desktop window and its local backend with one command:
+
+```sh
+npm run desktop
+```
+
+After dependencies are installed, Node 22+ can also launch it with `node --run desktop`. Initial dependency installation needs Internet access. Activity planning and local source import/view/delete work without an AI key; optional questions send selected evidence to OpenAI. Enter your own key in **AI settings**; it stays in main-process memory for this app session. Saving it does not verify model/account access. Never commit or share a key.
+
+The default local API is `http://127.0.0.1:8000`. An existing backend is reused only after health and identity checks. A busy port produces a visible retryable error. Optional `MY_JINNI_BACKEND_URL` selects another loopback HTTP origin; `MY_JINNI_DATA_DIR` explicitly overrides local storage. Normal launches preserve the backend's canonical library location and legacy-data compatibility.
+
+## Run the backend separately
+
+For backend-only development:
 
 ```sh
 uv run python -m app
@@ -37,7 +56,7 @@ Dependencies are locked in `uv.lock`. After initial setup, activity calculations
 
 The user confirmed this extension while retaining activity planning. [AI_EXTENSION.md](docs/AI_EXTENSION.md) specifies its additive v0.3 contract, ownership, errors and desktop handoff.
 
-Verification: 344 tests, Ruff lint and formatting pass. Real local HTTP checks covered source creation/view/list/delete, insufficient evidence, missing-key errors and the original keyless planner. OpenAI output tests use injected transports; a successful real account/model request and the Electron UI still require separate verification.
+The backend baseline has 348 passing tests. Real Electron checks cover planner results, source import/view/delete, source selection, session-key clearing, persistence, error/retry and managed backend startup/shutdown. Automated cited-answer checks use a mocked OpenAI transport while exercising the real window, IPC, HTTP, SQLite and citation validator. A successful request with a real OpenAI account/model remains unverified.
 
 - Import pasted text, UTF-8 TXT/Markdown or a text PDF. Select sources for each question and open citations to inspect the exact extracted quote and PDF page.
 - New source libraries default to `%LOCALAPPDATA%/my-jinni/library.sqlite3` when `LOCALAPPDATA` is available, or `~/.my-jinni/library.sqlite3` otherwise. Set `MY_JINNI_DATA_DIR` to choose another local data directory. No key or chat history is stored there.
@@ -47,7 +66,17 @@ Verification: 344 tests, Ruff lint and formatting pass. Real local HTTP checks c
 - The client passes its session key in `X-OpenAI-API-Key` for chat, never JSON or URLs. The backend does not save or log it. Without matching evidence, it returns insufficient evidence without contacting the model. A failed provider never becomes a fabricated answer.
 - Chat can include the current activity form's `preferences`. The actual planner result is supplied as citable simulated evidence and returned separately; it remains the authoritative cost/time/ranking display.
 
-`GET /api/v1/sources` provides the list and capabilities. Add text with `POST /api/v1/sources`, upload multipart files to `/api/v1/sources/upload`, view/delete `/api/v1/sources/{id}`, and ask through `POST /api/v1/chat`. All use the existing data/error/warnings envelope. Read the extension before wiring these calls through Electron's restricted IPC bridge.
+`GET /api/v1/sources` provides the list and capabilities. Add text with `POST /api/v1/sources`, upload multipart files to `/api/v1/sources/upload`, view/delete `/api/v1/sources/{id}`, and ask through `POST /api/v1/chat`. All use the existing data/error/warnings envelope. The named desktop operations are defined in [DESKTOP_BRIDGE.md](docs/DESKTOP_BRIDGE.md).
+
+For a demo, import [venue-guide.md](contracts/fixtures/venue-guide.md) and mark it fictional/AI-generated. Select it and ask, "Is Board Game Night suitable for a beginner?" With a valid key, inspect the returned quote against the extracted source. You can also tick **Include my current activity preferences** to supply an actual calculated plan. Without a key, demonstrate planning and local sources; do not present automated provider mocks as a live answer.
+
+An optional separate account check uses a hidden prompt, or the process environment, for the key:
+
+```sh
+uv run python -m scripts.verify_openai
+```
+
+It makes one real billable request using a fictional fact and checks the returned citation. It prints no key or raw provider response. This is separate from desktop usability verification.
 
 ## Structure and ownership
 
@@ -63,9 +92,9 @@ app/
   knowledge/             Local library, ingestion, retrieval and OpenAI adapter
 data/                     Fictional source datasets
 contracts/fixtures/       Shared request/response examples, not fallback answers
-desktop/                  Wahab's client implementation boundary and handoff
-tests/                    Contract, source, rule and integration checks
-scripts/                  OpenAPI export
+desktop/                  Electron main/preload, API/lifecycle modules and renderer
+tests/                    Python checks and desktop unit/end-to-end checks
+scripts/                  OpenAPI export and optional live OpenAI check
 docs/                     Requirements, architecture, tasks, prompts and AI log
 ```
 
@@ -78,10 +107,15 @@ uv run ruff check .
 uv run ruff format --check .
 uv run pytest
 uv run python -m scripts.export_openapi
+npm run lint:desktop
+npm run test:desktop
+npm run test:e2e
 ```
+
+The Electron end-to-end suite opens actual Windows app windows on isolated temporary storage and ports. OpenAI transport is mocked; no account key is needed. Screenshots are written under ignored `tmp/desktop/`. See [desktop/README.md](desktop/README.md) for the test boundary and launch details.
 
 Required source calls each have a two-second deadline. A failed feed returns 503; malformed/ambiguous data returns 502; valid data with no feasible activity returns 200 with `recommended: null`. There is no automatic fixture fallback. Exact budget, outbound-arrival and return-deadline boundaries are accepted. Ranking is interest match, total cost, total travel time, then event ID.
 
 ## Remaining delivery work
 
-Wahab must implement and verify the desktop window, asynchronous API calls, results, loading/error/retry states, and the launcher/backend lifecycle. Together, verify the real client flow, source failure and retry, packaging if time permits, code understanding, demo rehearsal and the factual AI report. Backend automated checks do not establish that these human and UI acceptance steps are complete.
+Together, check the application with the team's own OpenAI account, inspect answer quality and citations, read the code you need to explain, rehearse the demo and complete the factual AI report. Record real manual edits and reviews before deciding the final AI-usage level. A packaged installer is deferred. Automated checks do not establish these human acceptance steps.

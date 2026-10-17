@@ -1,0 +1,308 @@
+/* global window, document */
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const http = require('node:http');
+const { _electron: electron } = require('playwright');
+const {
+  TEST_KEY, tempDirectory, freePort, waitUntil, startMockBackend, launchDesktop, screenshot,
+} = require('./helpers.cjs');
+
+let checks = 0;
+async function check(name, action) {
+  await action();
+  checks++;
+  console.log(`PASS ${name}`);
+}
+
+async function contains(locator, text) {
+  await waitUntil(async () => (await locator.innerText()).toLowerCase().includes(text.toLowerCase()),
+    { message: `Expected visible text: ${text}` });
+}
+
+async function sources(baseUrl) {
+  const response = await fetch(`${baseUrl}/api/v1/sources`);
+  assert.equal(response.status, 200);
+  return (await response.json()).data.sources;
+}
+
+function pdfFixture(text) {
+  const stream = `BT /F1 12 Tf 10 100 Td (${text}) Tj ET`;
+  const objects = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 300] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>',
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+    `<< /Length ${Buffer.byteLength(stream)} >>\nstream\n${stream}\nendstream`,
+  ];
+  let content = '%PDF-1.4\n';
+  const offsets = [0];
+  objects.forEach((object, index) => {
+    offsets.push(Buffer.byteLength(content));
+    content += `${index + 1} 0 obj\n${object}\nendobj\n`;
+  });
+  const xref = Buffer.byteLength(content);
+  content += `xref\n0 6\n0000000000 65535 f \n${offsets.slice(1).map((offset) => `${String(offset).padStart(10, '0')} 00000 n \n`).join('')}`;
+  content += `trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  return Buffer.from(content);
+}
+
+async function addText(page, baseUrl, title, text) {
+  if (!await page.getByTestId('source-title').isVisible()) await page.getByTestId('add-text-toggle').click();
+  await page.getByTestId('source-title').fill(title);
+  await page.getByTestId('source-text').fill(text);
+  await page.getByTestId('text-source-simulated').check();
+  await page.getByTestId('add-source-submit').click();
+  return waitUntil(async () => (await sources(baseUrl)).find((source) => source.title === title));
+}
+
+async function selectOnly(page, selectedIds) {
+  for (const checkbox of await page.getByTestId('source-checkbox').all()) {
+    await checkbox.setChecked(selectedIds.includes(await checkbox.inputValue()));
+  }
+}
+
+async function saveKey(page, key) {
+  await page.getByTestId('settings-button').click();
+  await page.getByTestId('api-key').fill(key);
+  await page.getByTestId('save-key').click();
+  await waitUntil(async () => await page.getByTestId('api-key').inputValue() === '');
+  if (await page.getByTestId('settings-dialog').isVisible()) {
+    await page.getByTestId('settings-dialog').getByRole('button', { name: 'Close', exact: true }).click();
+  }
+}
+
+async function ask(page, question, model = 'gpt-4.1-mini') {
+  await page.getByTestId('include-plan').uncheck();
+  if (!await page.getByTestId('model').isVisible()) await page.getByText('Model settings', { exact: true }).click();
+  await page.getByTestId('model').fill(model);
+  await page.getByTestId('question').fill(question);
+  await page.getByTestId('ask-submit').click();
+}
+
+async function exerciseMockedProviderDesktop() {
+  const directory = tempDirectory();
+  let backend = await startMockBackend({ directory });
+  let desktop;
+  let page;
+  try {
+    ({ application: desktop, page } = await launchDesktop(electron, backend.baseUrl, directory));
+    await contains(page.getByTestId('backend-status'), 'ready');
+    await waitUntil(() => page.getByTestId('plan-submit').isEnabled());
+
+    await check('actual Electron isolation and planner GBP 10 / 4 / 0', async () => {
+      const isolation = await desktop.evaluate(({ BrowserWindow }) => {
+        const preferences = BrowserWindow.getAllWindows()[0].webContents.getLastWebPreferences();
+        return { contextIsolation: preferences.contextIsolation, nodeIntegration: preferences.nodeIntegration, sandbox: preferences.sandbox };
+      });
+      assert.deepEqual(isolation, { contextIsolation: true, nodeIntegration: false, sandbox: true });
+      assert.equal(await page.evaluate(() => typeof window.require), 'undefined');
+      await page.getByTestId('budget').fill('10.00');
+      await page.getByTestId('plan-submit').click();
+      await contains(page.getByTestId('planner-result'), 'Board Game Night');
+      assert.match(await page.getByTestId('planner-result').innerText(), /(?:GBP\s*|£)5\.00/);
+      await screenshot(page, '01-planner.png');
+      await page.getByTestId('budget').fill('4.00');
+      await page.getByTestId('plan-submit').click();
+      await contains(page.getByTestId('planner-result'), 'Acoustic Hour');
+      await page.getByTestId('budget').fill('0.00');
+      await page.getByTestId('plan-submit').click();
+      await contains(page.getByTestId('planner-result'), 'no activity');
+      assert.equal((await page.getByTestId('planner-result').innerText()).includes('Acoustic Hour'), false);
+    });
+
+    await check('city-centre travel changes the real calculated recommendation', async () => {
+      await page.getByTestId('origin').selectOption('glasgow-city-centre');
+      await page.getByTestId('budget').fill('10.00');
+      await page.getByTestId('plan-submit').click();
+      await contains(page.getByTestId('planner-result'), 'Short Film Club');
+      assert.equal((await page.getByTestId('planner-result').innerText()).includes('Board Game Night'), false);
+    });
+
+    let guide;
+    let excluded;
+    let imported;
+    await check('real pasted-source create/list and native-picker PDF upload', async () => {
+      guide = await addText(page, backend.baseUrl, 'Fictional Venue Guide', 'Board Game Night starts at 16:30. The fictional venue has a ramp entrance.');
+      excluded = await addText(page, backend.baseUrl, 'Excluded Observatory Guide', 'The observatory code is OMITTED-8672 and closing time is 22:00.');
+      const fixture = path.join(directory, 'fictional-museum.pdf');
+      fs.writeFileSync(fixture, pdfFixture('The fictional museum opens at 11:00. The entrance has a ramp.'));
+      await desktop.evaluate(({ dialog }, filename) => {
+        dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [filename] });
+      }, fixture);
+      await page.getByTestId('source-simulated').check();
+      await page.getByTestId('import-source').click();
+      imported = await waitUntil(async () => (await sources(backend.baseUrl)).find((source) => source.filename === 'fictional-museum.pdf'));
+      assert.equal(imported.kind, 'pdf');
+      assert.equal(imported.is_simulated, true);
+      await contains(page.getByTestId('source-list'), imported.title);
+      await selectOnly(page, [imported.id]);
+    });
+
+    await check('cancelled native file picker changes no sources', async () => {
+      const before = await sources(backend.baseUrl);
+      await desktop.evaluate(({ dialog }) => {
+        dialog.showOpenDialog = async () => ({ canceled: true, filePaths: [] });
+      });
+      await page.getByTestId('import-source').click();
+      await contains(page.getByTestId('library-status'), 'cancel');
+      assert.deepEqual(await sources(backend.baseUrl), before);
+    });
+
+    await check('missing key stays an error while deterministic planning remains usable', async () => {
+      await ask(page, 'When does the fictional museum open?');
+      await contains(page.getByTestId('chat-feedback'), 'key');
+      const settings = await page.evaluate(() => window.myJinni.getSessionSettings());
+      assert.deepEqual(settings, { configured: false });
+      assert.equal(await page.getByTestId('plan-submit').isEnabled(), true);
+    });
+
+    await check('session key is memory-only and the input clears after saving', async () => {
+      await saveKey(page, TEST_KEY);
+      assert.deepEqual(await page.evaluate(() => window.myJinni.getSessionSettings()), { configured: true });
+      assert.equal((await page.evaluate(() => JSON.stringify(window.localStorage))).includes(TEST_KEY), false);
+    });
+
+    await check('MOCKED provider citation opens the real original PDF text and page', async () => {
+      await ask(page, 'When does the fictional museum open?');
+      await contains(page.getByTestId('chat-answer'), '11:00');
+      const status = await (await fetch(`${backend.baseUrl}/__test__/provider-status`)).json();
+      assert.deepEqual(status.last_source_ids, [imported.id]);
+      assert.equal(status.header_used, true);
+      assert.equal(status.body_key_free, true);
+      assert.equal(status.store_disabled, true);
+      assert.equal((await page.getByTestId('chat-result').innerText()).includes('OMITTED-8672'), false);
+      await screenshot(page, '02-chat-mocked-provider.png');
+      await page.getByTestId('citation-reference').first().click();
+      await contains(page.getByTestId('source-dialog-content'), '11:00');
+      await contains(page.getByTestId('citation-quote'), '11:00');
+      assert.match(await page.getByTestId('source-dialog-content').innerText(), /page\s*1/i);
+      assert.match(await page.getByTestId('source-dialog-content').locator('mark').first().innerText(), /11:00/);
+      await screenshot(page, '03-original-citation.png');
+      await page.getByTestId('source-dialog').getByRole('button', { name: 'Close', exact: true }).click();
+    });
+
+    await check('MOCKED AI explanation includes the authoritative real city-origin plan', async () => {
+      await page.getByTestId('include-plan').check();
+      await page.getByTestId('question').fill('Which activity fits my plan and what does the museum guide say?');
+      await page.getByTestId('ask-submit').click();
+      await contains(page.getByTestId('chat-planner'), 'Short Film Club');
+      assert.match(await page.getByTestId('chat-planner').innerText(), /(?:GBP\s*|£)6\.00/);
+      const status = await (await fetch(`${backend.baseUrl}/__test__/provider-status`)).json();
+      assert.ok(status.last_source_ids.includes('planner-context'));
+      assert.ok(status.last_source_ids.includes(imported.id));
+      assert.equal(status.last_source_ids.includes(excluded.id), false);
+    });
+
+    await check('no lexical match gives insufficient evidence without a provider call', async () => {
+      const before = await (await fetch(`${backend.baseUrl}/__test__/provider-status`)).json();
+      await ask(page, 'Axolotl hyperdrive spectroscopy');
+      await contains(page.getByTestId('chat-result'), 'evidence');
+      const after = await (await fetch(`${backend.baseUrl}/__test__/provider-status`)).json();
+      assert.deepEqual(after.calls, before.calls);
+      assert.equal((await page.getByTestId('chat-result').innerText()).includes('11:00'), false);
+    });
+
+    await check('MOCKED invalid key, provider failure and retry preserve honest states', async () => {
+      await ask(page, 'When does the fictional museum open?', 'test-auth-error');
+      await contains(page.getByTestId('chat-feedback'), 'key');
+      await ask(page, 'When does the fictional museum open?', 'test-provider-error');
+      await contains(page.getByTestId('chat-feedback'), 'unavailable');
+      assert.equal((await page.getByTestId('chat-result').innerText()).includes('11:00'), false);
+      await page.getByTestId('ask-submit').click();
+      await contains(page.getByTestId('chat-answer'), '11:00');
+      await ask(page, 'When does the fictional museum open?', 'test-provider-timeout');
+      await contains(page.getByTestId('chat-feedback'), 'timed out');
+    });
+
+    await check('editing during a slow MOCKED answer prevents stale success', async () => {
+      await ask(page, 'When does the fictional museum open?', 'test-slow');
+      assert.equal(await page.getByTestId('ask-submit').isEnabled(), false);
+      await page.getByTestId('question').fill('A different question now');
+      await page.waitForTimeout(650);
+      assert.equal((await page.getByTestId('chat-result').innerText()).includes('11:00'), false);
+    });
+
+    await check('keyboard navigation and resized window remain usable', async () => {
+      await page.getByTestId('origin').focus();
+      await page.keyboard.press('Tab');
+      assert.notEqual(await page.evaluate(() => document.activeElement.id), 'origin');
+      await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1050, 760));
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 2), true);
+      await screenshot(page, '04-resized-window.png');
+    });
+
+    await check('source deletion updates real storage and an external backend survives app close', async () => {
+      await page.locator(`[data-testid="source-delete"][data-source-id="${excluded.id}"]`).click();
+      await waitUntil(async () => !(await sources(backend.baseUrl)).some((source) => source.id === excluded.id));
+      await desktop.close();
+      desktop = null;
+      assert.equal((await fetch(`${backend.baseUrl}/health`)).status, 200);
+    });
+
+    await check('library survives backend restart while session key does not', async () => {
+      const port = Number(new URL(backend.baseUrl).port);
+      await backend.stop();
+      backend = await startMockBackend({ directory, port });
+      ({ application: desktop, page } = await launchDesktop(electron, backend.baseUrl, directory));
+      await contains(page.getByTestId('source-list'), imported.title);
+      const saved = await sources(backend.baseUrl);
+      assert.ok(saved.some((source) => source.id === guide.id));
+      assert.ok(saved.some((source) => source.id === imported.id));
+      assert.deepEqual(await page.evaluate(() => window.myJinni.getSessionSettings()), { configured: false });
+    });
+  } catch (error) {
+    if (page && !page.isClosed()) await screenshot(page, 'failure.png').catch(() => {});
+    throw error;
+  } finally {
+    if (desktop) await desktop.close().catch(() => {});
+    await backend.stop();
+  }
+}
+
+async function exerciseOwnedBackendRecovery() {
+  const port = await freePort();
+  const baseUrl = `http://127.0.0.1:${port}`;
+  const directory = tempDirectory();
+  const occupied = http.createServer((_request, response) => {
+    response.writeHead(200, { 'Content-Type': 'application/json' });
+    response.end(JSON.stringify({ data: { status: 'ok', recommendations_ready: true }, info: { title: 'Unrelated test server' } }));
+  });
+  await new Promise((resolve) => occupied.listen(port, '127.0.0.1', resolve));
+  let desktop;
+  let page;
+  try {
+    ({ application: desktop, page } = await launchDesktop(electron, baseUrl, directory));
+    await check('occupied-port startup failure is visible and leaves the other service running', async () => {
+      await contains(page.getByTestId('backend-status'), 'port');
+      assert.equal((await fetch(`${baseUrl}/health`)).status, 200);
+      await screenshot(page, '05-startup-failure.png');
+    });
+    await new Promise((resolve) => occupied.close(resolve));
+    await check('retry starts an owned real backend and normal close stops it', async () => {
+      await page.getByTestId('backend-retry').click();
+      await contains(page.getByTestId('backend-status'), 'ready');
+      const status = await page.evaluate(() => window.myJinni.getBackendStatus());
+      assert.equal(status.owned, true);
+      await page.getByTestId('plan-submit').click();
+      await contains(page.getByTestId('planner-result'), 'Board Game Night');
+      await desktop.close();
+      desktop = null;
+      await waitUntil(async () => {
+        try { await fetch(`${baseUrl}/health`); return false; } catch { return true; }
+      }, { message: 'Owned backend remained running after desktop close.' });
+    });
+  } finally {
+    if (desktop) await desktop.close().catch(() => {});
+    if (occupied.listening) await new Promise((resolve) => occupied.close(resolve));
+  }
+}
+
+async function main() {
+  console.log('Actual Electron + IPC + HTTP + SQLite + planner verification; OpenAI provider is MOCKED.');
+  await exerciseMockedProviderDesktop();
+  await exerciseOwnedBackendRecovery();
+  console.log(`DESKTOP E2E PASSED: ${checks} checks. Live OpenAI account access was not tested.`);
+}
+
+main().catch((error) => { console.error(error.stack || error.message); process.exitCode = 1; });

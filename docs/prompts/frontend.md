@@ -4,6 +4,8 @@ You are building my-jinni's desktop client in `wahab-linux/my-jinni` for the DYH
 
 Read `AGENTS.md`, `docs/AI_EXTENSION.md`, `docs/REQUIREMENTS.md`, `docs/ARCHITECTURE.md`, `docs/API.md`, `docs/TASKS.md`, `docs/openapi.json` and `contracts/fixtures/`. All code, comments, UI copy and documentation must be English. Product name: my-jinni. Keep the repository/directory name `my-jinni`.
 
+The desktop implementation is now present in `desktop/`, including the launcher, restricted bridge, planner/library/chat renderer and tests in `tests/desktop/`. Preserve it and inspect current behaviour before changing files. This prompt defines the acceptance boundary; it is not an instruction to rebuild the app. Run `npm run desktop` or, after setup, Node 22+ `node --run desktop`. See `desktop/README.md` and the frozen `docs/DESKTOP_BRIDGE.md`. Automated end-to-end provider success is mocked; actual OpenAI account access remains a separate check.
+
 ## Confirmed extension: source library and cited OpenAI questions
 
 The user confirmed that activity planning stays and gains a local source library and cited AI chat. Provider: OpenAI. Contract v0.3 is additive; the original activity fields remain unchanged. Implement this as part of the same desktop product, after the first real planner flow works. `docs/AI_EXTENSION.md` is the exact endpoint/error/scope reference.
