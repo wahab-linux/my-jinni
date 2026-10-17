@@ -18,11 +18,22 @@
   <header class="header wrap">
     <a class="brand" href="./" aria-label="my-jinni home"><span class="mark" aria-hidden="true">j</span>my-jinni<span class="dot">.</span></a>
     <nav aria-label="Main navigation">
-      <a href="#decision-workspace" class="nav-link">Decisions</a><button id="library-open" class="nav-link" type="button" aria-haspopup="dialog" aria-controls="library-dialog">Library & search</button>
+      <a href="#decision-workspace" class="nav-link">Decisions</a><button id="library-open" class="nav-link" type="button" aria-haspopup="dialog" aria-controls="library-dialog" aria-label="Library &amp; search"><svg class="library-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h6a3 3 0 0 1 2 1 3 3 0 0 1 2-1h6v14h-6a3 3 0 0 0-2 1 3 3 0 0 0-2-1H4zm8 1v14"/></svg><span class="library-nav-label">Library &amp; search</span></button>
       <details class="nav-dropdown dropdown"><summary>Explore <svg class="chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m6 8 4 4 4-4"/></svg></summary><div class="dropdown-panel"><a href="#planner">Activity planner</a><a href="#library">My library</a><a href="#how-it-works">How it works</a><a href="https://github.com/wahab-linux/my-jinni" rel="noreferrer">View on GitHub <span aria-hidden="true">↗</span></a><a href="https://github.com/wahab-linux/my-jinni#run-the-desktop-application">Desktop edition <span aria-hidden="true">↗</span></a></div></details>
     </nav>
     <button id="sound-toggle" class="theme-toggle sound-toggle" type="button" aria-label="Sound effects" aria-pressed="false"><b aria-hidden="true">♪</b><span>Sound off</span></button>
-    <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Dark mode" aria-pressed="false" title="Switch to dark mode"><svg class="sun-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.4 1.4m11.2 11.2L19 19M5 19l1.4-1.4M17.6 6.4 19 5"/></svg><svg class="moon-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14A9 9 0 0 1 10 3.5 9 9 0 1 0 20.5 14Z"/></svg><span id="theme-label">Dark mode</span></button>
+    <details id="appearance-picker" class="dropdown appearance-picker">
+      <summary id="theme-toggle" class="theme-toggle" aria-label="Appearance: Match device"><span class="appearance-dot" aria-hidden="true"></span><span class="appearance-caption">Appearance</span><span id="theme-label">Auto</span><svg class="chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m6 8 4 4 4-4"/></svg></summary>
+      <div class="dropdown-panel appearance-panel">
+        <p class="eyebrow">A SPACE THAT FEELS LIKE YOU</p><h2>Make yourself at home.</h2><p class="muted">Choose a look that’s easy on your eyes.</p>
+        <fieldset id="appearance-options"><legend class="sr-only">Choose your appearance</legend><div class="theme-choices">
+          <label class="theme-choice"><input type="radio" name="appearance" value="light"><span class="theme-preview preview-light" aria-hidden="true"><span></span><span></span><span></span></span><span class="theme-choice-label">Light</span></label>
+          <label class="theme-choice"><input type="radio" name="appearance" value="dark"><span class="theme-preview preview-dark" aria-hidden="true"><span></span><span></span><span></span></span><span class="theme-choice-label">Dark</span></label>
+          <label class="theme-choice"><input type="radio" name="appearance" value="system" checked><span class="theme-preview preview-system" aria-hidden="true"><span></span><span></span><span></span></span><span class="theme-choice-label">Match device</span></label>
+        </div></fieldset>
+        <p id="theme-status" class="hint" role="status" aria-live="polite">Follows your device’s appearance.</p><button id="appearance-done" type="button" class="button secondary">Done</button>
+      </div>
+    </details>
   </header>
   <main class="wrap">
     <section class="intro" aria-labelledby="title">
@@ -48,7 +59,7 @@
             <p class="form-footnote">Deterministic comparison · No account or AI key</p>
           </fieldset></form>
         </section>
-        <section class="panel decision-output" aria-labelledby="comparison-title"><div class="results-heading"><div><p class="eyebrow">THE REASONING, IN VIEW</p><h2 id="comparison-title">Your comparison</h2></div><span id="decision-count" class="local-badge">Two source feeds</span></div>
+        <section class="panel decision-output" aria-labelledby="comparison-title"><div class="results-heading"><div><p class="eyebrow">THE REASONING, IN VIEW</p><h2 id="comparison-title" tabindex="-1">Your comparison</h2></div><span id="decision-count" class="local-badge">Two source feeds</span></div>
           <p id="decision-status" class="feedback" role="status" aria-live="polite">Choose your priorities, then compare.</p><div id="decision-results"><div class="decision-placeholder"><span aria-hidden="true">↗</span><h3>Different priorities. Different answers.</h3><p>See which options meet your limits and how the trade-offs add up.</p></div></div>
         </section>
       </div>
@@ -64,19 +75,20 @@
         <form id="planner-form">
           <fieldset id="preferences" disabled>
             <legend class="sr-only">Activity preferences</legend>
+            <div class="starter-box"><label for="starter">A little inspiration?</label><select id="starter"><option value="">Build my own plan</option></select><p class="hint">Start with an idea, then make it yours.</p></div>
             <label for="origin">Where are you starting?</label><select id="origin" name="origin" required aria-describedby="origin-hint"></select><p class="hint" id="origin-hint">You’ll return to the same place.</p>
             <label for="date">When are you heading out?</label><select id="date" name="date" required></select>
-            <div class="two-columns"><div><label for="depart">Leave at</label><input id="depart" name="depart" type="time" required></div><div><label for="return">Return by</label><input id="return" name="return" type="time" required></div></div>
-            <label for="budget-preset">What’s your budget?</label><select id="budget-preset" aria-describedby="budget-hint"><option value="0">Free activities only · £0</option><option value="5">Up to £5</option><option value="10" selected>Up to £10</option><option value="15">Up to £15</option><option value="20">Up to £20</option><option value="custom">Choose my own amount</option></select>
-            <div id="custom-budget" hidden><label for="budget">Your exact budget (£)</label><input id="budget" name="budget" type="text" inputmode="decimal" required aria-describedby="budget-hint" value="10.00"></div><p id="budget-hint" class="hint">Your activity + return travel. No surprise costs.</p>
-            <fieldset class="interest-fieldset"><legend>What are you in the mood for?</legend><details id="interest-picker" class="dropdown interest-picker"><summary><span id="interest-summary">Choose your interests</span><svg class="chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m6 8 4 4 4-4"/></svg></summary><div class="dropdown-panel"><p class="hint">Choose one or more. All interests count equally.</p><div id="interests" class="interest-options"></div></div></details><p class="hint">Pick a few things you enjoy. We’ll find the best fit.</p></fieldset>
+            <div class="two-columns"><div><label for="depart">Leave at</label><input id="depart" name="depart" type="time" required aria-describedby="time-error"></div><div><label for="return">Return by</label><input id="return" name="return" type="time" required aria-describedby="time-error"></div></div>
+            <p id="time-error" class="field-error" hidden></p><label for="budget-preset">What’s your budget?</label><select id="budget-preset" aria-describedby="budget-hint budget-error"><option value="0">Free activities only · £0</option><option value="5">Up to £5</option><option value="10" selected>Up to £10</option><option value="15">Up to £15</option><option value="20">Up to £20</option><option value="custom">Choose my own amount</option></select>
+            <div id="custom-budget" hidden><label for="budget">Your exact budget (£)</label><input id="budget" name="budget" type="text" inputmode="decimal" required aria-describedby="budget-hint budget-error" value="10.00"></div><p id="budget-hint" class="hint">Your activity + return travel. No surprise costs.</p><p id="budget-error" class="field-error" hidden></p>
+            <fieldset class="interest-fieldset"><legend>What are you in the mood for?</legend><details id="interest-picker" class="dropdown interest-picker"><summary aria-describedby="interest-error"><span id="interest-summary">Choose your interests</span><svg class="chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m6 8 4 4 4-4"/></svg></summary><div class="dropdown-panel"><p class="hint">Choose one or more. All interests count equally.</p><div id="interests" class="interest-options"></div></div></details><p class="hint">Pick a few things you enjoy. We’ll find the best fit.</p><p id="interest-error" class="field-error" hidden></p></fieldset>
             <button id="plan-submit" class="button primary" type="submit">Find my next good plan <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></button>
-            <p class="form-footnote"><span aria-hidden="true">✧</span> Personalised to your choices. No AI key needed.</p>
+            <button id="reset-planner" class="text-button reset-button" type="button">Start fresh</button><p class="form-footnote"><span aria-hidden="true">✧</span> Personalised to your choices. No AI key needed.</p>
           </fieldset>
         </form>
       </div>
       <div class="panel results-panel" aria-labelledby="results-title">
-        <div class="results-heading"><div><p class="eyebrow">GOOD THINGS AHEAD</p><h2 id="results-title">Made for your day</h2></div><span class="local-badge"><span class="status-dot" aria-hidden="true"></span>Calculated locally</span></div>
+        <div class="results-heading"><div><p class="eyebrow">GOOD THINGS AHEAD</p><h2 id="results-title" tabindex="-1">Made for your day</h2></div><span class="local-badge"><span class="status-dot" aria-hidden="true"></span>Calculated locally</span></div>
         <p id="plan-status" class="feedback" role="status" aria-live="polite">Your next good plan is a few choices away.</p>
         <div id="plan-empty" class="empty-state"><div class="empty-illustration" aria-hidden="true"><span class="empty-orbit"></span><svg viewBox="0 0 64 64"><rect x="12" y="10" width="40" height="46" rx="9"/><path d="M23 7v7m18-7v7M12 23h40m-28 9 3 3 5-6m5 5h6m-19 9 3 3 5-6m5 5h6"/></svg><span class="empty-star">✦</span></div><h3>A little adventure starts here.</h3><p>Tell us where, when and what you enjoy.<br>We’ll match you with something that fits.</p><div class="empty-tags"><span>Within your budget</span><span>Home on time</span></div></div>
         <div id="plan-results"></div>
@@ -95,7 +107,11 @@
       <p id="library-status" class="feedback" role="status" aria-live="polite">Opening your browser library…</p>
       <div class="library-grid">
         <div>
-          <div class="actions"><button id="paste-toggle" type="button" class="button secondary" aria-expanded="false" aria-controls="paste-form">+ Paste text</button><button id="import-button" type="button" class="button secondary">Import file</button><button id="demo-source" type="button" class="text-button">Try a fictional guide ↗</button></div>
+          <div class="actions"><details id="add-source-picker" class="dropdown add-source-picker"><summary class="button primary">Add a source <span aria-hidden="true">+</span></summary><div class="dropdown-panel source-menu">
+            <button id="paste-toggle" type="button" class="dropdown-action" aria-expanded="false" aria-controls="paste-form"><span class="action-icon" aria-hidden="true">Aa</span><span><strong>Paste a note</strong><small>Save something useful you’ve written.</small></span></button>
+            <button id="import-button" type="button" class="dropdown-action"><span class="action-icon" aria-hidden="true">↑</span><span><strong>Import a file</strong><small>Bring a TXT, Markdown or text PDF.</small></span></button>
+            <button id="demo-source" type="button" class="dropdown-action"><span class="action-icon" aria-hidden="true">✧</span><span><strong>Try a fictional guide</strong><small>A ready-to-explore example. No upload needed.</small></span></button>
+          </div></details><span class="hint add-source-hint">Notes, guides, little discoveries.</span></div>
           <input type="file" id="file" accept=".txt,.md,.markdown,.pdf" hidden>
           <form id="paste-form" hidden>
             <label for="source-title">Source title</label><input id="source-title" maxlength="200" required>
@@ -104,7 +120,7 @@
             <button class="button primary" type="submit">Save on this device</button>
           </form>
           <label class="check import-label"><input id="import-simulated" type="checkbox">Mark imported files as fictional / AI-generated</label>
-          <div class="source-toolbar"><p id="source-count" class="hint"></p><div><label for="source-sort" class="sr-only">Sort sources</label><select id="source-sort"><option value="newest">Newest first</option><option value="title">Title: A to Z</option></select></div></div><div id="sources" class="source-list"></div>
+          <div class="selection-tools"><button id="select-all" class="text-button" type="button">Select all</button><button id="clear-selection" class="text-button" type="button">Clear selection</button></div><div class="source-toolbar"><p id="source-count" class="hint"></p><div><label for="source-sort" class="sr-only">Sort sources</label><select id="source-sort"><option value="newest">Newest first</option><option value="title">Title: A to Z</option></select></div></div><div id="sources" class="source-list"></div>
         </div>
         <div class="search-panel">
           <p class="eyebrow">LESS SCROLLING, MORE FINDING</p><h3>It’s in here somewhere.</h3><p class="muted">Search your selected sources with a few keywords, like “beginner board games”. You’ll see original passages, not AI-generated answers. Try different words if a search misses something.</p>
@@ -114,6 +130,7 @@
       </div>
     </section>
   </dialog>
+  <dialog id="delete-dialog" class="confirm-dialog" aria-labelledby="delete-title" aria-describedby="delete-description"><p class="eyebrow">YOUR LIBRARY, YOUR CHOICE</p><h2 id="delete-title">Remove this source?</h2><p id="delete-description" class="muted"></p><p class="hint">This removes it from this browser. Your original file is unaffected.</p><div class="confirm-actions"><button id="delete-cancel" type="button" class="button secondary" autofocus>Keep source</button><button id="delete-confirm" type="button" class="button danger">Remove source</button></div></dialog>
   <dialog id="viewer" aria-labelledby="viewer-title"><div class="dialog-top"><h2 id="viewer-title">Original source</h2><button id="viewer-close" type="button" class="button secondary">Close</button></div><p id="viewer-meta" class="hint"></p><div id="viewer-content"></div><button id="download-source" type="button" class="button secondary">Download extracted text</button></dialog>
 </body>
 </html>

@@ -2,7 +2,7 @@ import { fromLocal, money, parseBudget, recommend, time } from './planner.mjs';
 import { createSource, LIMITS, openLibrary, searchSources } from './library.mjs';
 
 const $ = (id) => document.getElementById(id);
-const state = { scenario: null, library: null, sources: [], selected: new Set(), busy: false, viewer: null };
+const state = { scenario: null, library: null, sources: [], selected: new Set(), busy: false, viewer: null, pendingDelete: null, starters: new Map() };
 const node = (tag, text, className = '') => {
   const item = document.createElement(tag);
   if (text !== undefined) item.textContent = text;
@@ -12,6 +12,54 @@ const node = (tag, text, className = '') => {
 function feedback(id, message = '', error = false) {
   $(id).textContent = message;
   $(id).className = `feedback${error ? ' error' : ''}`;
+}
+
+function setBudget(pence) {
+  $('budget').value = (pence / 100).toFixed(2);
+  const value = String(pence / 100);
+  $('budget-preset').value = [...$('budget-preset').options].some((option) => option.value === value) ? value : 'custom';
+  $('custom-budget').hidden = $('budget-preset').value !== 'custom';
+  $('budget').required = !$('custom-budget').hidden;
+}
+
+function clearFieldErrors() {
+  for (const id of ['budget-error', 'time-error', 'interest-error']) { $(id).hidden = true; $(id).textContent = ''; }
+  for (const field of $('planner-form').querySelectorAll('[aria-invalid]')) field.removeAttribute('aria-invalid');
+}
+
+function fieldError(kind, message) {
+  const field = kind === 'interest' ? $('interest-picker').querySelector('summary')
+    : kind === 'time' ? $('return') : $('custom-budget').hidden ? $('budget-preset') : $('budget');
+  $(`${kind}-error`).textContent = message;
+  $(`${kind}-error`).hidden = false;
+  field.setAttribute('aria-invalid', 'true');
+  field.focus();
+}
+
+function preferencesChanged() {
+  clearFieldErrors();
+  $('plan-results').replaceChildren();
+  $('plan-empty').hidden = false;
+  $('plan-empty').querySelector('h3').textContent = 'A little adventure starts here.';
+  $('plan-empty').querySelector('p').textContent = 'Tell us where, when and what you enjoy. We’ll match you with something that fits.';
+  updateInterestSummary();
+  feedback('plan-status', 'Preferences changed. Find a plan to update your result.');
+}
+
+function resetPreferences() {
+  if (!state.scenario) return;
+  const { options } = state.scenario;
+  const defaults = options.default_request;
+  $('origin').value = defaults.origin_id;
+  $('date').value = options.demo_date;
+  $('depart').value = time(defaults.depart_at, options.timezone);
+  $('return').value = time(defaults.return_by, options.timezone);
+  setBudget(defaults.budget_pence);
+  for (const input of document.querySelectorAll('#interests input')) input.checked = defaults.interests.includes(input.value);
+  $('starter').value = '';
+  $('interest-picker').open = false;
+  preferencesChanged();
+  feedback('plan-status', 'A fresh start. Your library and appearance are just as you left them.');
 }
 
 async function loadScenario() {
@@ -35,10 +83,16 @@ async function loadScenario() {
     $('date').value = options.demo_date;
     $('depart').value = time(defaults.depart_at, options.timezone);
     $('return').value = time(defaults.return_by, options.timezone);
-    $('budget').value = (defaults.budget_pence / 100).toFixed(2);
-    $('budget-preset').value = [...$('budget-preset').options].some((option) => option.value === String(defaults.budget_pence / 100)) ? String(defaults.budget_pence / 100) : 'custom';
-    $('custom-budget').hidden = $('budget-preset').value !== 'custom';
-    $('budget').required = !$('custom-budget').hidden;
+    setBudget(defaults.budget_pence);
+    state.starters.clear();
+    for (const [id, label, interests, budget] of [
+      ['games', 'Games & good company', ['games'], 1000],
+      ['music', 'A little music', ['music'], 1000],
+      ['budget', 'A day out for £5 or less', options.interests.map((interest) => interest.id), 500],
+    ]) {
+      if (budget <= options.max_budget_pence && interests.every((interest) => options.interests.some((item) => item.id === interest))) state.starters.set(id, { label, interests, budget });
+    }
+    $('starter').replaceChildren(new Option('Build my own plan', ''), ...[...state.starters].map(([id, starter]) => new Option(starter.label, id)));
     $('interests').replaceChildren(...options.interests.map((interest) => {
       const label = node('label');
       const input = document.createElement('input');
@@ -84,12 +138,29 @@ function submitPlan(event) {
   if (!state.scenario) return;
   $('interest-picker').open = false;
   $('plan-empty').hidden = true;
+  clearFieldErrors();
   try {
     const { options } = state.scenario;
-    const request = { origin_id: $('origin').value, budget_pence: parseBudget($('budget').value.trim()),
+    let budget;
+    try { budget = parseBudget($('budget').value.trim()); }
+    catch (error) { fieldError('budget', error.message); throw error; }
+    if (budget > options.max_budget_pence) {
+      const message = `This demo supports budgets up to ${money(options.max_budget_pence)}.`;
+      fieldError('budget', message); throw new Error(message);
+    }
+    const interests = [...document.querySelectorAll('[name=interest]:checked')].map((input) => input.value);
+    if (!interests.length) {
+      const message = 'Choose at least one of your interests.';
+      fieldError('interest', message); throw new Error(message);
+    }
+    if ($('return').value <= $('depart').value) {
+      const message = 'Choose a return time after you leave.';
+      fieldError('time', message); throw new Error(message);
+    }
+    const request = { origin_id: $('origin').value, budget_pence: budget,
       depart_at: fromLocal($('date').value, $('depart').value, options.timezone),
       return_by: fromLocal($('date').value, $('return').value, options.timezone),
-      interests: [...document.querySelectorAll('[name=interest]:checked')].map((input) => input.value) };
+      interests };
     const result = recommend(request, state.scenario);
     feedback('plan-status', result.data.message);
     if (!result.data.recommended) {
@@ -105,6 +176,10 @@ function submitPlan(event) {
     for (const source of result.data.sources) provenance.append(node('p', `${source.label} · Simulated snapshot ${source.updated_at}${source.origin_id ? ` · ${origin.label}` : ''}`));
     for (const warning of result.warnings) provenance.append(node('p', warning.message));
     $('plan-results').append(provenance);
+    if (window.matchMedia('(max-width: 760px)').matches) {
+      $('results-title').focus({ preventScroll: true });
+      $('results-title').scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' });
+    }
   } catch (error) {
     feedback('plan-status', error.message, true);
   }
@@ -123,12 +198,19 @@ function updateInterestSummary() {
 function renderSources() {
   $('sources').replaceChildren();
   $('source-count').textContent = `${state.sources.length} / ${LIMITS.sources} sources · ${state.selected.size} selected`;
-  if (!state.sources.length) $('sources').append(node('p', 'Your library is empty. Paste a note, import a file, or try the fictional guide.', 'muted'));
+  $('select-all').disabled = !state.sources.length || state.selected.size === state.sources.length;
+  $('clear-selection').disabled = !state.selected.size;
+  if (!state.sources.length) {
+    const empty = node('div', undefined, 'library-empty');
+    empty.append(node('span', '+', 'library-empty-icon'), node('h3', 'Good things deserve a place.'), node('p', 'Add a note or guide using “Add a source” above. Just looking around? Try the fictional example.', 'muted'));
+    $('sources').append(empty);
+  }
   const sources = [...state.sources].sort($('source-sort').value === 'title'
     ? (a, b) => a.title.localeCompare(b.title)
     : (a, b) => b.created_at.localeCompare(a.created_at));
   for (const source of sources) {
     const row = node('article', undefined, 'source-item');
+    row.dataset.sourceId = source.id;
     const label = node('label', undefined, 'check');
     const input = document.createElement('input');
     input.type = 'checkbox'; input.checked = state.selected.has(source.id);
@@ -136,6 +218,8 @@ function renderSources() {
       if (input.checked) state.selected.add(source.id); else state.selected.delete(source.id);
       clearSearch();
       $('source-count').textContent = `${state.sources.length} / ${LIMITS.sources} sources · ${state.selected.size} selected`;
+      $('select-all').disabled = state.selected.size === state.sources.length;
+      $('clear-selection').disabled = !state.selected.size;
     });
     label.append(input, document.createTextNode(source.title));
     row.append(label, node('p', `${source.kind.toUpperCase()} · ${source.character_count.toLocaleString()} characters · ${source.is_simulated ? 'Fictional / AI-generated' : 'Source accuracy not independently verified'}`, 'hint'));
@@ -144,13 +228,11 @@ function renderSources() {
     view.addEventListener('click', () => openSource(source));
     const remove = node('button', 'Delete', 'text-button'); remove.type = 'button';
     remove.setAttribute('aria-label', `Delete ${source.title}`);
-    remove.addEventListener('click', () => withLibrary(async () => {
-      await state.library.remove(source.id);
-      state.selected.delete(source.id);
-      state.sources = await state.library.all();
-      if (state.viewer?.id === source.id) $('viewer').close();
-      clearSearch(); renderSources(); feedback('library-status', 'Source deleted from this browser.');
-    }));
+    remove.addEventListener('click', () => {
+      state.pendingDelete = source;
+      $('delete-description').textContent = `“${source.title}” will be removed from your saved sources.`;
+      $('delete-dialog').showModal();
+    });
     actions.append(view, remove); row.append(actions); $('sources').append(row);
   }
 }
@@ -169,6 +251,7 @@ async function saveSource(source) {
   await state.library.add(source);
   state.sources = await state.library.all(); state.selected.add(source.id);
   clearSearch(); renderSources();
+  [...$('sources').children].find((row) => row.dataset.sourceId === source.id)?.querySelector('input')?.focus();
   feedback('library-status', 'Source saved and selected. It stays in this browser until deleted or site data is cleared.');
 }
 
@@ -231,14 +314,19 @@ function openSource(source, selectedIndex = -1) {
 
 $('reload').addEventListener('click', loadScenario);
 $('planner-form').addEventListener('submit', submitPlan);
-$('planner-form').addEventListener('input', () => {
-  $('plan-results').replaceChildren();
-  $('plan-empty').hidden = false;
-  $('plan-empty').querySelector('h3').textContent = 'A little adventure starts here.';
-  $('plan-empty').querySelector('p').textContent = 'Tell us where, when and what you enjoy. We’ll match you with something that fits.';
-  updateInterestSummary();
-  feedback('plan-status', 'Preferences changed. Find a plan to update your result.');
+$('planner-form').addEventListener('input', (event) => {
+  if (event.target.id !== 'starter') $('starter').value = '';
+  preferencesChanged();
 });
+$('starter').addEventListener('change', () => {
+  const starter = state.starters.get($('starter').value);
+  if (!starter) return;
+  setBudget(starter.budget);
+  for (const input of document.querySelectorAll('#interests input')) input.checked = starter.interests.includes(input.value);
+  preferencesChanged();
+  feedback('plan-status', `${starter.label}: interests and budget set. Your time and starting point are unchanged.`);
+});
+$('reset-planner').addEventListener('click', resetPreferences);
 $('budget-preset').addEventListener('change', () => {
   const custom = $('budget-preset').value === 'custom';
   $('custom-budget').hidden = !custom;
@@ -255,7 +343,7 @@ document.addEventListener('click', (event) => {
   }
 });
 document.addEventListener('keydown', (event) => {
-  if (event.key !== 'Escape' || $('viewer').open) return;
+  if (event.key !== 'Escape' || $('viewer').open || $('delete-dialog').open) return;
   const open = [...document.querySelectorAll('.dropdown[open]')];
   if (!open.length) return;
   const focused = open.find((dropdown) => dropdown.contains(document.activeElement)) || open[0];
@@ -264,6 +352,7 @@ document.addEventListener('keydown', (event) => {
   event.preventDefault();
 });
 $('paste-toggle').addEventListener('click', () => {
+  $('add-source-picker').open = false;
   $('paste-form').hidden = !$('paste-form').hidden;
   $('paste-toggle').setAttribute('aria-expanded', String(!$('paste-form').hidden));
   if (!$('paste-form').hidden) $('source-title').focus();
@@ -275,7 +364,7 @@ $('paste-form').addEventListener('submit', (event) => {
     $('paste-form').reset(); $('paste-form').hidden = true; $('paste-toggle').setAttribute('aria-expanded', 'false');
   });
 });
-$('import-button').addEventListener('click', () => $('file').click());
+$('import-button').addEventListener('click', () => { $('add-source-picker').open = false; $('file').click(); });
 $('file').addEventListener('change', () => {
   const file = $('file').files[0]; $('file').value = '';
   if (!file) return;
@@ -285,15 +374,39 @@ $('file').addEventListener('change', () => {
   });
 });
 $('demo-source').addEventListener('click', () => withLibrary(async () => {
+  $('add-source-picker').open = false;
   const response = await fetch('./venue-guide.md', { signal: AbortSignal.timeout(10000) });
   if (!response.ok) throw new Error('Could not load the fictional guide. Check your connection and retry.');
   await saveSource(createSource({ title: 'Fictional venue guide', kind: 'markdown', pages: [{ text: await response.text(), page: null }], is_simulated: true }));
+}));
+$('select-all').addEventListener('click', () => { state.selected = new Set(state.sources.map((source) => source.id)); clearSearch(); renderSources(); $('select-all').disabled = true; $('clear-selection').focus(); });
+$('clear-selection').addEventListener('click', () => { state.selected.clear(); clearSearch(); renderSources(); $('select-all').focus(); });
+$('delete-cancel').addEventListener('click', () => $('delete-dialog').close());
+$('delete-dialog').addEventListener('close', () => { state.pendingDelete = null; });
+$('delete-confirm').addEventListener('click', () => withLibrary(async () => {
+  const source = state.pendingDelete;
+  if (!source) return;
+  $('delete-confirm').disabled = true;
+  try {
+    await state.library.remove(source.id);
+    state.selected.delete(source.id);
+    state.sources = await state.library.all();
+    if (state.viewer?.id === source.id) $('viewer').close();
+    $('delete-dialog').close();
+    clearSearch(); renderSources(); feedback('library-status', 'Source deleted from this browser.');
+    $('add-source-picker').querySelector('summary').focus();
+  } catch (error) { $('delete-dialog').close(); throw error; }
+  finally { $('delete-confirm').disabled = false; }
 }));
 $('search-form').addEventListener('submit', (event) => {
   event.preventDefault(); clearSearch();
   const question = $('question').value.trim();
   if (!question || question.length > 2000) { feedback('search-status', 'Enter up to 2,000 characters to search.', true); return; }
-  if (!state.selected.size) { feedback('search-status', 'Select at least one source to search.', true); return; }
+  if (!state.selected.size) {
+    feedback('search-status', 'Select at least one source to search. Use the checkboxes or Select all.', true);
+    $('sources').querySelector('input')?.focus();
+    return;
+  }
   const matches = searchSources(question, state.sources, state.selected);
   feedback('search-status', matches.length ? `${matches.length} matching passages. Open the original to check the surrounding context.` : 'No matching evidence in the selected sources. Try different keywords.');
   for (const { source, chunk, index } of matches) {

@@ -38,11 +38,21 @@ const openLegacy = async (tab = page) => {
 };
 const openTools = async (tab = page) => { if (!await tab.locator('#library-dialog').isVisible()) await tab.locator('#library-open').click(); };
 const plan = async (budget) => { await openLegacy(); await page.locator('#budget-preset').selectOption('custom'); await page.locator('#budget').fill(budget); await page.locator('#plan-submit').click(); };
+const appearance = async (target, mode) => {
+  if (!await target.locator('#appearance-picker').evaluate((element) => element.open)) await target.locator('#theme-toggle').click();
+  await target.locator(`[name=appearance][value=${mode}]`).check();
+  await target.locator('#appearance-done').click();
+};
+const addSourceAction = async (target, id) => {
+  await openTools(target);
+  if (!await target.locator('#add-source-picker').evaluate((element) => element.open)) await target.locator('#add-source-picker > summary').click();
+  await target.locator(`#${id}`).click();
+};
 const featured = page.locator('.activity.featured');
 const row = (title) => page.locator('.source-item').filter({ has: page.getByText(title, { exact: true }) });
 const paste = async (title, text) => {
   await openTools();
-  if (!await page.locator('#paste-form').isVisible()) await page.locator('#paste-toggle').click();
+  if (!await page.locator('#paste-form').isVisible()) await addSourceAction(page, 'paste-toggle');
   await page.locator('#source-title').fill(title); await page.locator('#source-text').fill(text);
   await page.locator('#source-simulated').check(); await page.locator('#paste-form button[type=submit]').click();
   await row(title).waitFor();
@@ -87,9 +97,18 @@ try {
     await page.locator('#decision-scenario').selectOption('travel');
     await page.locator('#decision-submit').click();
     await page.screenshot({ path: 'tmp/web/workspace-light.png', fullPage: true });
-    await page.locator('#theme-toggle').click();
+    await appearance(page, 'dark');
     await page.screenshot({ path: 'tmp/web/workspace-dark.png', fullPage: true });
-    await page.locator('#theme-toggle').click();
+    await appearance(page, 'light');
+  });
+  await check('phone comparisons bring the result into focus and keep scenario controls within the screen', async () => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.locator('#decision-scenario').selectOption('travel');
+    await page.locator('#decision-submit').click();
+    assert.equal(await page.locator('#comparison-title').evaluate((element) => element === document.activeElement), true);
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+    await page.screenshot({ path: 'tmp/web/workspace-phone.png', fullPage: true });
+    await page.setViewportSize({ width: 1280, height: 950 });
   });
   await check('priority changes clear stale results and hard-limit no-match is distinct from failure', async () => {
     await page.locator('#weight-cost-pence').fill('0');
@@ -199,25 +218,67 @@ try {
     assert.equal(await page.locator('html').getAttribute('data-theme'), 'light');
     await page.emulateMedia({ colorScheme: 'dark' });
     await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
-    assert.equal(await page.locator('#theme-toggle').getAttribute('aria-pressed'), 'true');
-    await page.getByRole('button', { name: 'Dark mode', exact: true }).click();
+    assert.equal(await page.locator('html').getAttribute('data-appearance'), 'system');
+    await appearance(page, 'light');
     assert.equal(await page.evaluate(() => localStorage.getItem('my-jinni-theme')), 'light');
     await page.reload(); await openLegacy(); await waitText(page.locator('#setup-status'), 'Ready.');
     assert.equal(await page.locator('html').getAttribute('data-theme'), 'light');
     await page.locator('#theme-toggle').focus(); await page.keyboard.press('Enter');
+    await page.locator('[name=appearance][value=dark]').check(); await page.locator('#appearance-done').click();
     assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark');
     await page.reload(); await openLegacy(); await waitText(page.locator('#setup-status'), 'Ready.');
     assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark');
-    await page.locator('#theme-toggle').click();
+    await appearance(page, 'light');
   });
   await check('theme changes sync to another tab without resetting its planner', async () => {
     const other = await context.newPage(); await other.goto(base); await openLegacy(other);
     await waitText(other.locator('#setup-status'), 'Ready.');
     await other.locator('#depart').fill('15:30');
-    await page.locator('#theme-toggle').click();
+    await appearance(page, 'dark');
     await other.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
     assert.equal(await other.locator('#depart').inputValue(), '15:30');
-    await page.locator('#theme-toggle').click(); await other.close();
+    await appearance(page, 'light'); await other.close();
+  });
+  await check('Match device can be restored after a manual theme and follows later device changes', async () => {
+    await appearance(page, 'system');
+    assert.equal(await page.evaluate(() => localStorage.getItem('my-jinni-theme')), 'system');
+    await page.emulateMedia({ colorScheme: 'light' });
+    await page.waitForFunction(() => document.documentElement.dataset.theme === 'light');
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
+    await page.reload(); await openLegacy(); await waitText(page.locator('#setup-status'), 'Ready.');
+    assert.equal(await page.locator('html').getAttribute('data-appearance'), 'system');
+    await appearance(page, 'light');
+  });
+  await check('appearance preview choices are keyboard accessible and Escape returns to the control', async () => {
+    await page.locator('#theme-toggle').focus(); await page.keyboard.press('Enter');
+    await page.locator('[name=appearance][value=light]').focus(); await page.keyboard.press('ArrowRight');
+    assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark');
+    await page.keyboard.press('Escape');
+    assert.equal(await page.locator('#appearance-picker').evaluate((element) => element.open), false);
+    assert.equal(await page.locator('#theme-toggle').evaluate((element) => element === document.activeElement), true);
+    await appearance(page, 'light');
+  });
+  await check('planning shortcuts preserve time and location; Start fresh restores useful defaults', async () => {
+    await appearance(page, 'dark');
+    await openLegacy();
+    await page.locator('#origin').selectOption('glasgow-city-centre'); await page.locator('#depart').fill('15:30');
+    await page.locator('#starter').selectOption('budget');
+    assert.equal(await page.locator('#budget-preset').inputValue(), '5');
+    assert.equal(await page.locator('#interests input:checked').count(), 5);
+    assert.equal(await page.locator('#origin').inputValue(), 'glasgow-city-centre');
+    assert.equal(await page.locator('#depart').inputValue(), '15:30');
+    await page.locator('#plan-submit').click(); await waitText(featured, '£4.00');
+    await page.locator('#reset-planner').click();
+    assert.equal(await page.locator('#origin').inputValue(), 'glasgow-main-campus');
+    assert.equal(await page.locator('#depart').inputValue(), '16:00');
+    assert.equal(await page.locator('#budget-preset').inputValue(), '10');
+    assert.equal(await page.locator('#interests input:checked').count(), 1);
+    assert.equal(await featured.count(), 0);
+    assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark');
+    await page.locator('#budget-preset').selectOption('15');
+    assert.equal(await page.locator('#starter').inputValue(), '');
+    await page.locator('#reset-planner').click(); await appearance(page, 'light');
   });
   await check('budget presets and custom amount update actual results and clear stale cards', async () => {
     await page.locator('#budget-preset').selectOption('5'); await page.locator('#plan-submit').click();
@@ -265,17 +326,22 @@ try {
     await page.locator('#depart').fill('16:00'); await page.locator('#return').fill('19:00'); await plan('10');
     await page.locator('#budget').fill('1.001'); assert.equal(await featured.count(), 0);
     await page.locator('#plan-submit').click(); await waitText(page.locator('#plan-status.error'), 'two decimal');
+    assert.equal(await page.locator('#budget').getAttribute('aria-invalid'), 'true');
+    assert.equal(await page.locator('#budget').evaluate((element) => element === document.activeElement), true);
     await page.locator('#interest-picker summary').click();
     await page.locator('#interests input:checked').uncheck(); await plan('10');
     await waitText(page.locator('#plan-status.error'), 'interests');
+    await page.locator('#interest-error').waitFor();
     await page.locator('#interest-picker summary').click();
     await page.locator('#interests input[value=games]').check(); await page.locator('#return').fill('15:00');
-    await page.locator('#plan-submit').click(); await waitText(page.locator('#plan-status.error'), 'ordered time');
+    await page.locator('#plan-submit').click(); await waitText(page.locator('#plan-status.error'), 'return time after');
+    assert.equal(await page.locator('#return').getAttribute('aria-invalid'), 'true');
+    assert.equal(await page.locator('#return').evaluate((element) => element === document.activeElement), true);
     await page.locator('#return').fill('19:00'); await plan('10');
   });
   await check('fictional demo guide imports, searches selected text and opens exact original passage', async () => {
     await openTools();
-    await page.locator('#demo-source').click(); await row('Fictional venue guide').waitFor();
+    await addSourceAction(page, 'demo-source'); await row('Fictional venue guide').waitFor();
     await search('beginner board games'); await page.locator('.excerpt').first().waitFor();
     const quote = await page.locator('.excerpt blockquote').first().innerText();
     await page.locator('.excerpt button').first().click();
@@ -332,11 +398,27 @@ try {
     const file = await download.path(); assert.match(await readFile(file, 'utf8'), /acoustic music/);
     await page.locator('#viewer-close').click();
   });
+  await check('source selection shortcuts and cancelled deletion preserve the library', async () => {
+    await page.locator('#select-all').click();
+    assert.equal(await page.locator('.source-item input:checked').count(), await page.locator('.source-item').count());
+    await page.locator('#clear-selection').click();
+    assert.equal(await page.locator('.source-item input:checked').count(), 0);
+    await search('beginner'); await waitText(page.locator('#search-status.error'), 'Select at least one');
+    const count = await page.locator('.source-item').count();
+    await row('notes.md').getByRole('button', { name: 'Delete notes.md', exact: true }).click();
+    await page.locator('#delete-cancel').click();
+    assert.equal(await page.locator('.source-item').count(), count);
+    await row('notes.md').getByRole('button', { name: 'Delete notes.md', exact: true }).click();
+    await page.keyboard.press('Escape');
+    assert.equal(await page.locator('#delete-dialog').isVisible(), false);
+    assert.equal(await page.locator('.source-item').count(), count);
+  });
   await check('IndexedDB survives reload; delete removes source and search results', async () => {
     await page.reload(); await openTools(); await waitText(page.locator('#library-status'), 'Library ready.');
     await row('guide.pdf').waitFor();
     await row('guide.pdf').locator('input').check(); await search('telescope'); await page.locator('.excerpt').waitFor();
     await row('guide.pdf').getByRole('button', { name: 'Delete guide.pdf', exact: true }).click();
+    await page.locator('#delete-confirm').click();
     await waitText(page.locator('#library-status'), 'Source deleted'); assert.equal(await page.locator('.excerpt').count(), 0);
     await page.reload(); await openTools(); await waitText(page.locator('#library-status'), 'Library ready.'); assert.equal(await row('guide.pdf').count(), 0);
   });
@@ -350,9 +432,10 @@ try {
   await check('light and dark layouts fit at mobile, tablet and desktop widths', async () => {
     await page.locator('#library-close').click();
     for (const theme of ['light', 'dark']) {
-      if (await page.locator('html').getAttribute('data-theme') !== theme) await page.locator('#theme-toggle').click();
+      await appearance(page, theme);
       for (const width of [320, 390, 768, 1280]) {
         await page.setViewportSize({ width, height: 900 }); await plan('10');
+        if (width < 760) assert.equal(await page.locator('#results-title').evaluate((element) => element === document.activeElement), true);
         const overflow = await page.evaluate(() => [...document.querySelectorAll('body *')].filter((element) => {
           const bounds = element.getBoundingClientRect();
           return bounds.width > 0 && (bounds.right > window.innerWidth + 1 || bounds.left < -1);
@@ -362,9 +445,24 @@ try {
       }
     }
   });
+  await check('appearance and source dropdown panels fit on a narrow phone and close without losing work', async () => {
+    await page.setViewportSize({ width: 320, height: 800 });
+    await page.locator('#theme-toggle').click();
+    await page.screenshot({ path: 'tmp/web/appearance-phone.png', fullPage: false });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+    await page.locator('#appearance-done').click();
+    await openTools();
+    await page.locator('#add-source-picker > summary').click();
+    await page.locator('#import-button').waitFor();
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+    await page.keyboard.press('Escape');
+    assert.equal(await page.locator('#add-source-picker').evaluate((element) => element.open), false);
+    await page.locator('#library-close').click();
+    await page.setViewportSize({ width: 1280, height: 950 });
+  });
   await check('primary controls and common text meet WCAG AA contrast in both themes', async () => {
     for (const theme of ['light', 'dark']) {
-      if (await page.locator('html').getAttribute('data-theme') !== theme) await page.locator('#theme-toggle').click();
+      await appearance(page, theme);
       const failures = await page.evaluate(() => {
         const luminance = (rgb) => rgb.slice(0, 3).map((part) => {
           const channel = part / 255; return channel <= .04045 ? channel / 12.92 : ((channel + .055) / 1.055) ** 2.4;
@@ -398,7 +496,7 @@ try {
     const tab = await restricted.newPage(); await tab.goto(base); await openLegacy(tab);
     await waitText(tab.locator('#setup-status'), 'Ready.');
     assert.equal(await tab.locator('html').getAttribute('data-theme'), 'dark');
-    await tab.getByRole('button', { name: 'Dark mode', exact: true }).click();
+    await appearance(tab, 'light');
     assert.equal(await tab.locator('html').getAttribute('data-theme'), 'light');
     await tab.locator('#plan-submit').click(); await waitText(tab.locator('.activity.featured'), 'Board Game Night');
     await restricted.close();
@@ -416,7 +514,8 @@ try {
     await blocked.addInitScript(() => Object.defineProperty(window, 'indexedDB', { get() { throw new Error('Storage disabled'); } }));
     await blocked.goto(base); await openLegacy(blocked); await waitText(blocked.locator('#setup-status'), 'Ready.');
     await blocked.locator('#plan-submit').click(); await waitText(blocked.locator('.activity.featured'), 'Board Game Night');
-    await openTools(blocked); await blocked.locator('#demo-source').click(); await waitText(blocked.locator('#library-status.error'), 'Planning still works'); await blocked.close();
+    await openTools(blocked);
+    await addSourceAction(blocked, 'demo-source'); await waitText(blocked.locator('#library-status.error'), 'Planning still works'); await blocked.close();
   });
   assert.deepEqual(errors, [], 'Uncaught browser errors'); assert.deepEqual(external, [], 'Documents/search must never leave this origin');
   console.log(`BROWSER E2E PASSED: ${checks} checks. No backend, API keys or cloud mocks used.`);

@@ -18,6 +18,23 @@ const status = (id, message, error = false) => {
 const measure = (value, unit) => typeof value !== 'number' || !Number.isFinite(value) ? 'Unknown'
   : unit === 'pence' ? money(value) : `${new Intl.NumberFormat('en-GB', { maximumFractionDigits: 3 }).format(value)} ${unit}`;
 
+function scenarioIcon(id) {
+  const paths = {
+    market: 'M3 17l6-6 4 4 8-10M15 5h6v6',
+    travel: 'M4 7h16m-4-4 4 4-4 4M20 17H4m4-4-4 4 4 4',
+    student: 'M3 8l9-5 9 5-9 5Zm3 2v6c3 3 9 3 12 0v-6m3-2v9',
+    sustainability: 'M20 4C9 3 3 8 5 15c1 4 7 6 11 2 3-3 3-7 4-13ZM4 21l12-12',
+    custom: 'M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z',
+  };
+  const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  icon.setAttribute('viewBox', '0 0 24 24');
+  icon.setAttribute('width', '22'); icon.setAttribute('height', '22');
+  icon.setAttribute('aria-hidden', 'true');
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', paths[id]); icon.append(path);
+  return icon;
+}
+
 function clearComparison(message = 'Priorities changed. Compare again to update your result.') {
   $('decision-results').replaceChildren();
   status('decision-status', message);
@@ -108,12 +125,12 @@ async function loadDecisions() {
     if (!['market', 'travel', 'student', 'sustainability', 'custom'].every((id) => ids.has(id))) throw new Error();
     state.entries = catalog.scenarios;
     $('decision-scenario').replaceChildren(...state.entries.map(({ scenario }) => new Option(scenario.title, scenario.id)));
-    const symbols = { market: '↗', travel: '⇄', student: '⌘', sustainability: '♧', custom: '✧' };
     const names = { market: 'Market context', travel: 'Travel', student: 'Student hub', sustainability: 'Sustainability', custom: 'Your own idea' };
     $('scenario-tabs').replaceChildren(...state.entries.map(({ scenario }) => {
       const tab = node('button', undefined, 'scenario-tab');
       tab.type = 'button'; tab.dataset.id = scenario.id; tab.setAttribute('aria-pressed', 'false');
-      const symbol = node('span', symbols[scenario.id], 'scenario-symbol'); symbol.setAttribute('aria-hidden', 'true');
+      const symbol = node('span', undefined, 'scenario-symbol'); symbol.setAttribute('aria-hidden', 'true');
+      symbol.append(scenarioIcon(scenario.id));
       tab.append(symbol, node('strong', names[scenario.id]));
       tab.addEventListener('click', () => selectScenario(scenario.id));
       return tab;
@@ -219,6 +236,10 @@ $('decision-form').addEventListener('submit', (event) => {
     const response = evaluateDecision(request, state.current);
     if (response.error) throw new Error(response.error.details[0]?.message ?? response.error.message);
     renderResult(response.data); effects.play(response.data.recommended ? 'success' : 'empty');
+    if (window.matchMedia('(max-width: 760px)').matches) {
+      $('comparison-title').focus({ preventScroll: true });
+      $('comparison-title').scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' });
+    }
   } catch (error) { status('decision-status', error.message, true); effects.play('empty'); }
 });
 $('custom-apply').addEventListener('click', () => {
