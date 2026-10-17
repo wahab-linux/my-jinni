@@ -1,5 +1,6 @@
 # AfterClass development instructions
 
+- Keep all tracked repository content in English, including documentation, prompts, comments, UI copy, metadata, and AI usage records.
 - Read `docs/PROJECT_PLAN.md`, `docs/REQUIREMENTS.md`, `docs/ARCHITECTURE.md`, `docs/API.md`, `docs/TASKS.md`, and your assigned prompt before editing.
 - The user owns backend work; Wahab owns frontend work. Backend changes belong in `app/`, `data/`, `tests/`, and `scripts/`; frontend changes belong in `web/`. Coordinate shared contract, dependency, and documentation changes before editing them.
 - Preserve the contract in `docs/openapi.json` and the response examples in `web/fixtures/`. Do not silently rename fields or change money/time units.
