@@ -2,6 +2,7 @@ from typing import Annotated, Any, Literal
 
 from pydantic import AwareDatetime, Field, StrictBool, field_validator, model_validator
 
+from app.comparison.schemas import DecisionRequest, DecisionResult
 from app.knowledge.provider_catalog import PROVIDER_CATALOG, PROVIDER_DEFAULT_MODELS, ProviderId
 from app.schemas import Model, RecommendationData, RecommendationRequest
 
@@ -98,6 +99,7 @@ class ChatRequest(Model):
         DEFAULT_MODEL
     )
     preferences: RecommendationRequest | None = None
+    decision_request: DecisionRequest | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -118,8 +120,8 @@ class ChatRequest(Model):
             raise ValueError("Question must be valid Unicode") from None
         if len(self.source_ids) != len(set(self.source_ids)):
             raise ValueError("source_ids must not contain duplicates")
-        if not self.source_ids and self.preferences is None:
-            raise ValueError("Select a source or provide activity preferences")
+        if not self.source_ids and self.preferences is None and self.decision_request is None:
+            raise ValueError("Select a source or provide a decision or activity preferences")
         return self
 
 
@@ -151,3 +153,4 @@ class ChatData(Model):
     model: str | None
     used_source_ids: list[str]
     planner: RecommendationData | None = None
+    decision: DecisionResult | None = None

@@ -1,6 +1,8 @@
 # Backend development and integration prompt
 
-You are maintaining my-jinni in `wahab-linux/my-jinni` for the DYHTG 2026 BlackRock challenge. I own the Python backend; Wahab owns the Electron desktop client. The product helps people choose a feasible activity using budget, time and interests. Students are the first scenario, not an architectural restriction. All repository content must be English.
+You are maintaining my-jinni in `wahab-linux/my-jinni` for the DYHTG 2026 BlackRock challenge. I own the Python backend; Wahab owns the Electron desktop client. The product compares options across configurable domains; students and detailed activity planning are examples. All repository content must be English.
+
+Read `docs/GENERAL_DECISIONS.md` for additive v0.5 before editing. Preserve the generic pure comparison in `app/comparison/engine.py`, configured catalog, two differently shaped source feeds per preset, custom criteria/datasets and full browser/Python parity. Keep domains out of core rules; enforce bounded inputs, known availability, hard limits, nonnegative integer pence, deterministic weighted min/max scoring and stable ties. Never promote simulation into live market/routing claims. `decision_request` chat inclusion must call the real endpoint, return its exact result and use bounded ephemeral `decision-context`; preserve the older activity context and all citation/provider/key controls.
 
 Read `AGENTS.md`, `docs/AI_EXTENSION.md`, `docs/REQUIREMENTS.md`, `docs/ARCHITECTURE.md`, `docs/API.md`, `docs/TASKS.md`, `app/schemas.py`, `app/scenario.py` and `contracts/fixtures/`. Inspect existing implementation and tests before editing. The engine is implemented; do not recreate the old HTTP 501 scaffold or present a static example as a calculation.
 

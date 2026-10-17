@@ -11,6 +11,8 @@ from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException
 
 from app import __version__
+from app.comparison.router import mock_router as comparison_mock_router
+from app.comparison.router import router as comparison_router
 from app.decision.domain import Candidate, Preferences
 from app.decision.engine import calculate
 from app.errors import (
@@ -111,8 +113,9 @@ def create_app() -> FastAPI:
         title="my-jinni API",
         version=__version__,
         description=(
-            "Contract v0.3: activity planning plus an optional local source library and cited AI. "
-            "The planner uses simulated data; user uploads retain their own provenance."
+            "Contract v0.5: general multi-source decisions, optional detailed activity planning, "
+            "a local source library and cited AI. Presets are simulated; custom data and uploads "
+            "retain supplied provenance without independent verification."
         ),
         responses=ERROR_RESPONSES,
     )
@@ -235,6 +238,8 @@ def create_app() -> FastAPI:
         )
 
     app.include_router(mock_router)
+    app.include_router(comparison_mock_router)
+    app.include_router(comparison_router)
     app.include_router(knowledge_router)
 
     @app.get("/", include_in_schema=False)

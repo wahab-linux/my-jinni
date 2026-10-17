@@ -1,0 +1,29 @@
+{
+  "catalog_id": "custom",
+  "source": {
+    "id": "custom-option-catalog",
+    "label": "Fictional custom option catalog",
+    "is_simulated": true,
+    "updated_at": "2026-10-17T10:00:00+01:00"
+  },
+  "items": [
+    {
+      "id": "option-a",
+      "name": "Example option A",
+      "description": "A fictional example for transparent preference comparison.",
+      "category": "example"
+    },
+    {
+      "id": "option-b",
+      "name": "Example option B",
+      "description": "A fictional example for transparent preference comparison.",
+      "category": "example"
+    },
+    {
+      "id": "option-c",
+      "name": "Example option C",
+      "description": "A fictional example for transparent preference comparison.",
+      "category": "example"
+    }
+  ]
+}

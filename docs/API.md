@@ -1,4 +1,16 @@
-# API contract v0.4
+# API contract v0.5
+
+v0.5 adds configurable option comparisons, five initial scenarios and optional calculated comparison evidence in chat. Read [GENERAL_DECISIONS.md](GENERAL_DECISIONS.md) for complete models, ranking, limits, source routes, failure handling and browser export. Existing activity, library and provider operations below are retained unchanged.
+
+| Method | Added path | Result data |
+| --- | --- | --- |
+| GET | `/api/v1/decision-scenarios` | `{scenarios:[Scenario]}` |
+| GET | `/api/v1/decision-scenarios/{id}` | `{scenario,dataset}` from both HTTP sources |
+| POST | `/api/v1/decisions/evaluate` | Calculated `DecisionResult` |
+| GET | `/mock/decisions/{id}/options` | Independent simulated option catalog |
+| GET | `/mock/decisions/{id}/metrics` | Differently shaped simulated measurements |
+
+Chat accepts optional `decision_request: DecisionRequest` and returns additive `decision: DecisionResult|null`, distinct from the existing `preferences`/`planner` pair. Unknown scenario is 404; invalid preferences are 422; unavailable/invalid comparison sources are 503/502. A valid empty comparison is 200 with `recommended:null`. No cloud key is sent when fetching or evaluating decisions.
 
 v0.3 added the source-library and cited-answer endpoints in [AI_EXTENSION.md](AI_EXTENSION.md). v0.4 adds OpenAI, DeepSeek, Google Gemini and Anthropic Claude selection as specified in [AI_PROVIDERS.md](AI_PROVIDERS.md): optional chat `provider`, selected-provider default model, response provider identity and source-list provider catalog. `X-AI-API-Key` is canonical; legacy `X-OpenAI-API-Key` remains OpenAI-only and supplying both is 422. Every v0.2 activity field and v0.3 library/citation field is preserved. AI uses the selected provider's separate session key; the activity planner needs none. The OpenAPI snapshot includes all endpoints.
 
@@ -16,9 +28,9 @@ Here **v0.2 is the contract revision**, not a package release. Application packa
 
 ## Boundaries
 
-my-jinni helps anyone choose an activity using budget, time, interests, and return travel. Student identity is not required. `app/scenario.py` configures the fictional Glasgow demo's two origins, source-data day, timezone, and budget cap. `app/schemas.py` checks general request structure, not campus identity or fixed dates. See `docs/ARCHITECTURE.md`.
+my-jinni compares supplied options using configurable criteria and separate source data. `app/comparison/` owns the reusable general comparison. The activity example still helps anyone choose an activity using budget, time, interests and return travel. `app/scenario.py` configures that example's two origins, source-data day, timezone and budget cap. See `docs/ARCHITECTURE.md`.
 
-GBP, five activity categories, return to the same origin, fixed travel durations, and fictional feeds remain deliberate activity-MVP limits. This is not an implemented arbitrary-domain decision platform.
+GBP, five activity categories, return to the same origin, fixed travel durations and fictional feeds remain limits of the detailed activity endpoint. They do not constrain the general comparison endpoint, whose criteria and datasets can describe other domains. No preset establishes live service coverage.
 
 ## Conventions
 

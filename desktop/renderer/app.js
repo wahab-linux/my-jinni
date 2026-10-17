@@ -1,3 +1,4 @@
+/* global initDecisionUI, loadDecisionCatalog, currentDecisionRequest, renderDecisionBrief */
 "use strict";
 
 const state = {
@@ -528,7 +529,7 @@ function highlightedText(text, quote) {
   return paragraph;
 }
 
-async function openSource(id, citation = null, planner = null, originId = null) {
+async function openSource(id, citation = null, planner = null, originId = null, decision = null) {
   const token = ++state.viewerToken;
   $("source-dialog-content").className = "source-dialog-content";
   $("source-dialog-title").textContent = citation?.source_title || "Source text";
@@ -543,6 +544,11 @@ async function openSource(id, citation = null, planner = null, originId = null) 
       renderPlan(plan, planner, [], originId, true);
       $("source-dialog-content").append(plan);
     }
+    return;
+  }
+  if (id === "decision-context") {
+    $("source-dialog-content").append(element("p", "section-copy", "Calculated for this question from your current comparison settings. The returned decision is authoritative; this temporary context is not a saved library source."));
+    if (decision) renderDecisionBrief($("source-dialog-content"), decision);
     return;
   }
   showFeedback($("source-dialog-content"), "Opening the extracted source text…", "loading");
@@ -563,7 +569,7 @@ async function openSource(id, citation = null, planner = null, originId = null) 
     if (highlight) highlight.scrollIntoView({ block: "center" });
   } catch (error) {
     if (token !== state.viewerToken) return;
-    showError("source-dialog-content", error, () => openSource(id, citation, planner, originId));
+    showError("source-dialog-content", error, () => openSource(id, citation, planner, originId, decision));
   }
 }
 
@@ -579,6 +585,7 @@ function resetChatResult() {
   clear($("chat-answer"));
   clear($("citations"));
   clear($("chat-planner"));
+  clear($("chat-decision"));
   clear($("chat-warnings"));
 }
 
@@ -603,10 +610,11 @@ function renderChat(envelope, preferences) {
     const button = element("button", "citation-reference");
     button.type = "button";
     button.dataset.testid = "citation-reference";
+    button.dataset.sourceId = citation.source_id;
     const label = element("span", "", citation.source_title);
     label.append(element("small", "", `${citation.page ? `Page ${citation.page} · ` : ""}${citation.is_simulated ? "Simulated source · " : ""}Open exact quote ↗`));
     button.append(element("b", "", index + 1), label);
-    button.addEventListener("click", () => openSource(citation.source_id, citation, data.planner, preferences?.origin_id));
+    button.addEventListener("click", () => openSource(citation.source_id, citation, data.planner, preferences?.origin_id, data.decision));
     $("citations").append(button);
   }
   clear($("chat-planner"));
@@ -615,6 +623,11 @@ function renderChat(envelope, preferences) {
     const planner = element("div");
     renderPlan(planner, data.planner, [], preferences?.origin_id, true);
     $("chat-planner").append(planner);
+  }
+  clear($("chat-decision"));
+  if (data.decision) {
+    $("chat-decision").append(element("h4", "", "AUTHORITATIVE CALCULATED COMPARISON"));
+    renderDecisionBrief($("chat-decision"), data.decision);
   }
   clear($("chat-warnings"));
   renderWarnings($("chat-warnings"), envelope.warnings);
@@ -629,12 +642,13 @@ async function submitChat(event) {
   try {
     const question = $("question").value.trim();
     if (!question || question.length > 2000) throw new ServiceError("Enter a question of up to 2,000 characters.", 422);
-    if (!state.selectedSources.size && !$("include-plan").checked) throw new ServiceError("Select a source or include your activity preferences first.", 422);
+    if (!state.selectedSources.size && !$("include-plan").checked && !$("include-decision").checked) throw new ServiceError("Select a source or include comparison/activity preferences first.", 422);
     const model = $("model").value.trim();
     if (!state.providers.some((provider) => provider.id === state.provider)) throw new ServiceError("Load the available AI providers before asking a question.", 422);
     if (!/^[a-zA-Z0-9._:-]{1,100}$/.test(model)) throw new ServiceError("Choose a valid provider model in Model settings. Refresh the library to load its default.", 422);
     request = { question, source_ids: [...state.selectedSources], provider: state.provider, model };
     if ($("include-plan").checked) request.preferences = currentPreferences();
+    if ($("include-decision").checked) request.decision_request = currentDecisionRequest();
   } catch (error) {
     resetChatResult();
     showError("chat-feedback", error);
@@ -824,7 +838,7 @@ async function pollBackend() {
     const status = await call("getBackendStatus");
     renderBackendStatus(status);
     if (status.state === "starting") state.backendTimer = setTimeout(pollBackend, 1000);
-    if (status.state === "ready" && previous !== "ready") await Promise.allSettled([loadOptions(), refreshSources()]);
+    if (status.state === "ready" && previous !== "ready") await Promise.allSettled([loadOptions(), refreshSources(), loadDecisionCatalog()]);
   } catch {
     renderBackendStatus({ state: "error", message: "The desktop service is unavailable. Retry the connection." });
     showFeedback("options-state", "Waiting for the local service. Use Retry connection above.", "error");
@@ -842,7 +856,7 @@ async function retryBackend() {
   try {
     const status = await call("retryBackend");
     renderBackendStatus(status);
-    if (status.state === "ready") await Promise.allSettled([loadOptions(), refreshSources()]);
+    if (status.state === "ready") await Promise.allSettled([loadOptions(), refreshSources(), loadDecisionCatalog()]);
     else if (status.state === "starting") state.backendTimer = setTimeout(pollBackend, 500);
   } catch {
     renderBackendStatus({ state: "error", message: "Could not start the local service. Check setup and retry." });
@@ -866,7 +880,7 @@ $("add-text-toggle").addEventListener("click", () => {
   if (!form.hidden) $("source-title").focus();
 });
 $("chat-form").addEventListener("submit", submitChat);
-for (const id of ["question", "include-plan"]) {
+for (const id of ["question", "include-plan", "include-decision"]) {
   $(id).addEventListener("input", () => invalidateChat("Question context changed. Ask again for an updated answer."));
   $(id).addEventListener("change", () => invalidateChat("Question context changed. Ask again for an updated answer."));
 }
@@ -876,6 +890,7 @@ for (const id of ["model", "settings-model"]) {
   $(id).addEventListener("change", () => updateModel($(id)));
 }
 $("settings-button").addEventListener("click", openSettings);
+$("chat-settings-button").addEventListener("click", openSettings);
 $("settings-form").addEventListener("submit", saveKey);
 $("clear-key").addEventListener("click", clearKey);
 $("settings-close").addEventListener("click", () => $("settings-dialog").close());
@@ -885,5 +900,6 @@ $("source-dialog").addEventListener("close", () => { state.viewerToken += 1; });
 updateSelection();
 renderSources();
 updateChatButton();
+initDecisionUI();
 pollBackend();
 void refreshKeySettings();

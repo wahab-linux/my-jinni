@@ -1,0 +1,35 @@
+{
+  "catalog_id": "sustainability",
+  "source": {
+    "id": "sustainability-option-catalog",
+    "label": "Fictional sustainability option catalog",
+    "is_simulated": true,
+    "updated_at": "2026-10-17T10:00:00+01:00"
+  },
+  "items": [
+    {
+      "id": "refill-kit",
+      "name": "Fictional refill kit",
+      "description": "A fictional example for transparent preference comparison.",
+      "category": "reuse"
+    },
+    {
+      "id": "insulation",
+      "name": "Fictional insulation upgrade",
+      "description": "A fictional example for transparent preference comparison.",
+      "category": "energy"
+    },
+    {
+      "id": "repair-service",
+      "name": "Fictional repair service",
+      "description": "A fictional example for transparent preference comparison.",
+      "category": "repair"
+    },
+    {
+      "id": "solar-kit",
+      "name": "Fictional solar kit",
+      "description": "A fictional example for transparent preference comparison.",
+      "category": "energy"
+    }
+  ]
+}

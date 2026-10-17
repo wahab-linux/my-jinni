@@ -105,6 +105,9 @@ function registerBridge() {
   const operations = {
     getOptions: () => request('/api/v1/options'),
     recommend: (preferences) => request('/api/v1/recommendations', { method: 'POST', json: preferences }),
+    getDecisionScenarios: () => request('/api/v1/decision-scenarios'),
+    getDecisionScenario: (id) => request(`/api/v1/decision-scenarios/${id}`),
+    evaluateDecision: (decision) => request('/api/v1/decisions/evaluate', { method: 'POST', json: decision }),
     listSources: () => request('/api/v1/sources'),
     addTextSource: (source) => request('/api/v1/sources', { method: 'POST', json: source }),
     importSource,

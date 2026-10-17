@@ -1,0 +1,35 @@
+{
+  "catalog_id": "market",
+  "source": {
+    "id": "market-option-catalog",
+    "label": "Fictional market option catalog",
+    "is_simulated": true,
+    "updated_at": "2026-10-17T10:00:00+01:00"
+  },
+  "items": [
+    {
+      "id": "diversified-etf",
+      "name": "Fictional diversified ETF",
+      "description": "A fictional example for transparent preference comparison.",
+      "category": "etf"
+    },
+    {
+      "id": "example-share",
+      "name": "Fictional company share",
+      "description": "A fictional example for transparent preference comparison.",
+      "category": "share"
+    },
+    {
+      "id": "example-digital-asset",
+      "name": "Fictional digital asset",
+      "description": "A fictional example for transparent preference comparison.",
+      "category": "digital-asset"
+    },
+    {
+      "id": "bond-basket",
+      "name": "Fictional bond basket",
+      "description": "A fictional example for transparent preference comparison.",
+      "category": "fixed-income"
+    }
+  ]
+}

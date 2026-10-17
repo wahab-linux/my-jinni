@@ -1,4 +1,4 @@
-/* global window, document */
+/* global window, document, getComputedStyle */
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -47,7 +47,30 @@ function pdfFixture(text) {
   return Buffer.from(content);
 }
 
+async function closeTools(page) {
+  for (const id of ['source-dialog', 'settings-dialog', 'chat-drawer', 'library-drawer']) {
+    if (await page.getByTestId(id).isVisible()) await page.keyboard.press('Escape');
+  }
+}
+
+async function openTool(page, name) {
+  if (await page.getByTestId(`${name}-drawer`).isVisible()) return;
+  await closeTools(page);
+  await page.getByTestId(`${name}-open`).click();
+}
+
+async function openLegacy(page) {
+  await closeTools(page);
+  if (!await page.getByTestId('legacy-planner').evaluate((node) => node.open)) await page.getByTestId('legacy-toggle').click();
+}
+
+async function openSettings(page) {
+  const button = await page.getByTestId('chat-drawer').isVisible() ? 'chat-settings-button' : 'settings-button';
+  await page.getByTestId(button).click();
+}
+
 async function addText(page, baseUrl, title, text) {
+  await openTool(page, 'library');
   if (!await page.getByTestId('source-title').isVisible()) await page.getByTestId('add-text-toggle').click();
   await page.getByTestId('source-title').fill(title);
   await page.getByTestId('source-text').fill(text);
@@ -57,13 +80,14 @@ async function addText(page, baseUrl, title, text) {
 }
 
 async function selectOnly(page, selectedIds) {
+  await openTool(page, 'library');
   for (const checkbox of await page.getByTestId('source-checkbox').all()) {
     await checkbox.setChecked(selectedIds.includes(await checkbox.inputValue()));
   }
 }
 
 async function saveKey(page, key, provider = 'openai') {
-  await page.getByTestId('settings-button').click();
+  await openSettings(page);
   await page.getByTestId('settings-provider').selectOption(provider);
   await page.getByTestId('api-key').fill(key);
   await page.getByTestId('save-key').click();
@@ -74,11 +98,163 @@ async function saveKey(page, key, provider = 'openai') {
 }
 
 async function ask(page, question, model = 'gpt-4.1-mini') {
+  await openTool(page, 'chat');
+  await page.getByTestId('include-decision').uncheck();
   await page.getByTestId('include-plan').uncheck();
   if (!await page.getByTestId('model').isVisible()) await page.getByText('Model settings', { exact: true }).click();
   await page.getByTestId('model').fill(model);
   await page.getByTestId('question').fill(question);
   await page.getByTestId('ask-submit').click();
+}
+
+function customComparison() {
+  const source = (id, label) => ({ id, label, is_simulated: true, updated_at: '2026-10-17T10:00:00+01:00' });
+  return {
+    title: 'Fictional workspace equipment choice',
+    criteria: [
+      { id: 'cost-pence', label: 'Total cost', unit: 'pence', direction: 'minimize', default_weight: 100 },
+      { id: 'quality-score', label: 'Quality estimate', unit: 'score', direction: 'maximize', default_weight: 0 },
+    ],
+    dataset: {
+      option_source: source('equipment-catalog', 'Fictional equipment catalog'),
+      metric_source: source('equipment-measures', 'Fictional equipment measurements'),
+      options: [
+        { id: 'budget', name: 'Budget equipment', category: 'equipment', description: 'Fictional lower-cost option.' },
+        { id: 'premium', name: 'Premium equipment', category: 'equipment', description: 'Fictional higher-quality option.' },
+      ],
+      observations: [
+        { option_id: 'budget', available: true, metrics: { 'cost-pence': 100, 'quality-score': 20 } },
+        { option_id: 'premium', available: true, metrics: { 'cost-pence': 900, 'quality-score': 100 } },
+      ],
+    },
+  };
+}
+
+async function chooseScenario(page, id) {
+  await closeTools(page);
+  await page.getByTestId('decision-scenario').selectOption(id);
+  await waitUntil(() => page.getByTestId('decision-submit').isEnabled());
+}
+
+async function compare(page) {
+  await page.getByTestId('decision-submit').click();
+  await contains(page.getByTestId('decision-feedback'), 'Comparison complete');
+}
+
+async function applyDefinition(page, definition) {
+  const editor = page.getByTestId('custom-editor');
+  if (!await editor.evaluate((node) => node.open)) await editor.locator('summary').click();
+  await page.getByTestId('custom-json').fill(JSON.stringify(definition, null, 2));
+  await page.getByTestId('custom-apply').click();
+  await contains(page.getByTestId('decision-feedback'), 'definition applied');
+}
+
+async function exerciseGeneralDecisions(page, baseUrl) {
+  await waitUntil(() => page.getByTestId('decision-submit').isEnabled());
+  await check('decision workspace is primary and optional tools start collapsed', async () => {
+    assert.equal(await page.getByTestId('library-drawer').isVisible(), false);
+    assert.equal(await page.getByTestId('chat-drawer').isVisible(), false);
+    assert.equal(await page.getByTestId('legacy-planner').evaluate((node) => node.open), false);
+    assert.equal(await page.getByTestId('sound-toggle').getAttribute('aria-pressed'), 'false');
+    assert.equal(await page.getByTestId('sound-toggle').innerText(), 'Sound off');
+    await contains(page.getByTestId('decision-empty'), 'comparison will appear');
+    await screenshot(page, '08-decision-workspace.png');
+  });
+  for (const id of ['market', 'travel', 'student', 'sustainability', 'custom']) {
+    await check(`actual two-source ${id} comparison matches the API's calculated result`, async () => {
+      await chooseScenario(page, id);
+      const request = await page.evaluate(() => window.currentDecisionRequest());
+      const response = await fetch(`${baseUrl}/api/v1/decisions/evaluate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(request) });
+      assert.equal(response.status, 200);
+      const expected = (await response.json()).data;
+      assert.equal(expected.sources.length, 2);
+      assert.notEqual(expected.sources[0].id, expected.sources[1].id);
+      await compare(page);
+      await contains(page.getByTestId('decision-results'), expected.recommended.name);
+      await contains(page.getByTestId('decision-results'), 'not a probability');
+      await page.getByTestId('decision-results').locator('.decision-provenance summary').click();
+      await contains(page.getByTestId('decision-results'), expected.sources[0].label);
+      assert.equal(await page.getByTestId('decision-table').locator('tbody tr').count(), expected.ranked.length);
+      if (id === 'market') await contains(page.locator('#scenario-notice'), 'no live prices');
+      if (id === 'travel') await screenshot(page, '09-travel-comparison.png');
+    });
+  }
+  await check('custom criteria change domains and a weight flip changes the actual winner', async () => {
+    await applyDefinition(page, customComparison());
+    await compare(page);
+    await contains(page.getByTestId('decision-results').locator('.decision-recommendation h3'), 'Budget equipment');
+    await page.getByTestId('weight-cost-pence').fill('0');
+    await page.getByTestId('weight-quality-score').fill('100');
+    await contains(page.getByTestId('decision-empty'), 'comparison will appear');
+    await compare(page);
+    await contains(page.getByTestId('decision-results').locator('.decision-recommendation h3'), 'Premium equipment');
+    await screenshot(page, '10-custom-weighted-comparison.png');
+  });
+  await check('hard limits and missing observations give honest exclusions and no fallback', async () => {
+    await page.getByTestId('limit-enabled-cost-pence').check();
+    await page.getByTestId('limit-cost-pence').fill('0.00');
+    await compare(page);
+    await contains(page.getByTestId('decision-results'), 'No option meets');
+    assert.equal(await page.getByTestId('decision-results').locator('table').count(), 0);
+    await contains(page.getByTestId('decision-exclusions'), 'Budget equipment');
+    const definition = customComparison();
+    definition.dataset.observations = [];
+    await applyDefinition(page, definition);
+    await compare(page);
+    await contains(page.getByTestId('decision-results'), 'No option meets');
+    await contains(page.getByTestId('decision-exclusions'), 'measurement');
+  });
+  await check('drawers open with keyboard, close with Escape and return focus', async () => {
+    await page.getByTestId('library-open').focus();
+    await page.keyboard.press('Enter');
+    assert.equal(await page.getByTestId('library-drawer').isVisible(), true);
+    await page.keyboard.press('Escape');
+    assert.equal(await page.getByTestId('library-drawer').isVisible(), false);
+    assert.equal(await page.evaluate(() => document.activeElement.id), 'library-open');
+    await page.getByTestId('chat-open').click();
+    assert.equal(await page.getByTestId('chat-drawer').isVisible(), true);
+    await page.keyboard.press('Escape');
+    assert.equal(await page.getByTestId('chat-drawer').isVisible(), false);
+  });
+  await check('valid constructor criterion IDs use configured numeric defaults', async () => {
+    const definition = customComparison();
+    definition.criteria = [{ id: 'constructor', label: 'Constructor measure', unit: 'score', direction: 'maximize', default_weight: 100 }];
+    definition.dataset.observations = [
+      { option_id: 'budget', available: true, metrics: { constructor: 1 } },
+      { option_id: 'premium', available: true, metrics: { constructor: 100 } },
+    ];
+    await applyDefinition(page, definition);
+    assert.equal(await page.getByTestId('weight-constructor').inputValue(), '100');
+    await compare(page);
+    await contains(page.getByTestId('decision-results').locator('.decision-recommendation h3'), 'Premium equipment');
+    definition.criteria[0].default_weight = 0;
+    definition.criteria.push({ id: 'quality-score', label: 'Quality estimate', unit: 'score', direction: 'maximize', default_weight: 100 });
+    definition.dataset.observations[0].metrics = { 'quality-score': 20 };
+    definition.dataset.observations[1].metrics = { 'quality-score': 100 };
+    await applyDefinition(page, definition);
+    await compare(page);
+    await contains(page.getByTestId('decision-table'), 'Unknown');
+    assert.equal((await page.getByTestId('decision-results').innerText()).includes('NaN'), false);
+  });
+  await check('reduced motion, theme and opt-in Web Audio requests preserve the decision flow', async () => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await chooseScenario(page, 'travel');
+    await compare(page);
+    assert.equal(await page.getByTestId('decision-results').evaluate((node) => getComputedStyle(node).animationName), 'none');
+    await page.evaluate(() => { window.testSoundRequests = 0; window.addEventListener('my-jinni:sound', () => { window.testSoundRequests++; }); });
+    assert.equal(await page.evaluate(() => window.testSoundRequests), 0);
+    await page.getByTestId('sound-toggle').click();
+    assert.equal(await page.getByTestId('sound-toggle').getAttribute('aria-pressed'), 'true');
+    await compare(page);
+    await waitUntil(() => page.evaluate(() => window.testSoundRequests >= 2));
+    await page.getByTestId('sound-toggle').click();
+    assert.equal(await page.getByTestId('sound-toggle').getAttribute('aria-pressed'), 'false');
+    await page.getByTestId('theme-toggle').click();
+    assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'dark');
+    await screenshot(page, '11-decision-dark-reduced-motion.png');
+    await page.getByTestId('theme-toggle').click();
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+  });
 }
 
 async function exerciseMockedProviderDesktop() {
@@ -91,7 +267,10 @@ async function exerciseMockedProviderDesktop() {
     await contains(page.getByTestId('backend-status'), 'ready');
     await waitUntil(() => page.getByTestId('plan-submit').isEnabled());
 
+    await exerciseGeneralDecisions(page, backend.baseUrl);
+
     await check('actual Electron isolation and planner GBP 10 / 4 / 0', async () => {
+      await openLegacy(page);
       const isolation = await desktop.evaluate(({ BrowserWindow }) => {
         const preferences = BrowserWindow.getAllWindows()[0].webContents.getLastWebPreferences();
         return { contextIsolation: preferences.contextIsolation, nodeIntegration: preferences.nodeIntegration, sandbox: preferences.sandbox };
@@ -113,6 +292,7 @@ async function exerciseMockedProviderDesktop() {
     });
 
     await check('city-centre travel changes the real calculated recommendation', async () => {
+      await openLegacy(page);
       await page.getByTestId('origin').selectOption('glasgow-city-centre');
       await page.getByTestId('budget').fill('10.00');
       await page.getByTestId('plan-submit').click();
@@ -195,6 +375,24 @@ async function exerciseMockedProviderDesktop() {
       assert.equal(status.last_source_ids.includes(excluded.id), false);
     });
 
+    await check('MOCKED AI cites an authoritative server-calculated general comparison', async () => {
+      await chooseScenario(page, 'travel');
+      await compare(page);
+      const winner = await page.getByTestId('decision-results').locator('.decision-recommendation h3').innerText();
+      await openTool(page, 'chat');
+      await page.getByTestId('include-plan').uncheck();
+      await page.getByTestId('include-decision').check();
+      await page.getByTestId('question').fill('Explain my current comparison using these sources.');
+      await page.getByTestId('ask-submit').click();
+      await contains(page.getByTestId('chat-decision'), winner);
+      const status = await (await fetch(`${backend.baseUrl}/__test__/provider-status`)).json();
+      assert.ok(status.last_source_ids.includes('decision-context'));
+      await page.locator('[data-testid="citation-reference"][data-source-id="decision-context"]').click();
+      await contains(page.getByTestId('source-dialog-content'), winner);
+      await page.getByTestId('source-close').click();
+      await page.getByTestId('include-decision').uncheck();
+    });
+
     await check('no lexical match gives insufficient evidence without a provider call', async () => {
       const before = await (await fetch(`${backend.baseUrl}/__test__/provider-status`)).json();
       await ask(page, 'Axolotl hyperdrive spectroscopy');
@@ -262,7 +460,7 @@ async function exerciseMockedProviderDesktop() {
       await contains(page.getByTestId('chat-feedback'), 'unavailable');
       await page.getByTestId('ask-submit').click();
       await contains(page.getByTestId('chat-answer'), '11:00');
-      await page.getByTestId('settings-button').click();
+      await openSettings(page);
       await page.getByTestId('settings-provider').selectOption('deepseek');
       await page.getByTestId('clear-key').click();
       await waitUntil(async () => !(await page.evaluate(() => window.myJinni.getSessionSettings('deepseek'))).configured);
@@ -270,8 +468,10 @@ async function exerciseMockedProviderDesktop() {
       await page.getByTestId('settings-dialog').getByRole('button', { name: 'Close', exact: true }).click();
       await ask(page, 'When does the fictional museum open?', 'deepseek-flash');
       await contains(page.getByTestId('chat-feedback'), 'key');
+      await openLegacy(page);
       await page.getByTestId('plan-submit').click();
       await contains(page.getByTestId('planner-result'), 'Short Film Club');
+      await openTool(page, 'chat');
     });
 
     await check('switching provider invalidates a slow MOCKED answer and clears unsaved key entry', async () => {
@@ -280,7 +480,7 @@ async function exerciseMockedProviderDesktop() {
       await page.getByTestId('provider').selectOption('openai');
       await page.waitForTimeout(650);
       assert.equal((await page.getByTestId('chat-result').innerText()).includes('11:00'), false);
-      await page.getByTestId('settings-button').click();
+      await openSettings(page);
       await page.getByTestId('api-key').fill('unsaved-placeholder');
       await page.getByTestId('settings-provider').selectOption('deepseek');
       assert.equal(await page.getByTestId('api-key').inputValue(), '');
@@ -291,6 +491,7 @@ async function exerciseMockedProviderDesktop() {
     });
 
     await check('keyboard navigation and resized window remain usable', async () => {
+      await openLegacy(page);
       await page.getByTestId('origin').focus();
       await page.keyboard.press('Tab');
       assert.notEqual(await page.evaluate(() => document.activeElement.id), 'origin');
@@ -300,6 +501,7 @@ async function exerciseMockedProviderDesktop() {
     });
 
     await check('source deletion updates real storage and an external backend survives app close', async () => {
+      await openTool(page, 'library');
       await page.locator(`[data-testid="source-delete"][data-source-id="${excluded.id}"]`).click();
       await waitUntil(async () => !(await sources(backend.baseUrl)).some((source) => source.id === excluded.id));
       await desktop.close();
@@ -312,6 +514,7 @@ async function exerciseMockedProviderDesktop() {
       await backend.stop();
       backend = await startMockBackend({ directory, port });
       ({ application: desktop, page } = await launchDesktop(electron, backend.baseUrl, directory));
+      await openTool(page, 'library');
       await contains(page.getByTestId('source-list'), imported.title);
       const saved = await sources(backend.baseUrl);
       assert.ok(saved.some((source) => source.id === guide.id));
@@ -353,6 +556,7 @@ async function exerciseOwnedBackendRecovery() {
       await contains(page.getByTestId('backend-status'), 'ready');
       const status = await page.evaluate(() => window.myJinni.getBackendStatus());
       assert.equal(status.owned, true);
+      await openLegacy(page);
       await page.getByTestId('plan-submit').click();
       await contains(page.getByTestId('planner-result'), 'Board Game Night');
       await desktop.close();

@@ -1,0 +1,51 @@
+{
+  "measurement_set": "market",
+  "provenance": {
+    "id": "market-measurement-feed",
+    "label": "Fictional market measurement feed",
+    "is_simulated": true,
+    "updated_at": "2026-10-17T10:00:00+01:00"
+  },
+  "records": [
+    {
+      "option": "diversified-etf",
+      "status": "available",
+      "values": {
+        "fee-pence": 250,
+        "volatility-index": 22,
+        "liquidity-score": 85,
+        "macro-context-score": 65
+      }
+    },
+    {
+      "option": "example-share",
+      "status": "available",
+      "values": {
+        "fee-pence": 400,
+        "volatility-index": 48,
+        "liquidity-score": 72,
+        "macro-context-score": 55
+      }
+    },
+    {
+      "option": "example-digital-asset",
+      "status": "available",
+      "values": {
+        "fee-pence": 150,
+        "volatility-index": 90,
+        "liquidity-score": 80,
+        "macro-context-score": 25
+      }
+    },
+    {
+      "option": "bond-basket",
+      "status": "available",
+      "values": {
+        "fee-pence": 350,
+        "volatility-index": 12,
+        "liquidity-score": 60,
+        "macro-context-score": 80
+      }
+    }
+  ]
+}

@@ -1,5 +1,15 @@
 # Development tasks and integration checkpoints
 
+The latest scope is additive v0.5: a general comparison workspace across market, travel, student, sustainability and custom criteria/data. [GENERAL_DECISIONS.md](GENERAL_DECISIONS.md) owns its frozen contract. Preserve all previous activity/library/provider/browser work, and treat the detailed activity flow below as a retained example rather than the product boundary.
+
+| New package | Owner and files | Acceptance |
+| --- | --- | --- |
+| G1: generic scoring and feeds | Backend: `app/comparison/`, `data/decisions/`, Python tests | FR-17/18; AC-26/27. Five configurable presets, custom domains, bounded source calls, deterministic hard-limit/weighted scoring and honest failures. |
+| G2: decision-first experiences | Desktop renderer and `web/`, respective UI tests | FR-19/20; AC-28. Central comparisons, closed tool dialogs, preserved themes and activity example, accessible motion and opt-in sounds. |
+| G3: contract and integration | Coordinator: restricted bridge, actual decision chat context, static export, OpenAPI and parity tests | FR-20; AC-29/30. Preserve authoritative results, exact citations, privacy and complete browser/Python calculation parity. |
+
+G1-G3 are implemented and automatically verified: 566 Python tests, 50 desktop/31 browser Node tests, 32 actual Electron/30 Chromium checks, lint/format and static build. All desktop providers are mocked; no new human acceptance or live access is inferred. Earlier counts below remain historical delivery checkpoints.
+
 The user's additional GitHub Pages request is implemented as the browser edition described in [BROWSER.md](BROWSER.md), with a separate static build/deployment workflow and browser/parity tests. The previous desktop-only task boundary is superseded for that deliverable. Hosted activation and actual deployment status must be recorded separately from local validation and committing.
 
 This executes `docs/REQUIREMENTS.md`. The activity and confirmed library/AI backends, Electron interface, restricted bridge and managed launcher are implemented. All 348 Python tests, 39 JavaScript unit tests and 16 real Windows Electron checks pass, alongside lint/format. Electron provider checks mock only OpenAI transport; human/live-provider acceptance remains pending. Checkboxes record actual team acceptance, so none is checked on the humans' behalf. Timeboxes are suggested planning, not official competition timings. Official code freeze is Sunday 18 October at 12:00 UK time. Protect the final 60-90 minutes for fixes, submission and rehearsal.
@@ -8,7 +18,7 @@ This executes `docs/REQUIREMENTS.md`. The activity and confirmed library/AI back
 
 The user subsequently approved multiple mainstream providers, specifically DeepSeek. `docs/AI_PROVIDERS.md` defines additive v0.4, preserving planner/library/citation contracts. All four adapters, defaults, isolated keys, header compatibility, recipient disclosure and stale-answer clearing are implemented. Verification passed 474 Python tests, 46 JavaScript unit tests and 20 actual Electron checks plus lint/format, with all cloud transports mocked. Live account/model access remains separate. Existing baseline counts below describe earlier verified increments.
 
-my-jinni chooses a feasible activity from two sources using budget, time and interests. Origins, date, timezone, categories and limits are scenario configuration; students are the first audience. Return is to the selected origin. The user changed the deliverable to a desktop client and approved reuse of frontend technology; Electron with HTML/CSS/JavaScript is the selected stack.
+my-jinni compares options from separate catalog and measurement sources using configurable priorities and hard limits. Domain assumptions remain in scenario configuration. The precise activity example still checks budget, time, interests and return to the selected origin. Electron with HTML/CSS/JavaScript remains the desktop stack, with a separately supported static browser edition.
 
 The user also confirmed keeping the planner while adding one local source library and cited AI questions using OpenAI. The deterministic planner remains keyless. `docs/AI_EXTENSION.md` defines additive contract v0.3; every v0.2 activity field is preserved. Local SQLite, lexical retrieval and optional AI are now approved scope, with no cloud notebooks/sync, OCR, URL ingestion or embeddings.
 
@@ -185,4 +195,4 @@ Planner hardening, K1/K2 and desktop implementation are complete, with 348 Pytho
 
 ## If time runs short
 
-Keep a working desktop window, real two-source calculation, all three feasibility checks, local import/selection, cited answers with viewable exact quotes, clear simulation/failure/privacy states, critical tests and one complete demo. Prioritise the real API/IPC flow before packaging; document exact development startup if packaging is deferred. Defer animation, extra polish, extra scenarios, live activity/travel integrations, cloud notebooks, OCR, URL ingestion and embeddings. Use the existing second origin as the activity-core check. Record any unperformed live OpenAI/client acceptance honestly; never claim an unimplemented requirement passed.
+Keep a working decision workspace, actual two-source calculations, hard constraints, local import/selection, checked viewable citations, honest simulation/failure/privacy states, critical tests and one complete demo. Preserve the five initial scenarios, custom inputs and requested controllable effects. Prioritise working API/IPC and browser parity before packaging or further polish. Defer live service integrations, cloud notebooks, OCR, URL ingestion and embeddings. Record unperformed real-provider and human acceptance honestly.

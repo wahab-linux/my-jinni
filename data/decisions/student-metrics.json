@@ -1,0 +1,47 @@
+{
+  "measurement_set": "student",
+  "provenance": {
+    "id": "student-measurement-feed",
+    "label": "Fictional student measurement feed",
+    "is_simulated": true,
+    "updated_at": "2026-10-17T10:00:00+01:00"
+  },
+  "records": [
+    {
+      "option": "course",
+      "status": "available",
+      "values": {
+        "cost-pence": 12000,
+        "commitment-hours": 6,
+        "fit-score": 88
+      }
+    },
+    {
+      "option": "society",
+      "status": "available",
+      "values": {
+        "cost-pence": 1000,
+        "commitment-hours": 2,
+        "fit-score": 75
+      }
+    },
+    {
+      "option": "event",
+      "status": "available",
+      "values": {
+        "cost-pence": 500,
+        "commitment-hours": 1,
+        "fit-score": 65
+      }
+    },
+    {
+      "option": "internship",
+      "status": "available",
+      "values": {
+        "cost-pence": 0,
+        "commitment-hours": 12,
+        "fit-score": 95
+      }
+    }
+  ]
+}

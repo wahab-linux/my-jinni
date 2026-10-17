@@ -1,5 +1,7 @@
 # my-jinni requirements
 
+**Latest user request, 2026-10-17:** generalize beyond after-class activities to the challenge's market, travel, student, sustainability and own-idea examples. Add configurable comparisons with criteria/weights/hard limits, decision-first desktop/browser presentation, collapsed source/question tools, reduced-motion-aware animation and optional sound. [GENERAL_DECISIONS.md](GENERAL_DECISIONS.md) defines additive v0.5. Existing FR-01-16/AC-01-25 still cover the preserved activity/library/provider features; FR-17-20 and AC-26-30 below cover the new workspace. All presets are visibly simulated; no live service coverage is implied.
+
 **Additional user request, 2026-10-17:** provide and commit a usable GitHub Pages browser edition. This supersedes earlier statements excluding a separate website. [BROWSER.md](BROWSER.md) records its acceptance boundary: calculated static-data planning, browser-local text/PDF sources and selected-source passage search, with responsive layouts and automated browser/parity checks. Desktop cloud AI and SQLite remain available separately; the static edition clearly labels their absence rather than pretending to call the Python API.
 
 This document is the product and acceptance baseline, not a claim of completed functionality. Coordinated definitions live in `docs/API.md`, `docs/AI_EXTENSION.md`, `docs/AI_PROVIDERS.md`, runtime schemas, OpenAPI and fixtures. v0.3 added source-library/chat operations; the user approved additive v0.4 with OpenAI, DeepSeek, Google Gemini and Anthropic Claude, independent session keys and explicit recipient/model selection. Every existing planner/library/citation field is preserved. Live provider/account access remains a separate check.
@@ -17,7 +19,7 @@ This document is the product and acceptance baseline, not a claim of completed f
 
 ## 2. Product and configurable MVP
 
-**Product promise:** help a person answer “What can I realistically do in this time window and budget, and why is it a good fit?” A recommendation is only as reliable as its source data and simplified travel assumptions.
+**Product promise:** combine scattered option and measurement information into a personalized, explainable choice. Criteria, weights, hard limits, missing information and source provenance must be visible. The detailed activity example answers what is feasible within its budget/time model; the general core supports other declared criteria without adopting those travel assumptions.
 
 **Primary user story:** As a person with a starting location, departure time, return deadline, budget, and interests, I want a feasible activity and a few alternatives with understandable cost and timing so I can choose confidently.
 
@@ -68,6 +70,10 @@ All requirements below are P0 unless marked P1. IDs are stable so code, tasks, a
 | **FR-14** | When the client explicitly supplies current form preferences, calculate the existing planner result, return its actual JSON alongside the answer and expose it as simulated ephemeral `planner-context` evidence. Preserve planner errors and authoritative cost/time/ranking; never infer or rewrite form values from the question. | AC-19, AC-20 |
 | **FR-15** | Provide restricted desktop source/chat operations, session-only key/model settings and a notice that questions and selected snippets leave the device. Keep credentials out of JSON bodies, persistence and logs; preserve provider errors/status and safe retry states. | AC-21, AC-22, AC-23 |
 | **FR-16** | Select OpenAI, DeepSeek, Google Gemini or Anthropic Claude, with editable per-provider models and separate in-memory keys. Identify the selected recipient before sending. Preserve legacy OpenAI callers, never share keys or silently switch providers, and discard stale answers after a provider change. | AC-24, AC-25 |
+| **FR-17** | Supply configurable market, travel, student, sustainability and custom scenarios, each combining independent option/measurement feed shapes. Allow bounded custom criteria/data without changing core rules. | AC-26, AC-27 |
+| **FR-18** | Filter known availability and minimum/maximum limits before weighted feasible-set min/max scoring. Return measurements, contribution points, alternatives, exclusion reasons and both provenance records. No LLM or key is needed. | AC-26, AC-27, AC-30 |
+| **FR-19** | Make choices, priorities, hard limits and comparisons the central desktop/browser workspace. Library and question/search dialogs start closed; retain the detailed activity example in a collapsed section. Preserve themes, keyboard access, stale-result handling and existing source features. | AC-28 |
+| **FR-20** | Provide short reduced-motion-aware animations and quiet optional synthesized sounds, default off and gated by user interaction. Explicitly include the actual calculated decision in optional desktop questions, with ephemeral exact-quote citations and a separately returned authoritative result. | AC-28, AC-29 |
 
 ## 5. Business and data rules
 
@@ -146,6 +152,16 @@ The following extend acceptance without renumbering the planner scenarios. Coord
 | **AC-23** | With the team's own valid OpenAI key/account, ask an answerable question in the real desktop app → verify actual model access, answer, original citation and retry behaviour. Record the outcome separately from mocked tests; until run, live success and desktop acceptance remain pending. | Live OpenAI + human check; pending |
 | **AC-24** | Switch between the four providers → chat/settings agree, editable models follow each provider and the cloud notice names the recipient. Save distinct placeholder keys → each upstream request receives only its selected key; clear one key → others remain, and quitting clears all. Switching during a slow answer discards that answer and stale key-status updates. | Desktop + isolated mocked transports |
 | **AC-25** | Omitted provider preserves OpenAI; omitted model follows the selected catalog default. Canonical key header works for each provider, legacy header works only for OpenAI, both headers return 422, and unsupported/null selections are rejected. Every adapter enforces selected evidence/quotes, bounded failures, no provider fallback and no key leak. Verify real account/model access separately for the chosen provider. | API/provider tests + separate live check |
+
+General comparison acceptance:
+
+| ID | Given → action → expected result | Verify |
+| --- | --- | --- |
+| **AC-26** | Fetch each general scenario through its two actual differently shaped HTTP feeds, evaluate all five presets, independently alter each source and observe a changed result. Submit custom criteria/data for a new domain without editing core code. No preset claims live data. | API + adapters + desktop/browser |
+| **AC-27** | Exact minimum/maximum boundaries pass; violated limits exclude. Unknown availability/required measurements exclude rather than becoming zero. Zero weight disables scoring for that criterion, all-zero weights fail, feasible-set normalization and constant criteria are defined, and shuffled inputs/ties preserve ranked order. Invalid/failed feeds return 502/503 with no fallback. | Pure core + API + browser parity |
+| **AC-28** | First launch shows scenario choices, priorities and comparison results as the primary workspace; library/question dialogs and detailed activity example start closed. Keyboard opens/closes dialogs with focus restored. Resize/light/dark remain usable. Sound starts off, requires opt-in, and failure cannot block decisions; reduced motion suppresses animations. | Actual Electron/browser |
+| **AC-29** | Explicit decision inclusion returns the exact ordinary evaluation result and bounded ephemeral evidence; citations use exact text and never become saved sources. Invalid/source-failed decisions prevent provider calls. Changing comparison inputs invalidates included answers. | API + mocked provider + actual Electron |
+| **AC-30** | Export validated scenario/dataset data, not calculated rankings, for the browser. Full browser and Python success/empty envelopes agree across presets, varied weights/limits and custom unknown/missing/tied data. Old activity/source/provider regressions remain green. | Build + cross-language parity + regression |
 
 ## 8. Work packages and ownership
 

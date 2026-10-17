@@ -1,0 +1,238 @@
+{
+  "data": {
+    "scenario_id": "travel",
+    "title": "Travel planner",
+    "method": "weighted_min_max",
+    "summary": "Compared options using the selected hard constraints and weighted criteria.",
+    "recommended": {
+      "id": "train",
+      "name": "Fictional train journey",
+      "description": "A fictional example for transparent preference comparison.",
+      "category": "train",
+      "score": 55.0,
+      "metrics": {
+        "cost-pence": 1800,
+        "duration-minutes": 70,
+        "emissions-grams": 2200
+      },
+      "contributions": [
+        {
+          "criterion_id": "cost-pence",
+          "label": "Total cost",
+          "unit": "pence",
+          "value": 1800,
+          "weight": 45,
+          "normalised": 0.0,
+          "points": 0.0
+        },
+        {
+          "criterion_id": "duration-minutes",
+          "label": "Journey duration",
+          "unit": "minutes",
+          "value": 70,
+          "weight": 35,
+          "normalised": 1.0,
+          "points": 35.0
+        },
+        {
+          "criterion_id": "emissions-grams",
+          "label": "Estimated emissions",
+          "unit": "g CO2e",
+          "value": 2200,
+          "weight": 20,
+          "normalised": 1.0,
+          "points": 20.0
+        }
+      ],
+      "reasons": [
+        "Meets all hard constraints with known availability.",
+        "For Total cost, lower values are preferred.",
+        "For Journey duration, lower values are preferred.",
+        "For Estimated emissions, lower values are preferred."
+      ],
+      "source_ids": [
+        "travel-option-catalog",
+        "travel-measurement-feed"
+      ]
+    },
+    "ranked": [
+      {
+        "id": "train",
+        "name": "Fictional train journey",
+        "description": "A fictional example for transparent preference comparison.",
+        "category": "train",
+        "score": 55.0,
+        "metrics": {
+          "cost-pence": 1800,
+          "duration-minutes": 70,
+          "emissions-grams": 2200
+        },
+        "contributions": [
+          {
+            "criterion_id": "cost-pence",
+            "label": "Total cost",
+            "unit": "pence",
+            "value": 1800,
+            "weight": 45,
+            "normalised": 0.0,
+            "points": 0.0
+          },
+          {
+            "criterion_id": "duration-minutes",
+            "label": "Journey duration",
+            "unit": "minutes",
+            "value": 70,
+            "weight": 35,
+            "normalised": 1.0,
+            "points": 35.0
+          },
+          {
+            "criterion_id": "emissions-grams",
+            "label": "Estimated emissions",
+            "unit": "g CO2e",
+            "value": 2200,
+            "weight": 20,
+            "normalised": 1.0,
+            "points": 20.0
+          }
+        ],
+        "reasons": [
+          "Meets all hard constraints with known availability.",
+          "For Total cost, lower values are preferred.",
+          "For Journey duration, lower values are preferred.",
+          "For Estimated emissions, lower values are preferred."
+        ],
+        "source_ids": [
+          "travel-option-catalog",
+          "travel-measurement-feed"
+        ]
+      },
+      {
+        "id": "coach",
+        "name": "Fictional coach journey",
+        "description": "A fictional example for transparent preference comparison.",
+        "category": "bus",
+        "score": 45.0,
+        "metrics": {
+          "cost-pence": 800,
+          "duration-minutes": 120,
+          "emissions-grams": 5000
+        },
+        "contributions": [
+          {
+            "criterion_id": "cost-pence",
+            "label": "Total cost",
+            "unit": "pence",
+            "value": 800,
+            "weight": 45,
+            "normalised": 1.0,
+            "points": 45.0
+          },
+          {
+            "criterion_id": "duration-minutes",
+            "label": "Journey duration",
+            "unit": "minutes",
+            "value": 120,
+            "weight": 35,
+            "normalised": 0.0,
+            "points": 0.0
+          },
+          {
+            "criterion_id": "emissions-grams",
+            "label": "Estimated emissions",
+            "unit": "g CO2e",
+            "value": 5000,
+            "weight": 20,
+            "normalised": 0.0,
+            "points": 0.0
+          }
+        ],
+        "reasons": [
+          "Meets all hard constraints with known availability.",
+          "For Total cost, lower values are preferred.",
+          "For Journey duration, lower values are preferred.",
+          "For Estimated emissions, lower values are preferred."
+        ],
+        "source_ids": [
+          "travel-option-catalog",
+          "travel-measurement-feed"
+        ]
+      }
+    ],
+    "excluded": [
+      {
+        "id": "cycle",
+        "name": "Fictional cycle journey",
+        "reasons": [
+          "Journey duration exceeds its selected maximum."
+        ]
+      },
+      {
+        "id": "flight",
+        "name": "Fictional flight journey",
+        "reasons": [
+          "Total cost exceeds its selected maximum."
+        ]
+      },
+      {
+        "id": "taxi",
+        "name": "Fictional taxi journey",
+        "reasons": [
+          "Total cost exceeds its selected maximum."
+        ]
+      }
+    ],
+    "criteria": [
+      {
+        "id": "cost-pence",
+        "label": "Total cost",
+        "unit": "pence",
+        "direction": "minimize",
+        "default_weight": 45
+      },
+      {
+        "id": "duration-minutes",
+        "label": "Journey duration",
+        "unit": "minutes",
+        "direction": "minimize",
+        "default_weight": 35
+      },
+      {
+        "id": "emissions-grams",
+        "label": "Estimated emissions",
+        "unit": "g CO2e",
+        "direction": "minimize",
+        "default_weight": 20
+      }
+    ],
+    "sources": [
+      {
+        "id": "travel-option-catalog",
+        "label": "Fictional travel option catalog",
+        "is_simulated": true,
+        "updated_at": "2026-10-17T10:00:00+01:00"
+      },
+      {
+        "id": "travel-measurement-feed",
+        "label": "Fictional travel measurement feed",
+        "is_simulated": true,
+        "updated_at": "2026-10-17T10:00:00+01:00"
+      }
+    ],
+    "evaluated_count": 5,
+    "is_simulated": true,
+    "limitations": [
+      "Simulated costs, durations, emissions and availability; not live routing or a travel guarantee.",
+      "Scores compare only the supplied options and chosen weights; they are not probabilities.",
+      "Missing measurements and unknown availability cannot establish feasibility.",
+      "Source names and simulation flags are supplied metadata, not independent verification."
+    ]
+  },
+  "error": null,
+  "warnings": [
+    {
+      "code": "SIMULATED_DATA",
+      "message": "Options and measurements include fictional simulated data."
+    }
+  ]
+}

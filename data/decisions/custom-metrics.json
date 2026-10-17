@@ -1,0 +1,38 @@
+{
+  "measurement_set": "custom",
+  "provenance": {
+    "id": "custom-measurement-feed",
+    "label": "Fictional custom measurement feed",
+    "is_simulated": true,
+    "updated_at": "2026-10-17T10:00:00+01:00"
+  },
+  "records": [
+    {
+      "option": "option-a",
+      "status": "available",
+      "values": {
+        "cost-pence": 1000,
+        "time-minutes": 30,
+        "quality-score": 80
+      }
+    },
+    {
+      "option": "option-b",
+      "status": "available",
+      "values": {
+        "cost-pence": 2000,
+        "time-minutes": 50,
+        "quality-score": 90
+      }
+    },
+    {
+      "option": "option-c",
+      "status": "available",
+      "values": {
+        "cost-pence": 700,
+        "time-minutes": 60,
+        "quality-score": 65
+      }
+    }
+  ]
+}

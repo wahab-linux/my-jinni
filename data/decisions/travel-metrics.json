@@ -1,0 +1,56 @@
+{
+  "measurement_set": "travel",
+  "provenance": {
+    "id": "travel-measurement-feed",
+    "label": "Fictional travel measurement feed",
+    "is_simulated": true,
+    "updated_at": "2026-10-17T10:00:00+01:00"
+  },
+  "records": [
+    {
+      "option": "train",
+      "status": "available",
+      "values": {
+        "cost-pence": 1800,
+        "duration-minutes": 70,
+        "emissions-grams": 2200
+      }
+    },
+    {
+      "option": "coach",
+      "status": "available",
+      "values": {
+        "cost-pence": 800,
+        "duration-minutes": 120,
+        "emissions-grams": 5000
+      }
+    },
+    {
+      "option": "flight",
+      "status": "available",
+      "values": {
+        "cost-pence": 7000,
+        "duration-minutes": 45,
+        "emissions-grams": 60000
+      }
+    },
+    {
+      "option": "taxi",
+      "status": "available",
+      "values": {
+        "cost-pence": 4500,
+        "duration-minutes": 60,
+        "emissions-grams": 18000
+      }
+    },
+    {
+      "option": "cycle",
+      "status": "available",
+      "values": {
+        "cost-pence": 0,
+        "duration-minutes": 240,
+        "emissions-grams": 300
+      }
+    }
+  ]
+}

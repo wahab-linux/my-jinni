@@ -1,8 +1,30 @@
 # my-jinni architecture
 
+The general decision path is additive v0.5, defined in [GENERAL_DECISIONS.md](GENERAL_DECISIONS.md):
+
+```mermaid
+flowchart LR
+    Desktop[Electron decision workspace] --> IPC[Restricted main-process API bridge]
+    IPC --> Routes[Comparison routes]
+    Routes --> Catalog[Configured criteria and domain notices]
+    Routes --> Adapters[Concurrent HTTP source adapters]
+    Adapters --> Options[Fictional option catalog]
+    Adapters --> Measures[Fictional measurement feed]
+    Routes --> Core[Pure weighted comparison engine]
+    Routes --> Export[Validated build export]
+    Export --> Browser[Browser workspace and equivalent JS engine]
+    Chat[Optional desktop question dialog] --> Recalculate[Actual comparison endpoint]
+    Recalculate --> Evidence[Ephemeral bounded decision evidence]
+    Evidence --> Provider[Selected provider and exact citation checks]
+```
+
+`app/comparison/catalog.py` defines initial scenarios; `schemas.py` validates bounded generic inputs. `adapters.py` normalizes two differently shaped feeds, checks source IDs/data and enforces concurrent two-second wall-clock deadlines. `engine.py` imports no FastAPI, HTTP, UI or file access: availability and hard constraints filter first, then positive criterion weights score min/max-normalized feasible options. Unknown required values exclude, equality passes, constant criteria score one, and score/ID tie-breaking is stable. Money stays nonnegative integer pence. Relative scores are not probabilities or financial predictions.
+
+The desktop renderer presents comparison choices/results first and opens source/chat dialogs on demand. `desktop/renderer/decisions.js` uses named bridge methods only. The browser uses `web/decisions.mjs` over build-exported validated datasets and is checked against complete Python API envelopes. Neither edition displays cached answer fixtures as newly calculated rankings. CSS motion respects reduced motion; optional low-volume Web Audio tones start off and require interaction. Detailed activity rules below remain a separate supported example.
+
 The user also requested a GitHub Pages browser edition on 2026-10-17. Its separate static experience, pure JavaScript decision layer, build-time use of validated backend adapters, browser-local IndexedDB library and PDF extraction are described in [BROWSER.md](BROWSER.md). Cross-language parity tests guard planner equivalence. It uses no live Python service; selected-source keyword excerpts replace cloud AI generation in this edition. The desktop architecture below remains supported.
 
-my-jinni combines a deterministic activity planner with a local source library and optional cited AI questions. The user approved OpenAI, DeepSeek, Google Gemini and Anthropic Claude selection in additive v0.4; see `docs/AI_PROVIDERS.md`. Existing planner/library/citation fields stay unchanged. Students are the first MVP audience, with no identity requirement in the core. Planning needs no key. The desktop/launcher baseline passed 16 automated Electron checks with mocked OpenAI transport; new provider checks and live account/model verification must be recorded separately.
+my-jinni combines deterministic option comparisons and a precise activity example with a local source library and optional cited AI questions. OpenAI, DeepSeek, Google Gemini and Anthropic Claude remain supported through additive v0.4; see `docs/AI_PROVIDERS.md`. Existing planner/library/citation fields stay unchanged. Students are one example audience, with no identity requirement in either core. Comparisons and planning need no key; live account/model verification must be recorded separately from mocked tests.
 
 ```mermaid
 flowchart LR
@@ -118,7 +140,7 @@ Missing/unavailable journeys exclude affected activities with a warning. Valid e
 
 ## Limits and verification boundary
 
-GBP, five categories, return to the same origin, one covered demo day, fixed travel estimates and fictional feeds are deliberate planner limits. New dates/origins require actual source coverage; new activity/travel providers require adapters and verified provenance. One local SQLite library and optional cited OpenAI questions are approved additions. Accounts, maps, payments, scraping, live routing, cloud notebooks/sync, OCR, URL ingestion, embeddings and arbitrary-domain planning remain deferred.
+GBP, five categories, return to the same origin, one covered demo day, fixed travel estimates and fictional feeds are deliberate limits of the detailed activity planner. New dates/origins require actual source coverage; new providers require adapters and verified provenance. The general core accepts other domains as explicit criteria/options/measurements. Accounts, maps, payments, scraping, live routing, cloud notebooks/sync, OCR, URL ingestion and embeddings remain deferred.
 
 The earlier planner baseline on 2026-10-17 passed **175 tests**, Ruff lint and formatting across its then-current 31 Python files. Tests cover budget/arrival/return boundaries, every ranking priority, source-order stability, missing/unavailable journeys, generic origins/dates, offset/DST arithmetic, independently changed source inputs, malformed/failed feeds and origin consistency. The latest baseline passed **348 Python tests**, `uv run ruff check .` and `uv run ruff format --check .` across 47 Python files. The existing Starlette/httpx TestClient deprecation warning remains. Full desktop ESLint and **39 JavaScript unit tests** pass for input validation, status/key handling, deadlines and backend ownership. **16 real Windows Electron end-to-end checks** pass using actual IPC/HTTP/SQLite/planner/citation validation with only OpenAI transport mocked. Native-picker results use generated fictional PDF paths; subsequent reading/upload/extraction are real. App-only screenshots were visually inspected.
 

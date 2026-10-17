@@ -25,6 +25,8 @@ def encode(value: object) -> str:
 
 
 async def build() -> None:
+    if OUTPUT.resolve() != (ROOT / "dist" / "pages").absolute():
+        raise ValueError("The build output must stay inside the repository's dist/pages directory.")
     if OUTPUT.exists():
         shutil.rmtree(OUTPUT)
     shutil.copytree(ROOT / "web", OUTPUT)
@@ -33,6 +35,13 @@ async def build() -> None:
         response = client.get("/api/v1/options")
         response.raise_for_status()
         options = response.json()["data"]
+        response = client.get("/api/v1/decision-scenarios")
+        response.raise_for_status()
+        decision_entries = []
+        for scenario in response.json()["data"]["scenarios"]:
+            detail = client.get(f"/api/v1/decision-scenarios/{scenario['id']}")
+            detail.raise_for_status()
+            decision_entries.append(detail.json()["data"])
     bundles = {}
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app), base_url="http://pages-build.local"
@@ -49,6 +58,9 @@ async def build() -> None:
         json.dumps({"options": options, "bundles": bundles}, default=encode, indent=2) + "\n",
         encoding="utf-8",
     )
+    (OUTPUT / "decisions.json").write_text(
+        json.dumps({"scenarios": decision_entries}, indent=2) + "\n", encoding="utf-8"
+    )
     vendor = OUTPUT / "vendor"
     vendor.mkdir()
     pdfjs = ROOT / "node_modules" / "pdfjs-dist"
@@ -58,7 +70,10 @@ async def build() -> None:
         shutil.copytree(pdfjs / directory, vendor / directory)
     shutil.copyfile(pdfjs / "LICENSE", vendor / "PDFJS-LICENSE")
     (OUTPUT / ".nojekyll").touch()
-    print(f"Built {OUTPUT}; {len(bundles)} validated travel scenarios, no backend required.")
+    print(
+        f"Built {OUTPUT}; {len(decision_entries)} validated decision scenarios and "
+        f"{len(bundles)} activity origins, no runtime backend required."
+    )
 
 
 if __name__ == "__main__":

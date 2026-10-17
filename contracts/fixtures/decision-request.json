@@ -1,0 +1,20 @@
+{
+  "scenario_id": "travel",
+  "weights": {
+    "cost-pence": 45,
+    "duration-minutes": 35,
+    "emissions-grams": 20
+  },
+  "constraints": [
+    {
+      "criterion_id": "cost-pence",
+      "operator": "lte",
+      "value": 2500
+    },
+    {
+      "criterion_id": "duration-minutes",
+      "operator": "lte",
+      "value": 180
+    }
+  ]
+}

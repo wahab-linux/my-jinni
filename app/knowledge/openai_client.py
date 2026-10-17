@@ -27,9 +27,11 @@ answer's factual claims are covered by the selected evidence and exact citations
 Return concise plain text in answer and citations containing allowed chunk IDs and
 verbatim quotes copied exactly from their text. Do not invent citations or quotes.
 Explain simulated data as simulated; source timestamps do not prove live freshness.
-If planner context is supplied, use only its already computed feasibility, costs,
+If planner or decision context is supplied, use only its already computed feasibility, costs,
 times and ranking. Do not recompute the plan, invent fares or journeys, change the
-ranking, or promote an excluded activity. If a source contradicts planner output,
+ranking, or promote an excluded activity. Decision scores are relative preference fit,
+not probabilities, return forecasts or investment suitability. Never turn a fictional
+market comparison into a buy/sell recommendation. If a source contradicts planner output,
 explain the conflict without replacing the computed result. No actions or tools
 are available. Return the required structured JSON object only."""
 

@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from pydantic import SecretStr
 from starlette.concurrency import run_in_threadpool
 
+from app.comparison.schemas import DecisionResult
 from app.errors import error_response
 from app.knowledge.ingestion import IngestionError, extract_upload
 from app.knowledge.openai_client import AIServiceError
@@ -149,6 +150,51 @@ async def calculated_plan(
     return result.data, result.warnings, None
 
 
+async def calculated_decision(
+    request: Request, body: ChatRequest
+) -> tuple[DecisionResult | None, list[APIWarning], JSONResponse | None]:
+    if body.decision_request is None:
+        return None, [], None
+    transport = httpx.ASGITransport(app=request.app, raise_app_exceptions=False)
+    async with httpx.AsyncClient(transport=transport, base_url="http://my-jinni.local") as client:
+        response = await client.post(
+            "/api/v1/decisions/evaluate", json=body.decision_request.model_dump(mode="json")
+        )
+    if response.status_code != 200:
+        return None, [], JSONResponse(status_code=response.status_code, content=response.json())
+    result = Envelope[DecisionResult].model_validate(response.json())
+    return result.data, result.warnings, None
+
+
+def decision_evidence(decision: DecisionResult) -> str:
+    def brief(option):
+        if option is None:
+            return None
+        return {
+            "id": option.id,
+            "name": option.name,
+            "score": option.score,
+            "metrics": option.metrics,
+        }
+
+    summary = {
+        "scenario_id": decision.scenario_id,
+        "title": decision.title,
+        "method": decision.method,
+        "is_simulated": decision.is_simulated,
+        "recommended": brief(decision.recommended),
+        "alternatives": [brief(option) for option in decision.ranked[1:3]],
+        "excluded_count": len(decision.excluded),
+        "sources": [source.model_dump(mode="json") for source in decision.sources],
+        "note": "Computed preference-fit scores are relative, not probabilities or predictions.",
+    }
+    text = json.dumps(summary, ensure_ascii=False)
+    if len(text) > 12000:
+        summary["alternatives"] = []
+        text = json.dumps(summary, ensure_ascii=False)
+    return text
+
+
 def checked_citations(draft, chunks: list[SourceChunk]) -> list[Citation]:
     evidence = {chunk.chunk_id: chunk for chunk in chunks}
     citations = []
@@ -207,7 +253,11 @@ async def chat(
     planner, warnings, failure = await calculated_plan(request, body)
     if failure is not None:
         return failure
-    limit = MAX_RETRIEVED_CHUNKS - (1 if planner is not None else 0)
+    decision, decision_warnings, failure = await calculated_decision(request, body)
+    if failure is not None:
+        return failure
+    warnings.extend(decision_warnings)
+    limit = MAX_RETRIEVED_CHUNKS - int(planner is not None) - int(decision is not None)
     chunks = await run_in_threadpool(store.search, body.question, body.source_ids, limit)
     if planner is not None:
         chunks.insert(
@@ -222,6 +272,19 @@ async def chat(
                 is_simulated=True,
             ),
         )
+    if decision is not None:
+        chunks.insert(
+            0,
+            SourceChunk(
+                chunk_id="decision-context",
+                source_id="decision-context",
+                source_title="Calculated option comparison",
+                page=None,
+                index=0,
+                text=decision_evidence(decision),
+                is_simulated=decision.is_simulated,
+            ),
+        )
     used_sources = list(dict.fromkeys(chunk.source_id for chunk in chunks))
     if not chunks:
         return Envelope(
@@ -233,6 +296,7 @@ async def chat(
                 model=None,
                 used_source_ids=[],
                 planner=planner,
+                decision=decision,
             ),
             warnings=warnings,
         )
@@ -269,6 +333,7 @@ async def chat(
             model=body.model,
             used_source_ids=used_sources,
             planner=planner,
+            decision=decision,
         ),
         warnings=warnings,
     )

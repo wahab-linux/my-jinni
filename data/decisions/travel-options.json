@@ -1,0 +1,41 @@
+{
+  "catalog_id": "travel",
+  "source": {
+    "id": "travel-option-catalog",
+    "label": "Fictional travel option catalog",
+    "is_simulated": true,
+    "updated_at": "2026-10-17T10:00:00+01:00"
+  },
+  "items": [
+    {
+      "id": "train",
+      "name": "Fictional train journey",
+      "description": "A fictional example for transparent preference comparison.",
+      "category": "train"
+    },
+    {
+      "id": "coach",
+      "name": "Fictional coach journey",
+      "description": "A fictional example for transparent preference comparison.",
+      "category": "bus"
+    },
+    {
+      "id": "flight",
+      "name": "Fictional flight journey",
+      "description": "A fictional example for transparent preference comparison.",
+      "category": "flight"
+    },
+    {
+      "id": "taxi",
+      "name": "Fictional taxi journey",
+      "description": "A fictional example for transparent preference comparison.",
+      "category": "taxi"
+    },
+    {
+      "id": "cycle",
+      "name": "Fictional cycle journey",
+      "description": "A fictional example for transparent preference comparison.",
+      "category": "cycling"
+    }
+  ]
+}

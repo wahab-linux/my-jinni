@@ -2,7 +2,7 @@
   "name": "my-jinni",
   "version": "0.1.0",
   "private": true,
-  "description": "Desktop activity planning and source-grounded AI questions",
+  "description": "Personalized option comparisons with local sources and cited AI questions",
   "main": "desktop/main.cjs",
   "engines": {
     "node": ">=22"

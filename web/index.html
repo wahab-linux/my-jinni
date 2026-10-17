@@ -3,32 +3,58 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Find a fictional Glasgow activity that fits your budget and time. A free browser planner with a private local source library.">
+  <meta name="description" content="Compare travel, market, student, sustainability and your own ideas. Explainable decisions from fictional data, with a private local source library.">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <meta name="theme-color" content="#f5f5fa">
-  <title>my-jinni · Your next good plan</title>
+  <title>my-jinni · Decisions with context</title>
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <script src="theme.js"></script>
   <link rel="stylesheet" href="styles.css">
   <script type="module" src="app.mjs"></script>
+  <script type="module" src="decision-app.mjs"></script>
 </head>
 <body>
-  <a class="skip" href="#planner">Skip to planner</a>
+  <a class="skip" href="#decision-workspace">Skip to decisions</a>
   <header class="header wrap">
     <a class="brand" href="./" aria-label="my-jinni home"><span class="mark" aria-hidden="true">j</span>my-jinni<span class="dot">.</span></a>
     <nav aria-label="Main navigation">
-      <a href="#planner" class="nav-link">Planner</a><a href="#library" class="nav-link">My library</a>
+      <a href="#decision-workspace" class="nav-link">Decisions</a><button id="library-open" class="nav-link" type="button" aria-haspopup="dialog" aria-controls="library-dialog">Library & search</button>
       <details class="nav-dropdown dropdown"><summary>Explore <svg class="chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m6 8 4 4 4-4"/></svg></summary><div class="dropdown-panel"><a href="#planner">Activity planner</a><a href="#library">My library</a><a href="#how-it-works">How it works</a><a href="https://github.com/wahab-linux/my-jinni" rel="noreferrer">View on GitHub <span aria-hidden="true">↗</span></a><a href="https://github.com/wahab-linux/my-jinni#run-the-desktop-application">Desktop edition <span aria-hidden="true">↗</span></a></div></details>
     </nav>
+    <button id="sound-toggle" class="theme-toggle sound-toggle" type="button" aria-label="Sound effects" aria-pressed="false"><b aria-hidden="true">♪</b><span>Sound off</span></button>
     <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Dark mode" aria-pressed="false" title="Switch to dark mode"><svg class="sun-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.4 1.4m11.2 11.2L19 19M5 19l1.4-1.4M17.6 6.4 19 5"/></svg><svg class="moon-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14A9 9 0 0 1 10 3.5 9 9 0 1 0 20.5 14Z"/></svg><span id="theme-label">Dark mode</span></button>
   </header>
   <main class="wrap">
     <section class="intro" aria-labelledby="title">
-      <div class="intro-copy"><p class="hero-badge"><span class="status-dot" aria-hidden="true"></span>YOUR DAY, A LITTLE MORE POSSIBLE</p><h1 id="title">Less planning.<br><span>More living.</span></h1><p class="lead">Find something you’ll love, at a price that fits.<br>We’ll make sure you have time to get there and back.</p><div class="hero-points"><span><b aria-hidden="true">✓</b> No account needed</span><span><b aria-hidden="true">✓</b> Free to explore</span><span><b aria-hidden="true">✓</b> Your files stay local</span></div></div>
-      <aside class="intro-visual" aria-label="Plan around what matters to you"><div class="visual-orbit orbit-one"></div><div class="visual-orbit orbit-two"></div><div class="visual-spark spark-one" aria-hidden="true">✦</div><div class="visual-spark spark-two" aria-hidden="true">✧</div><div class="visual-card"><div class="visual-card-top"><span class="visual-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="4"/><path d="M8 3v4m8-4v4M4 11h16m-11 5 2 2 4-4"/></svg></span><span>A little time for you</span></div><p>Your next good plan<br>starts with <em>what you love.</em></p><div class="visual-tags"><span>Your interests</span><span>Your budget</span><span>Your time</span></div></div><div class="floating-note"><span aria-hidden="true">✓</span> There and back. All figured out.</div></aside>
+      <div class="intro-copy"><p class="hero-badge"><span class="status-dot" aria-hidden="true"></span>YOUR CHOICES, WITH THE CONTEXT</p><h1 id="title">Make the choice.<br><span>See the trade-offs.</span></h1><p class="lead">Compare options around what matters to you.<br>Set your limits, adjust priorities, and see the reasoning.</p><div class="hero-points"><span><b aria-hidden="true">✓</b> No account needed</span><span><b aria-hidden="true">✓</b> Free to explore</span><span><b aria-hidden="true">✓</b> Your files stay local</span></div></div>
+      <aside class="intro-visual" aria-label="Plan around what matters to you"><div class="visual-orbit orbit-one"></div><div class="visual-orbit orbit-two"></div><div class="visual-spark spark-one" aria-hidden="true">✦</div><div class="visual-spark spark-two" aria-hidden="true">✧</div><div class="visual-card"><div class="visual-card-top"><span class="visual-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="4"/><path d="M8 3v4m8-4v4M4 11h16m-11 5 2 2 4-4"/></svg></span><span>A clearer way to choose</span></div><p>One decision.<br><em>The whole picture.</em></p><div class="visual-tags"><span>Your priorities</span><span>Your limits</span><span>Your context</span></div></div><div class="floating-note"><span aria-hidden="true">✓</span> Two sources. Clear trade-offs.</div></aside>
     </section>
-    <div class="demo-banner"><span class="info-icon" aria-hidden="true">i</span><span><strong>You’re exploring a fictional demo.</strong> Activities, venues, fares and travel times are simulated, not live information.</span><span class="demo-pill">DEMO WORKSPACE</span></div>
+    <div class="demo-banner"><span class="info-icon" aria-hidden="true">i</span><span><strong>You’re exploring a fictional demo.</strong> Preset options and measurements are simulated. Scores explain preferences; they are not forecasts or advice.</span><span class="demo-pill">DEMO WORKSPACE</span></div>
     <noscript><p class="feedback error">Enable JavaScript to use the planner and browser library.</p></noscript>
+    <section id="decision-workspace" aria-labelledby="decision-heading">
+      <div class="workspace-heading"><div><p class="eyebrow">START WITH A DECISION</p><h2 id="decision-heading">What would you like to compare?</h2></div><span class="local-badge">Calculated on this device</span></div>
+      <div id="scenario-tabs" class="scenario-tabs" role="group" aria-label="Decision scenarios"></div>
+      <p id="decision-load-status" class="feedback" role="status" aria-live="polite">Loading decision scenarios…</p><button id="decision-retry" class="button secondary" type="button" hidden>Retry decision data</button>
+      <div class="decision-grid">
+        <section class="panel decision-preferences" aria-label="Decision preferences">
+          <form id="decision-form"><fieldset id="decision-inputs" disabled>
+            <label for="decision-scenario">Decision scenario</label><select id="decision-scenario"></select>
+            <h3 id="scenario-title">Choose a scenario</h3><p id="scenario-description" class="muted"></p><p id="scenario-notice" class="scenario-notice"></p>
+            <div class="criteria-heading"><h3>Your priorities</h3><button id="decision-reset" type="button" class="text-button">Reset</button></div>
+            <p class="hint">Higher weights matter more. Zero excludes a measure from scoring. Hard limits always apply first.</p>
+            <div id="criteria-controls"></div>
+            <details id="custom-editor" class="custom-editor" hidden><summary>Edit your own criteria and data</summary><p class="hint">Advanced: use the same two-source schema. Names and simulation labels you provide are not independently verified.</p><label for="custom-json">Custom decision JSON</label><textarea id="custom-json" rows="12" spellcheck="false"></textarea><button id="custom-apply" type="button" class="button secondary">Use custom data</button><p id="custom-status" class="feedback" role="status"></p></details>
+            <button id="decision-submit" type="submit" class="button primary">Compare my options <span aria-hidden="true">→</span></button>
+            <p class="form-footnote">Deterministic comparison · No account or AI key</p>
+          </fieldset></form>
+        </section>
+        <section class="panel decision-output" aria-labelledby="comparison-title"><div class="results-heading"><div><p class="eyebrow">THE REASONING, IN VIEW</p><h2 id="comparison-title">Your comparison</h2></div><span id="decision-count" class="local-badge">Two source feeds</span></div>
+          <p id="decision-status" class="feedback" role="status" aria-live="polite">Choose your priorities, then compare.</p><div id="decision-results"><div class="decision-placeholder"><span aria-hidden="true">↗</span><h3>Different priorities. Different answers.</h3><p>See which options meet your limits and how the trade-offs add up.</p></div></div>
+        </section>
+      </div>
+    </section>
+    <div class="tools-strip"><div><strong>Need more context?</strong><p class="hint">Keep notes and find exact passages when you need them.</p></div><button id="library-open-secondary" class="button secondary" type="button" aria-haspopup="dialog">Open library & search <span aria-hidden="true">↗</span></button></div>
+    <details id="legacy-planner" class="legacy-example"><summary>Detailed activity itinerary <span>Optional Glasgow demo · full cost and return-time checks</span></summary>
     <section id="planner" class="planner-grid" aria-labelledby="planner-title">
       <div class="panel preferences-panel">
         <div class="section-title"><span class="section-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="15" cy="17" r="3"/></svg></span><div><p class="eyebrow">LET’S MAKE IT YOURS</p><h2 id="planner-title">What’s the plan?</h2></div></div>
@@ -56,6 +82,12 @@
         <div id="plan-results"></div>
       </div>
     </section>
+    </details>
+    <section id="how-it-works" class="how-it-works" aria-labelledby="how-title"><div><p class="eyebrow">SMALL STEPS. GOOD PLANS.</p><h2 id="how-title">A decision you can explain.</h2></div><div class="steps"><article><span>01</span><h3>Make it yours</h3><p>Choose a scenario, weight your priorities and set any hard limits.</p></article><article><span>02</span><h3>See what fits</h3><p>See the feasible options, actual measures, scores and exclusions.</p></article><article><span>03</span><h3>Keep your context</h3><p>Save useful guides and find the original passages whenever you need them.</p></article></div></section>
+    <section class="about" aria-label="About this browser edition"><p><strong>Made to explore.</strong> Comparisons use fictional preset datasets or your explicitly supplied data. PDF extraction and keyword search run in your browser, without an account or a backend.</p><p>Want source-grounded AI questions? Try the <a href="https://github.com/wahab-linux/my-jinni#run-the-desktop-application">desktop edition</a> with OpenAI, DeepSeek, Gemini or Claude. Cloud AI generation is not available on this site.</p></section>
+  </main>
+  <footer class="wrap footer"><span>my-jinni · A little more possible.</span><span>A team prototype. Not an official BlackRock or Aladdin product.</span></footer>
+  <dialog id="library-dialog" class="tools-dialog" aria-labelledby="tools-title"><div class="dialog-top"><h2 id="tools-title">Library & passage search</h2><button id="library-close" type="button" class="button secondary">Close tools</button></div>
     <section id="library" class="panel library-panel" aria-labelledby="library-title">
       <div class="library-heading"><div class="section-title"><span class="section-icon mint" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h6a3 3 0 0 1 3 3v13a4 4 0 0 0-3-2H4zm16 0h-4a3 3 0 0 0-3 3m7-3v14h-3"/></svg></span><div><p class="eyebrow">KEEP THE USEFUL STUFF CLOSE</p><h2 id="library-title">Your little library</h2></div></div><span class="privacy-badge">Private to this browser</span></div>
       <p class="muted">A place for your notes, guides and good ideas. Add a source, select it, and find the passage you need. Your documents and searches stay on this device.</p>
@@ -81,10 +113,7 @@
         </div>
       </div>
     </section>
-    <section id="how-it-works" class="how-it-works" aria-labelledby="how-title"><div><p class="eyebrow">SMALL STEPS. GOOD PLANS.</p><h2 id="how-title">A day out, without the guesswork.</h2></div><div class="steps"><article><span>01</span><h3>Make it yours</h3><p>Choose your starting point, time, budget and interests.</p></article><article><span>02</span><h3>See what fits</h3><p>Compare activities with ticket prices and return travel included.</p></article><article><span>03</span><h3>Keep your context</h3><p>Save useful guides and find the original passages whenever you need them.</p></article></div></section>
-    <section class="about" aria-label="About this browser edition"><p><strong>Made to explore.</strong> Plans use fictional demo datasets. PDF extraction and keyword search run in your browser, without an account or a backend.</p><p>Want source-grounded AI questions? Try the <a href="https://github.com/wahab-linux/my-jinni#run-the-desktop-application">desktop edition</a> with OpenAI, DeepSeek, Gemini or Claude. Cloud AI generation is not available on this site.</p></section>
-  </main>
-  <footer class="wrap footer"><span>my-jinni · A little more possible.</span><span>A team prototype. Not an official BlackRock or Aladdin product.</span></footer>
+  </dialog>
   <dialog id="viewer" aria-labelledby="viewer-title"><div class="dialog-top"><h2 id="viewer-title">Original source</h2><button id="viewer-close" type="button" class="button secondary">Close</button></div><p id="viewer-meta" class="hint"></p><div id="viewer-content"></div><button id="download-source" type="button" class="button secondary">Download extracted text</button></dialog>
 </body>
 </html>

@@ -1,0 +1,47 @@
+{
+  "measurement_set": "sustainability",
+  "provenance": {
+    "id": "sustainability-measurement-feed",
+    "label": "Fictional sustainability measurement feed",
+    "is_simulated": true,
+    "updated_at": "2026-10-17T10:00:00+01:00"
+  },
+  "records": [
+    {
+      "option": "refill-kit",
+      "status": "available",
+      "values": {
+        "cost-pence": 2000,
+        "impact-reduction-score": 40,
+        "wait-days": 0
+      }
+    },
+    {
+      "option": "insulation",
+      "status": "available",
+      "values": {
+        "cost-pence": 18000,
+        "impact-reduction-score": 85,
+        "wait-days": 14
+      }
+    },
+    {
+      "option": "repair-service",
+      "status": "available",
+      "values": {
+        "cost-pence": 5000,
+        "impact-reduction-score": 70,
+        "wait-days": 3
+      }
+    },
+    {
+      "option": "solar-kit",
+      "status": "unavailable",
+      "values": {
+        "cost-pence": 200000,
+        "impact-reduction-score": 95,
+        "wait-days": 60
+      }
+    }
+  ]
+}

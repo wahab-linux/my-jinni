@@ -1,0 +1,35 @@
+{
+  "catalog_id": "student",
+  "source": {
+    "id": "student-option-catalog",
+    "label": "Fictional student option catalog",
+    "is_simulated": true,
+    "updated_at": "2026-10-17T10:00:00+01:00"
+  },
+  "items": [
+    {
+      "id": "course",
+      "name": "Fictional short course",
+      "description": "A fictional example for transparent preference comparison.",
+      "category": "course"
+    },
+    {
+      "id": "society",
+      "name": "Fictional society membership",
+      "description": "A fictional example for transparent preference comparison.",
+      "category": "society"
+    },
+    {
+      "id": "event",
+      "name": "Fictional campus event",
+      "description": "A fictional example for transparent preference comparison.",
+      "category": "event"
+    },
+    {
+      "id": "internship",
+      "name": "Fictional internship opportunity",
+      "description": "A fictional example for transparent preference comparison.",
+      "category": "internship"
+    }
+  ]
+}

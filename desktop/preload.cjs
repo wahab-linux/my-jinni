@@ -7,6 +7,9 @@ const invoke = (method, ...values) => ipcRenderer.invoke(`my-jinni:${method}`, .
 contextBridge.exposeInMainWorld('myJinni', Object.freeze({
   getOptions: () => invoke('getOptions'),
   recommend: (preferences) => invoke('recommend', preferences),
+  getDecisionScenarios: () => invoke('getDecisionScenarios'),
+  getDecisionScenario: (id) => invoke('getDecisionScenario', id),
+  evaluateDecision: (request) => invoke('evaluateDecision', request),
   listSources: () => invoke('listSources'),
   addTextSource: (source) => invoke('addTextSource', source),
   importSource: (options) => invoke('importSource', options),

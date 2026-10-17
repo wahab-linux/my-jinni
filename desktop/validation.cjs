@@ -88,8 +88,129 @@ function validateImportOptions(value) {
   return { is_simulated: value.is_simulated ?? false };
 }
 
+function validateDecisionId(value) {
+  text(value, 1, 100);
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value)) {
+    throw new ValidationError('Choose a valid decision or criterion ID.');
+  }
+  return value;
+}
+
+function decisionNumber(value, maximum = 1e12, minimum = -1e12) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < minimum || value > maximum) {
+    throw new ValidationError('Decision values must be finite numbers within the supported range.');
+  }
+}
+
+function decisionRecord(value, allowNull = false) {
+  object(value, Object.keys(value || {}), []);
+  if (Object.keys(value).length > 10) throw new ValidationError('Use at most ten decision criteria.');
+  for (const [id, number] of Object.entries(value)) {
+    validateDecisionId(id);
+    if (!allowNull || number !== null) decisionNumber(number);
+  }
+}
+
+function decisionSource(value) {
+  object(value, ['id', 'label', 'is_simulated', 'updated_at']);
+  validateDecisionId(value.id);
+  text(value.label, 1, 200);
+  if (typeof value.is_simulated !== 'boolean' || typeof value.updated_at !== 'string'
+      || value.updated_at.length > 60 || !/(?:Z|[+-]\d{2}:\d{2})$/.test(value.updated_at)
+      || !Number.isFinite(Date.parse(value.updated_at))) {
+    throw new ValidationError('Provide a source label, simulation flag and aware update time.');
+  }
+}
+
+function decisionArray(value, minimum, maximum) {
+  if (!Array.isArray(value) || value.length < minimum || value.length > maximum) {
+    throw new ValidationError('The decision has too few or too many entries.');
+  }
+}
+
+function decisionCustom(value) {
+  object(value, ['title', 'criteria', 'dataset']);
+  text(value.title, 1, 200);
+  decisionArray(value.criteria, 1, 10);
+  const criteria = new Map();
+  for (const criterion of value.criteria) {
+    object(criterion, ['id', 'label', 'unit', 'direction', 'default_weight']);
+    validateDecisionId(criterion.id);
+    text(criterion.label, 1, 100);
+    text(criterion.unit, 1, 40);
+    if (!['minimize', 'maximize'].includes(criterion.direction) || criteria.has(criterion.id)) {
+      throw new ValidationError('Criteria need unique IDs and a supported direction.');
+    }
+    decisionNumber(criterion.default_weight, 100, 0);
+    criteria.set(criterion.id, criterion);
+  }
+  const dataset = value.dataset;
+  object(dataset, ['option_source', 'metric_source', 'options', 'observations']);
+  decisionSource(dataset.option_source);
+  decisionSource(dataset.metric_source);
+  if (dataset.option_source.id === dataset.metric_source.id) {
+    throw new ValidationError('The option and metric source IDs must differ.');
+  }
+  decisionArray(dataset.options, 0, 50);
+  decisionArray(dataset.observations, 0, 50);
+  const optionIds = new Set();
+  for (const option of dataset.options) {
+    object(option, ['id', 'name', 'description', 'category']);
+    validateDecisionId(option.id);
+    text(option.name, 1, 200);
+    text(option.description, 1, 1000);
+    text(option.category, 1, 100);
+    if (optionIds.has(option.id)) throw new ValidationError('Option IDs must be unique.');
+    optionIds.add(option.id);
+  }
+  const observed = new Set();
+  for (const row of dataset.observations) {
+    object(row, ['option_id', 'available', 'metrics'], ['option_id']);
+    validateDecisionId(row.option_id);
+    if (!optionIds.has(row.option_id) || observed.has(row.option_id)
+        || (row.available !== undefined && row.available !== null && typeof row.available !== 'boolean')) {
+      throw new ValidationError('Observation IDs must be unique and belong to an option.');
+    }
+    observed.add(row.option_id);
+    if (row.metrics !== undefined) decisionRecord(row.metrics, true);
+    for (const [id, number] of Object.entries(row.metrics || {})) {
+      if (!criteria.has(id)) throw new ValidationError('Measurements must use a declared criterion.');
+      if (criteria.get(id).unit === 'pence' && number !== null
+          && (!Number.isSafeInteger(number) || number < 0)) {
+        throw new ValidationError('Money must use nonnegative integer pence.');
+      }
+    }
+  }
+}
+
+function validateDecisionRequest(value) {
+  object(value, ['scenario_id', 'weights', 'constraints', 'custom'], ['scenario_id']);
+  validateDecisionId(value.scenario_id);
+  if (value.weights !== undefined) {
+    decisionRecord(value.weights);
+    for (const weight of Object.values(value.weights)) decisionNumber(weight, 100, 0);
+  }
+  if (value.constraints !== undefined) {
+    decisionArray(value.constraints, 0, 20);
+    for (const constraint of value.constraints) {
+      object(constraint, ['criterion_id', 'operator', 'value']);
+      validateDecisionId(constraint.criterion_id);
+      if (!['lte', 'gte'].includes(constraint.operator)) {
+        throw new ValidationError('Choose a minimum or maximum constraint.');
+      }
+      decisionNumber(constraint.value);
+    }
+  }
+  if (value.custom !== undefined && value.custom !== null) {
+    if (value.scenario_id !== 'custom') throw new ValidationError('Custom data needs the custom scenario.');
+    decisionCustom(value.custom);
+  }
+  if (JSON.stringify(value).length > 150000) throw new ValidationError('The custom decision is too large.');
+  return structuredClone(value);
+}
+
 function validateChatRequest(value) {
-  object(value, ['question', 'source_ids', 'provider', 'model', 'preferences'], ['question', 'source_ids']);
+  object(value, ['question', 'source_ids', 'provider', 'model', 'preferences', 'decision_request'], ['question', 'source_ids']);
   text(value.question, 1, 2000);
   if (!Array.isArray(value.source_ids) || value.source_ids.length > 20
       || new Set(value.source_ids).size !== value.source_ids.length) {
@@ -101,8 +222,8 @@ function validateChatRequest(value) {
       && (typeof value.model !== 'string' || !/^[a-zA-Z0-9._:-]{1,100}$/.test(value.model))) {
     throw new ValidationError('Enter a supported model name.');
   }
-  if (ids.length === 0 && value.preferences === undefined) {
-    throw new ValidationError('Select a source or include your current activity preferences.');
+  if (ids.length === 0 && value.preferences === undefined && value.decision_request === undefined) {
+    throw new ValidationError('Select a source or include your current decision or activity preferences.');
   }
   return {
     question: value.question,
@@ -110,6 +231,7 @@ function validateChatRequest(value) {
     ...(Object.hasOwn(value, 'provider') ? { provider: value.provider } : {}),
     ...(Object.hasOwn(value, 'model') ? { model: value.model } : {}),
     ...(value.preferences === undefined ? {} : { preferences: validatePreferences(value.preferences) }),
+    ...(value.decision_request === undefined ? {} : { decision_request: validateDecisionRequest(value.decision_request) }),
   };
 }
 
@@ -136,6 +258,8 @@ function validateSessionKeySetting(value) {
 function validateIpcInput(method, value) {
   const validators = {
     recommend: validatePreferences,
+    getDecisionScenario: validateDecisionId,
+    evaluateDecision: validateDecisionRequest,
     addTextSource: validateTextSource,
     importSource: validateImportOptions,
     getSource: validateSourceId,
@@ -146,7 +270,7 @@ function validateIpcInput(method, value) {
     clearSessionApiKey: (input) => input === undefined ? undefined : validateProvider(input),
   };
   if (Object.hasOwn(validators, method)) return validators[method](value);
-  if (!['getOptions', 'listSources', 'getBackendStatus', 'retryBackend'].includes(method) || value !== undefined) {
+  if (!['getOptions', 'getDecisionScenarios', 'listSources', 'getBackendStatus', 'retryBackend'].includes(method) || value !== undefined) {
     throw new ValidationError('This desktop operation is not supported.');
   }
   return undefined;
@@ -156,4 +280,5 @@ module.exports = {
   ValidationError, validateBackendUrl, validatePreferences, validateSourceId, validateTextSource,
   validateImportOptions, validateChatRequest, validateSessionKey, validateProvider,
   validateSessionKeySetting, validateIpcInput,
+  validateDecisionId, validateDecisionRequest,
 };

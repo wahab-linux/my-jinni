@@ -39,8 +39,8 @@ class ApiClient {
 
   async request(path, { method = 'GET', json, body, headers = {}, timeoutMs } = {}) {
     const allowed = {
-      GET: /^\/(?:health|openapi\.json|api\/v1\/(?:options|sources(?:\/[a-zA-Z0-9_-]{1,100})?))$/,
-      POST: /^\/api\/v1\/(?:recommendations|sources(?:\/upload)?|chat)$/,
+      GET: /^\/(?:health|openapi\.json|api\/v1\/(?:options|decision-scenarios(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)?|sources(?:\/[a-zA-Z0-9_-]{1,100})?))$/,
+      POST: /^\/api\/v1\/(?:recommendations|decisions\/evaluate|sources(?:\/upload)?|chat)$/,
       DELETE: /^\/api\/v1\/sources\/[a-zA-Z0-9_-]{1,100}$/,
     };
     if (!Object.hasOwn(allowed, method) || typeof path !== 'string' || !allowed[method].test(path)) {

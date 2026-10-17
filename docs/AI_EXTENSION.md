@@ -1,4 +1,8 @@
-# Source-grounded AI extension: additive contract v0.4
+# Source-grounded AI extension: additive contract v0.5
+
+The general workspace adds optional `decision_request` to chat and `decision` to its result. [GENERAL_DECISIONS.md](GENERAL_DECISIONS.md) defines the request/result. The server calls the actual comparison endpoint, propagates validation/source failures before generation, and returns the exact calculated result. It supplies bounded winner/alternative/measurement/provenance JSON as ephemeral `decision-context`; selected chunk IDs and quotes are checked normally. This context is not saved in SQLite. Scores remain relative preference fit, not forecasts or verified truth.
+
+Decision inclusion is explicit in the desktop question dialog. Comparison-input changes invalidate pending/previous included-context answers. The existing `preferences`/`planner` path is retained for the detailed activity example; either or both contexts reserve one slot each from the six-chunk retrieval limit. A question with decision context needs no selected library document, but generation still requires the selected provider's key. The browser has local original-passage search only, not cloud AI.
 
 The user confirmed this scope on 2026-10-17: **keep activity planning; add a local source library and cited AI questions**. The initial v0.3 used OpenAI; the same day the user requested multiple mainstream providers, specifically DeepSeek. [AI_PROVIDERS.md](AI_PROVIDERS.md) defines the additive v0.4 provider catalog, credentials and adapter protocols. OpenAI remains the default for legacy requests. Every v0.2 planner field and v0.3 library/citation field is preserved. Package version remains 0.1.0. The deterministic planner still needs no key.
 
@@ -37,7 +41,7 @@ All paths below are additive and retain `/api/v1`. Existing `/api/v1/options` an
 }
 ```
 
-`question` is nonblank, at most 2000 characters. `source_ids` contains distinct selected source IDs, up to 20. Optional `provider` defaults to `openai`; other IDs are `deepseek`, `gemini` and `anthropic`. An omitted `model` uses that provider's catalog default; an explicit model must support its adapter's structured/JSON protocol and be accessible to the user's account. `preferences` retains the exact existing planner model. At least one source or preferences is required. Questions do not infer or change form values; current preferences are supplied only when explicitly selected.
+`question` is nonblank, at most 2000 characters. `source_ids` contains distinct selected source IDs, up to 20. Optional `provider` defaults to `openai`; other IDs are `deepseek`, `gemini` and `anthropic`. An omitted `model` uses that provider's catalog default; an explicit model must support its adapter's structured/JSON protocol and be accessible to the user's account. `preferences` retains the exact existing planner model. At least one source, preferences or `decision_request` is required. Questions do not infer or change form values; calculated contexts are supplied only when explicitly selected.
 
 Successful chat data has:
 
@@ -48,6 +52,7 @@ Successful chat data has:
 - `model`: requested model for an actual generation; null when no model call was needed.
 - `used_source_ids`: source IDs of evidence actually supplied, not every available source.
 - `planner`: the computed RecommendationData object or null. This remains the authoritative cost/time/ranking display.
+- `decision`: the actual computed DecisionResult or null, retaining authoritative measurements, ranking and source metadata independently of the AI prose.
 
 The ephemeral `planner-context` source contains the result computed by the existing endpoint for this request. Its citation text is returned in `quote`, its page is null and it is labelled simulated. It is not saved into the user's library. Existing simulated-source warnings remain visible. If calculation fails, propagate its error rather than fabricate a recommendation.
 
