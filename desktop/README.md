@@ -1,4 +1,4 @@
-# PlanScope desktop client
+# my-jinni desktop client
 
 Wahab owns this implementation boundary. The user confirmed that Electron/Tauri and web interface technologies are permitted for the desktop application; the selected implementation is Electron with HTML/CSS/JavaScript. The Python backend retains the v0.2 JSON contract.
 

@@ -16,7 +16,7 @@ Here **v0.2 is the contract revision**, not a package release. Application packa
 
 ## Boundaries
 
-PlanScope helps anyone choose an activity using budget, time, interests, and return travel. Student identity is not required. `app/scenario.py` configures the fictional Glasgow demo's two origins, source-data day, timezone, and budget cap. `app/schemas.py` checks general request structure, not campus identity or fixed dates. See `docs/ARCHITECTURE.md`.
+my-jinni helps anyone choose an activity using budget, time, interests, and return travel. Student identity is not required. `app/scenario.py` configures the fictional Glasgow demo's two origins, source-data day, timezone, and budget cap. `app/schemas.py` checks general request structure, not campus identity or fixed dates. See `docs/ARCHITECTURE.md`.
 
 GBP, five activity categories, return to the same origin, fixed travel durations, and fictional feeds remain deliberate activity-MVP limits. This is not an implemented arbitrary-domain decision platform.
 

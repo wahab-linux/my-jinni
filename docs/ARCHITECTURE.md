@@ -1,6 +1,6 @@
-# PlanScope architecture
+# my-jinni architecture
 
-PlanScope combines a deterministic activity planner with a user-confirmed local source library and optional cited OpenAI questions. Students are the first MVP audience; the activity core does not require student identity. Planning still works without a key. The product interface is an Electron desktop application, using Wahab's HTML/CSS/JavaScript skills. Desktop source/chat integration, session settings, launcher and human acceptance remain pending. Contract v0.3 adds source/chat operations while preserving every v0.2 activity field.
+my-jinni combines a deterministic activity planner with a user-confirmed local source library and optional cited OpenAI questions. Students are the first MVP audience; the activity core does not require student identity. Planning still works without a key. The product interface is an Electron desktop application, using Wahab's HTML/CSS/JavaScript skills. Desktop source/chat integration, session settings, launcher and human acceptance remain pending. Contract v0.3 adds source/chat operations while preserving every v0.2 activity field.
 
 ```mermaid
 flowchart LR

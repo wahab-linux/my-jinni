@@ -1,8 +1,8 @@
-# PlanScope project plan
+# my-jinni project plan
 
 ## Product and delivery
 
-PlanScope is a desktop activity planner with a user-confirmed local source library and cited OpenAI questions. Given an origin, budget, time window and interests, its deterministic planner recommends a feasible activity and explains cost and return timing without requiring a key. Students are the first MVP audience; no student identity, account or campus-only rule belongs in the reusable activity core.
+my-jinni is a desktop activity planner with a user-confirmed local source library and cited OpenAI questions. Given an origin, budget, time window and interests, its deterministic planner recommends a feasible activity and explains cost and return timing without requiring a key. Students are the first MVP audience; no student identity, account or campus-only rule belongs in the reusable activity core.
 
 The activity backend is implemented: two independently shaped simulated feeds are fetched, normalised, joined and used in actual deterministic decisions. The user confirmed the additive library/AI scope on 2026-10-17 and selected OpenAI. That feature is implemented on `backend-ai-library`, with coordinating lint/format and 344 tests passing; desktop and real-provider acceptance remain pending. Electron with HTML/CSS/JavaScript is the selected client stack. Wahab owns planner controls, source panel, chat/citation viewer, session-key settings, restricted IPC and managed backend launcher. No desktop executable or installer is delivered yet.
 
@@ -29,7 +29,7 @@ A running API or passing backend test does not establish a finished desktop prod
 - One local SQLite source library outside the checkout: pasted text, UTF-8 TXT/Markdown and text PDFs, with page-aware extracted chunks, view/delete and selected-source lexical retrieval. Optional `is_simulated` import metadata labels fictional/generated demo guides and follows citations; false is not a truth guarantee.
 - Optional OpenAI questions with checked quote/source citations, or insufficient evidence. Passing current form preferences explicitly adds the real calculated planner result as ephemeral simulated evidence; questions do not infer or mutate form values.
 
-The second origin demonstrates a shared activity core without student identity. It does not imply arbitrary-place/date coverage or live routing. The source library is one local collection, not cloud notebooks or sync. OCR, URL ingestion, embeddings, finance, shopping, accounts, maps, payments and a universal planning framework are outside this hackathon scope. PlanScope is the team's prototype, not an official BlackRock or Aladdin product.
+The second origin demonstrates a shared activity core without student identity. It does not imply arbitrary-place/date coverage or live routing. The source library is one local collection, not cloud notebooks or sync. OCR, URL ingestion, embeddings, finance, shopping, accounts, maps, payments and a universal planning framework are outside this hackathon scope. my-jinni is the team's prototype, not an official BlackRock or Aladdin product.
 
 ## Architecture and ownership
 

@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "PlanScope API",
+    "title": "my-jinni API",
     "description": "Contract v0.3: activity planning plus an optional local source library and cited AI. The planner uses simulated data; user uploads retain their own provenance.",
     "version": "0.1.0"
   },
@@ -179,7 +179,7 @@
                         "sources": [
                           {
                             "id": "events",
-                            "label": "PlanScope Events Demo",
+                            "label": "my-jinni Events Demo",
                             "kind": "mock",
                             "is_simulated": true,
                             "status": "ok",
@@ -187,7 +187,7 @@
                           },
                           {
                             "id": "travel",
-                            "label": "PlanScope Travel Demo",
+                            "label": "my-jinni Travel Demo",
                             "kind": "mock",
                             "is_simulated": true,
                             "status": "ok",
@@ -212,7 +212,7 @@
                         "sources": [
                           {
                             "id": "events",
-                            "label": "PlanScope Events Demo",
+                            "label": "my-jinni Events Demo",
                             "kind": "mock",
                             "is_simulated": true,
                             "status": "ok",
@@ -220,7 +220,7 @@
                           },
                           {
                             "id": "travel",
-                            "label": "PlanScope Travel Demo",
+                            "label": "my-jinni Travel Demo",
                             "kind": "mock",
                             "is_simulated": true,
                             "status": "ok",

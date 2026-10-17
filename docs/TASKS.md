@@ -4,7 +4,7 @@ This executes `docs/REQUIREMENTS.md`. The activity and confirmed local source-li
 
 ## Current status and ownership
 
-PlanScope chooses a feasible activity from two sources using budget, time and interests. Origins, date, timezone, categories and limits are scenario configuration; students are the first audience. Return is to the selected origin. The user changed the deliverable to a desktop client and approved reuse of frontend technology; Electron with HTML/CSS/JavaScript is the selected stack.
+my-jinni chooses a feasible activity from two sources using budget, time and interests. Origins, date, timezone, categories and limits are scenario configuration; students are the first audience. Return is to the selected origin. The user changed the deliverable to a desktop client and approved reuse of frontend technology; Electron with HTML/CSS/JavaScript is the selected stack.
 
 The user also confirmed keeping the planner while adding one local source library and cited AI questions using OpenAI. The deterministic planner remains keyless. `docs/AI_EXTENSION.md` defines additive contract v0.3; every v0.2 activity field is preserved. Local SQLite, lexical retrieval and optional AI are now approved scope, with no cloud notebooks/sync, OCR, URL ingestion or embeddings.
 

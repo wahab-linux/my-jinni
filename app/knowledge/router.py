@@ -138,7 +138,7 @@ async def calculated_plan(
     if body.preferences is None:
         return None, [], None
     transport = httpx.ASGITransport(app=request.app, raise_app_exceptions=False)
-    async with httpx.AsyncClient(transport=transport, base_url="http://planscope.local") as client:
+    async with httpx.AsyncClient(transport=transport, base_url="http://my-jinni.local") as client:
         response = await client.post(
             "/api/v1/recommendations", json=body.preferences.model_dump(mode="json")
         )

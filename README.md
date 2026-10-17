@@ -1,4 +1,4 @@
-# PlanScope
+# my-jinni
 
 A desktop activity planner that combines activity and return-travel information to recommend a feasible plan and explain the cost and timing. Students are the first MVP audience; the decision core does not require student identity.
 
@@ -40,7 +40,8 @@ The user confirmed this extension while retaining activity planning. [AI_EXTENSI
 Verification: 344 tests, Ruff lint and formatting pass. Real local HTTP checks covered source creation/view/list/delete, insufficient evidence, missing-key errors and the original keyless planner. OpenAI output tests use injected transports; a successful real account/model request and the Electron UI still require separate verification.
 
 - Import pasted text, UTF-8 TXT/Markdown or a text PDF. Select sources for each question and open citations to inspect the exact extracted quote and PDF page.
-- Runtime source data defaults to `%LOCALAPPDATA%/PlanScope/library.sqlite3` on Windows, or `~/.planscope/library.sqlite3` without that environment setting. Set `PLANSCOPE_DATA_DIR` to choose another local data directory. No key or chat history is stored there.
+- New source libraries default to `%LOCALAPPDATA%/my-jinni/library.sqlite3` when `LOCALAPPDATA` is available, or `~/.my-jinni/library.sqlite3` otherwise. Set `MY_JINNI_DATA_DIR` to choose another local data directory. No key or chat history is stored there.
+- Data compatibility: the legacy `PLANSCOPE_DATA_DIR` setting remains supported. An existing database under `%LOCALAPPDATA%/PlanScope/` or `~/.planscope/` is reused if the new default database is absent; no data is automatically moved or deleted.
 - Limits: 20 sources, 5 MiB per upload, 150,000 extracted characters and 40 PDF pages. Retrieval is local lexical search over at most six chunks, not embeddings or cross-language semantic search. One library and stateless chat are the MVP; no OCR, cloud sync or URL imports.
 - OpenAI requests send the question and selected evidence snippets to the fixed Responses endpoint with `store: false`. This is not a blanket provider retention guarantee. The default model is `gpt-4.1-mini`; actual model/account access must be checked with the team's own key.
 - The client passes its session key in `X-OpenAI-API-Key` for chat, never JSON or URLs. The backend does not save or log it. Without matching evidence, it returns insufficient evidence without contacting the model. A failed provider never becomes a fabricated answer.

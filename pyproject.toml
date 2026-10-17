@@ -1,5 +1,5 @@
 [project]
-name = "planscope"
+name = "my-jinni"
 version = "0.1.0"
 description = "Recommend feasible activities using activity and travel data, budget, time, and interests"
 requires-python = ">=3.11,<3.15"

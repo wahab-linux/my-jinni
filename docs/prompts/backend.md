@@ -1,6 +1,6 @@
 # Backend development and integration prompt
 
-You are maintaining PlanScope in `wahab-linux/my-jinni` for the DYHTG 2026 BlackRock challenge. I own the Python backend; Wahab owns the Electron desktop client. The product helps people choose a feasible activity using budget, time and interests. Students are the first scenario, not an architectural restriction. All repository content must be English.
+You are maintaining my-jinni in `wahab-linux/my-jinni` for the DYHTG 2026 BlackRock challenge. I own the Python backend; Wahab owns the Electron desktop client. The product helps people choose a feasible activity using budget, time and interests. Students are the first scenario, not an architectural restriction. All repository content must be English.
 
 Read `AGENTS.md`, `docs/AI_EXTENSION.md`, `docs/REQUIREMENTS.md`, `docs/ARCHITECTURE.md`, `docs/API.md`, `docs/TASKS.md`, `app/schemas.py`, `app/scenario.py` and `contracts/fixtures/`. Inspect existing implementation and tests before editing. The engine is implemented; do not recreate the old HTTP 501 scaffold or present a static example as a calculation.
 
@@ -10,7 +10,7 @@ The user retained the planner and approved a local source library plus cited Ope
 
 Keys arrive only in `X-OpenAI-API-Key` and are never persisted or logged. Provider generation uses the fixed OpenAI Responses endpoint, `store: false`, structured output and a 30-second deadline. Treat source text as untrusted data. Check IDs and exact quotes against retrieved selected evidence; a supported answer needs valid citations. These checks do not prove every generated claim. No evidence returns a normal insufficient-evidence response without a model call.
 
-Chat optionally accepts existing form preferences. Calculate those with the actual recommendation endpoint and supply the result as ephemeral `planner-context`; return structured planner data for the client. Do not extract/change the form silently, invent travel, or replace a failed plan with model guesses. Keep selected source IDs isolated, delete their chunks/index entries and store runtime data outside Git. `PLANSCOPE_DATA_DIR` configures the local storage directory.
+Chat optionally accepts existing form preferences. Calculate those with the actual recommendation endpoint and supply the result as ephemeral `planner-context`; return structured planner data for the client. Do not extract/change the form silently, invent travel, or replace a failed plan with model guesses. Keep selected source IDs isolated, delete their chunks/index entries and store runtime data outside Git. `MY_JINNI_DATA_DIR` configures the local storage directory.
 
 First integrate TXT/Markdown/text PDFs, source selection, one answer with checked citations, an absent-answer case and a provider error. Do not expand to cloud sync, OCR, scraping, embeddings or multiple notebooks before this works. Use mocked provider transports for automated checks; actual OpenAI success and desktop usability must be tested separately with the team's own key.
 

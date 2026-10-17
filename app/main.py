@@ -58,7 +58,7 @@ def read_example(name: str) -> dict:
 async def get_source_client(request: Request) -> AsyncIterator[httpx.AsyncClient]:
     transport = httpx.ASGITransport(app=request.app, raise_app_exceptions=False)
     async with httpx.AsyncClient(
-        transport=transport, base_url="http://planscope.local", timeout=SOURCE_TIMEOUT_SECONDS
+        transport=transport, base_url="http://my-jinni.local", timeout=SOURCE_TIMEOUT_SECONDS
     ) as client:
         yield client
 
@@ -108,7 +108,7 @@ def present_candidate(
 
 def create_app() -> FastAPI:
     app = FastAPI(
-        title="PlanScope API",
+        title="my-jinni API",
         version=__version__,
         description=(
             "Contract v0.3: activity planning plus an optional local source library and cited AI. "

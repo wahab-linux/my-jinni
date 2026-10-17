@@ -1,4 +1,4 @@
-# PlanScope development instructions
+# my-jinni development instructions
 
 - Keep all tracked repository content in English, including documentation, prompts, comments, UI copy, metadata, and AI usage records.
 - Read `docs/PROJECT_PLAN.md`, `docs/REQUIREMENTS.md`, `docs/ARCHITECTURE.md`, `docs/API.md`, `docs/TASKS.md`, and your assigned prompt before editing.

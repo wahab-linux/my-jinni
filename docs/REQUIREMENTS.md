@@ -1,10 +1,10 @@
-# PlanScope requirements
+# my-jinni requirements
 
 This document is the product and acceptance baseline, not a claim of completed functionality. Coordinated field definitions live in `docs/API.md`, `docs/AI_EXTENSION.md`, `app/schemas.py`, `app/knowledge/schemas.py`, `docs/openapi.json`, and `contracts/fixtures/`. Contract v0.3 adds source-library and chat operations; every v0.2 activity request/response field stays unchanged.
 
 ## 1. Decisions and implementation status
 
-- **Confirmed by the team:** build PlanScope as a desktop application; roXy owns the backend and Wahab owns the desktop interface. The user approved frontend-technology reuse; the selected client is Electron with HTML/CSS/JavaScript. Students are the MVP audience, not the architecture's identity requirement.
+- **Confirmed by the team:** build my-jinni as a desktop application; roXy owns the backend and Wahab owns the desktop interface. The user approved frontend-technology reuse; the selected client is Electron with HTML/CSS/JavaScript. Students are the MVP audience, not the architecture's identity requirement.
 - **Selected MVP:** a person chooses one activity using budget, available time, and interests, combining event and travel feeds. Return to the same selected origin is the first-version journey model.
 - **Confirmed extension, 2026-10-17:** keep the activity planner and add one local source library with cited AI questions using OpenAI. The planner remains deterministic and requires no key. The optional AI feature uses selected source snippets and, when explicitly supplied, the current activity form preferences.
 - **Verified backend, 2026-10-17:** both-source HTTP adaptation, exact money conversion, feasibility/ranking, factual explanations and error handling replace the former 501 stub. All 175 tests and Ruff lint/format passed. An actual loopback server served normal/lower/zero-budget and second-origin requests, then shut down cleanly. The existing Starlette/httpx TestClient deprecation warning remains.

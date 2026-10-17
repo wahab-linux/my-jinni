@@ -4,8 +4,8 @@
     "alternatives": [],
     "message": "No activities fit this budget and time window. Try increasing your budget or allowing more time.",
     "sources": [
-      {"id": "events", "label": "PlanScope Events Demo", "kind": "mock", "is_simulated": true, "status": "ok", "updated_at": "2026-10-20T15:50:00+01:00"},
-      {"id": "travel", "label": "PlanScope Travel Demo", "kind": "mock", "is_simulated": true, "status": "ok", "updated_at": "2026-10-20T15:50:00+01:00", "origin_id": "glasgow-main-campus"}
+      {"id": "events", "label": "my-jinni Events Demo", "kind": "mock", "is_simulated": true, "status": "ok", "updated_at": "2026-10-20T15:50:00+01:00"},
+      {"id": "travel", "label": "my-jinni Travel Demo", "kind": "mock", "is_simulated": true, "status": "ok", "updated_at": "2026-10-20T15:50:00+01:00", "origin_id": "glasgow-main-campus"}
     ]
   },
   "error": null,

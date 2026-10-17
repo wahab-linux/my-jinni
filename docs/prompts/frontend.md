@@ -1,8 +1,8 @@
 # Desktop interface development prompt
 
-You are building PlanScope's desktop client in `wahab-linux/my-jinni` for the DYHTG 2026 BlackRock challenge. I am Wahab and own the interface. My teammate owns the Python backend. The user explicitly wants a desktop application and permits Electron/Tauri to reuse frontend skills. Use Electron with HTML/CSS/JavaScript. Deliver a working application window.
+You are building my-jinni's desktop client in `wahab-linux/my-jinni` for the DYHTG 2026 BlackRock challenge. I am Wahab and own the interface. My teammate owns the Python backend. The user explicitly wants a desktop application and permits Electron/Tauri to reuse frontend skills. Use Electron with HTML/CSS/JavaScript. Deliver a working application window.
 
-Read `AGENTS.md`, `docs/AI_EXTENSION.md`, `docs/REQUIREMENTS.md`, `docs/ARCHITECTURE.md`, `docs/API.md`, `docs/TASKS.md`, `docs/openapi.json` and `contracts/fixtures/`. All code, comments, UI copy and documentation must be English. Product name: PlanScope. Keep the repository/directory name `my-jinni`.
+Read `AGENTS.md`, `docs/AI_EXTENSION.md`, `docs/REQUIREMENTS.md`, `docs/ARCHITECTURE.md`, `docs/API.md`, `docs/TASKS.md`, `docs/openapi.json` and `contracts/fixtures/`. All code, comments, UI copy and documentation must be English. Product name: my-jinni. Keep the repository/directory name `my-jinni`.
 
 ## Confirmed extension: source library and cited OpenAI questions
 
@@ -31,7 +31,7 @@ The user confirmed that activity planning stays and gains a local source library
 
 ## Stage 1: the basic desktop flow
 
-1. Create a resizable PlanScope window and load `/api/v1/options` through the bridge. Derive origins, supported date, limits, interests and initial values from the response. Students are the first scenario, not an identity requirement.
+1. Create a resizable my-jinni window and load `/api/v1/options` through the bridge. Derive origins, supported date, limits, interests and initial values from the response. Students are the first scenario, not an identity requirement.
 2. Build labelled controls for origin, date, departure, return deadline, budget and interests. Internally use integer pence and exact decimal GBP conversion. Reject fractional pence, empty interests and reversed times. Send aware ISO timestamps for `Europe/London`, using the selected date's offset rather than the machine's timezone. Read supported dates from options.
 3. POST the v0.2 request through `recommend(preferences)`. Disable repeat submissions while active; use request IDs or cancellation so stale responses cannot overwrite a later request. Keep the window responsive.
 4. Show title, venue, category, event times, arrival, return, ticket + return fare = total, and factual reasons. Include up to two alternatives. Format GBP to two decimals and all times in `Europe/London`; the travel fare already includes both legs.
