@@ -7,7 +7,7 @@ import { chromium } from 'playwright';
 
 const root = path.resolve('dist/pages');
 const prefix = '/my-jinni/';
-const types = { '.html': 'text/html', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.wasm': 'application/wasm' };
+const types = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.wasm': 'application/wasm' };
 const server = createServer(async (req, res) => {
   try {
     const pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
@@ -27,12 +27,12 @@ let checks = 0;
 const errors = [];
 const external = [];
 async function check(name, action) { await action(); checks++; console.log(`PASS ${name}`); }
-const context = await browser.newContext({ viewport: { width: 1280, height: 950 }, timezoneId: 'America/Los_Angeles' });
+const context = await browser.newContext({ viewport: { width: 1280, height: 950 }, timezoneId: 'America/Los_Angeles', colorScheme: 'light', reducedMotion: 'reduce' });
 const page = await context.newPage();
 page.on('pageerror', (error) => errors.push(error.message));
 page.on('request', (request) => { if (!request.url().startsWith('http://127.0.0.1:') && !request.url().startsWith('blob:') && !request.url().startsWith('data:')) external.push(request.url()); });
 const waitText = (locator, text) => locator.filter({ hasText: text }).waitFor({ state: 'visible' });
-const plan = async (budget) => { await page.locator('#budget').fill(budget); await page.locator('#plan-submit').click(); };
+const plan = async (budget) => { await page.locator('#budget-preset').selectOption('custom'); await page.locator('#budget').fill(budget); await page.locator('#plan-submit').click(); };
 const featured = page.locator('.activity.featured');
 const row = (title) => page.locator('.source-item').filter({ has: page.getByText(title, { exact: true }) });
 const paste = async (title, text) => {
@@ -64,6 +64,54 @@ try {
     assert.match(await page.locator('.demo-banner').innerText(), /fictional|simulated/i);
     assert.equal(await page.locator('#depart').inputValue(), '16:00');
   });
+  await check('theme follows device preference until the user chooses and persists across reload', async () => {
+    assert.equal(await page.locator('html').getAttribute('data-theme'), 'light');
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
+    assert.equal(await page.locator('#theme-toggle').getAttribute('aria-pressed'), 'true');
+    await page.getByRole('button', { name: 'Dark mode', exact: true }).click();
+    assert.equal(await page.evaluate(() => localStorage.getItem('my-jinni-theme')), 'light');
+    await page.reload(); await waitText(page.locator('#setup-status'), 'Ready.');
+    assert.equal(await page.locator('html').getAttribute('data-theme'), 'light');
+    await page.locator('#theme-toggle').focus(); await page.keyboard.press('Enter');
+    assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark');
+    await page.reload(); await waitText(page.locator('#setup-status'), 'Ready.');
+    assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark');
+    await page.locator('#theme-toggle').click();
+  });
+  await check('theme changes sync to another tab without resetting its planner', async () => {
+    const other = await context.newPage(); await other.goto(base);
+    await waitText(other.locator('#setup-status'), 'Ready.');
+    await other.locator('#depart').fill('15:30');
+    await page.locator('#theme-toggle').click();
+    await other.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
+    assert.equal(await other.locator('#depart').inputValue(), '15:30');
+    await page.locator('#theme-toggle').click(); await other.close();
+  });
+  await check('budget presets and custom amount update actual results and clear stale cards', async () => {
+    await page.locator('#budget-preset').selectOption('5'); await page.locator('#plan-submit').click();
+    await waitText(featured, 'Board Game Night');
+    assert.equal(await page.locator('#custom-budget').isVisible(), false);
+    await page.locator('#budget-preset').selectOption('0'); assert.equal(await featured.count(), 0);
+    await page.locator('#plan-submit').click(); await waitText(page.locator('#plan-status'), 'No activity fits');
+    await plan('4'); await waitText(featured, 'Acoustic Hour');
+    assert.equal(await page.locator('#custom-budget').isVisible(), true);
+  });
+  await check('interest and navigation dropdowns support keyboard operation and Escape returns focus', async () => {
+    const summary = page.locator('#interest-picker summary');
+    await summary.focus(); await page.keyboard.press('Enter');
+    await page.locator('#interests input[value=music]').check();
+    await waitText(page.locator('#interest-summary'), 'Music');
+    await page.keyboard.press('Escape');
+    assert.equal(await summary.evaluate((element) => element === document.activeElement), true);
+    assert.equal(await page.locator('#interest-picker').getAttribute('open'), null);
+    await summary.click(); await page.locator('#interests input[value=music]').uncheck(); await page.keyboard.press('Escape');
+    const explore = page.locator('.nav-dropdown summary'); await explore.focus(); await page.keyboard.press('Enter');
+    await page.locator('.nav-dropdown a').first().waitFor(); await page.keyboard.press('Escape');
+    assert.equal(await explore.evaluate((element) => element === document.activeElement), true);
+    await explore.click(); await page.locator('#title').click();
+    assert.equal(await page.locator('.nav-dropdown').getAttribute('open'), null);
+  });
   await check('campus GBP 10 / 4 / 0 produces calculated best fit, changed result and no match', async () => {
     await plan('10'); await waitText(featured, 'Board Game Night'); await waitText(featured, '£5.00');
     await waitText(featured, '18:15'); await waitText(page.locator('.provenance'), 'Travel Demo');
@@ -86,8 +134,10 @@ try {
     await page.locator('#depart').fill('16:00'); await page.locator('#return').fill('19:00'); await plan('10');
     await page.locator('#budget').fill('1.001'); assert.equal(await featured.count(), 0);
     await page.locator('#plan-submit').click(); await waitText(page.locator('#plan-status.error'), 'two decimal');
+    await page.locator('#interest-picker summary').click();
     await page.locator('#interests input:checked').uncheck(); await plan('10');
     await waitText(page.locator('#plan-status.error'), 'interests');
+    await page.locator('#interest-picker summary').click();
     await page.locator('#interests input[value=games]').check(); await page.locator('#return').fill('15:00');
     await page.locator('#plan-submit').click(); await waitText(page.locator('#plan-status.error'), 'ordered time');
     await page.locator('#return').fill('19:00'); await plan('10');
@@ -158,12 +208,67 @@ try {
     await waitText(page.locator('#library-status'), 'Source deleted'); assert.equal(await page.locator('.excerpt').count(), 0);
     await page.reload(); await waitText(page.locator('#library-status'), 'Library ready.'); assert.equal(await row('guide.pdf').count(), 0);
   });
-  await check('mobile and desktop layouts fit without horizontal scrolling', async () => {
-    for (const width of [390, 768, 1280]) {
-      await page.setViewportSize({ width, height: 900 }); await plan('10');
-      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
-      await page.screenshot({ path: `tmp/web/browser-${width}.png`, fullPage: true });
+  await check('source sort dropdown orders saved documents without losing selection', async () => {
+    await row('notes.md').locator('input').check();
+    await page.locator('#source-sort').selectOption('title');
+    const titles = await page.locator('.source-item .check').allTextContents();
+    assert.deepEqual(titles, [...titles].sort((a, b) => a.localeCompare(b)));
+    assert.equal(await row('notes.md').locator('input').isChecked(), true);
+  });
+  await check('light and dark layouts fit at mobile, tablet and desktop widths', async () => {
+    for (const theme of ['light', 'dark']) {
+      if (await page.locator('html').getAttribute('data-theme') !== theme) await page.locator('#theme-toggle').click();
+      for (const width of [320, 390, 768, 1280]) {
+        await page.setViewportSize({ width, height: 900 }); await plan('10');
+        const overflow = await page.evaluate(() => [...document.querySelectorAll('body *')].filter((element) => {
+          const bounds = element.getBoundingClientRect();
+          return bounds.width > 0 && (bounds.right > window.innerWidth + 1 || bounds.left < -1);
+        }).map((element) => `${element.tagName}.${element.className}#${element.id}`));
+        assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${theme} ${width}px overflow: ${overflow.join(', ')}`);
+        await page.screenshot({ path: `tmp/web/browser-${theme}-${width}.png`, fullPage: true });
+      }
     }
+  });
+  await check('primary controls and common text meet WCAG AA contrast in both themes', async () => {
+    for (const theme of ['light', 'dark']) {
+      if (await page.locator('html').getAttribute('data-theme') !== theme) await page.locator('#theme-toggle').click();
+      const failures = await page.evaluate(() => {
+        const luminance = (rgb) => rgb.slice(0, 3).map((part) => {
+          const channel = part / 255; return channel <= .04045 ? channel / 12.92 : ((channel + .055) / 1.055) ** 2.4;
+        }).reduce((total, channel, i) => total + channel * [.2126, .7152, .0722][i], 0);
+        const parse = (color) => color.match(/[\d.]+/g).map(Number);
+        const failures = [];
+        for (const selector of ['.lead', '.hero-badge', '.demo-banner', '.hint', '.eyebrow', '.primary', '.nav-link', '.local-badge', '.theme-toggle', 'label', 'select', '.activity .price', '.featured .muted', '.source-actions .text-button']) {
+          for (const element of document.querySelectorAll(selector)) {
+            if (!element.getClientRects().length) continue;
+            const foreground = parse(getComputedStyle(element).color);
+            let ancestor = element; let background;
+            while (ancestor) {
+              const candidate = parse(getComputedStyle(ancestor).backgroundColor);
+              if (candidate.length < 4 || candidate[3] === 1) { background = candidate; break; }
+              ancestor = ancestor.parentElement;
+            }
+            if (!background) continue;
+            const values = [luminance(foreground), luminance(background)].sort((a, b) => b - a);
+            const contrast = (values[0] + .05) / (values[1] + .05);
+            if (contrast < 4.5) failures.push(`${selector}: ${contrast.toFixed(2)}`);
+          }
+        }
+        return failures;
+      });
+      assert.deepEqual(failures, [], `${theme} text contrast`);
+    }
+  });
+  await check('theme remains usable when preference storage is blocked', async () => {
+    const restricted = await browser.newContext({ colorScheme: 'dark' });
+    await restricted.addInitScript(() => Object.defineProperty(window, 'localStorage', { get() { throw new Error('Storage disabled'); } }));
+    const tab = await restricted.newPage(); await tab.goto(base);
+    await waitText(tab.locator('#setup-status'), 'Ready.');
+    assert.equal(await tab.locator('html').getAttribute('data-theme'), 'dark');
+    await tab.getByRole('button', { name: 'Dark mode', exact: true }).click();
+    assert.equal(await tab.locator('html').getAttribute('data-theme'), 'light');
+    await tab.locator('#plan-submit').click(); await waitText(tab.locator('.activity.featured'), 'Board Game Night');
+    await restricted.close();
   });
   await check('failed scenario load cannot display a plan; retry recovers', async () => {
     const broken = await context.newPage();

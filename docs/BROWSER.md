@@ -14,6 +14,14 @@ Cloud AI generation is not available on this site: GitHub Pages cannot host the 
 
 The library is local to this browser profile and site origin, separate from desktop SQLite. Clearing site data, private browsing policies, storage quotas or browser eviction can remove it. Download important sources. Selections reset on reload; saved sources persist. Storage failure leaves the planner usable and displays an error for library actions. No source selection or question is inferred from planner inputs.
 
+## Appearance and accessible controls
+
+The redesigned browser workspace uses light and dark palettes, clearer cards, friendly empty/no-match states and compact expandable explanations. The **Dark mode** toggle in the header works with a keyboard and exposes its state to screen readers. It follows the device's preferred appearance until the visitor selects a mode, then remembers that selection in `localStorage` under `my-jinni-theme`. Changes sync to other open tabs. Theme switching still works without persistence if browser storage is restricted; theme initialisation runs before the stylesheet to avoid showing the wrong saved palette first.
+
+Origin, date, budget presets and library sorting use native select dropdowns. A custom-budget option reveals a labelled exact-pound input; presets update the actual calculation. The interests dropdown supports multiple equally weighted selections, displays the selected names and expands within the form so it cannot cover the submit button. Explore navigation and interest dropdowns support Enter/Space, Escape and focus return; navigation closes when clicking outside or following a link. Original activity explanations and import/privacy details expand on demand.
+
+Labels, visible focus rings, contrast-aware controls, 44px primary interaction targets, reduced-motion support and mobile-sized form text make the interface easier to operate. Browser tests check common text at WCAG AA's 4.5:1 contrast threshold in both modes, keyboard dropdown/theme operation, saved/device/cross-tab themes, blocked storage, and layouts at 320, 390, 768 and 1280px. These automated checks are not a claim of a complete accessibility audit or human usability review.
+
 ## Architecture and parity
 
 `web/index.html`, `web/styles.css` and `web/app.mjs` provide accessible responsive controls, result/error states, source selection and original-text viewing. Dynamic content is inserted as text, never executable HTML. The Content Security Policy restricts scripts, document extraction and network connections to local site assets. The browser version uses no new UI framework.

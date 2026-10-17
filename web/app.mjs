@@ -36,6 +36,9 @@ async function loadScenario() {
     $('depart').value = time(defaults.depart_at, options.timezone);
     $('return').value = time(defaults.return_by, options.timezone);
     $('budget').value = (defaults.budget_pence / 100).toFixed(2);
+    $('budget-preset').value = [...$('budget-preset').options].some((option) => option.value === String(defaults.budget_pence / 100)) ? String(defaults.budget_pence / 100) : 'custom';
+    $('custom-budget').hidden = $('budget-preset').value !== 'custom';
+    $('budget').required = !$('custom-budget').hidden;
     $('interests').replaceChildren(...options.interests.map((interest) => {
       const label = node('label');
       const input = document.createElement('input');
@@ -44,6 +47,7 @@ async function loadScenario() {
       label.append(input, node('span', interest.label));
       return label;
     }));
+    updateInterestSummary();
     $('coverage').textContent = `Fictional demo · ${options.timezone} · Budget up to ${money(options.max_budget_pence)}`;
     $('preferences').disabled = false;
     feedback('setup-status', 'Ready. No account or API key needed.');
@@ -65,9 +69,12 @@ function activityCard(activity, featured, zone) {
     const group = node('div'); group.append(node('dt', label), node('dd', value)); timing.append(group);
   }
   card.append(timing, node('p', `${money(activity.ticket_cost_pence)} ticket + ${money(activity.travel_cost_pence)} return travel = ${money(activity.total_cost_pence)}`, 'muted'));
+  const notes = node('details', undefined, 'activity-notes');
+  notes.append(node('summary', 'Why this plan fits'));
   const reasons = node('ul');
   reasons.append(...activity.reasons.map((reason) => node('li', reason)));
-  card.append(reasons);
+  notes.append(reasons);
+  card.append(notes);
   return card;
 }
 
@@ -75,6 +82,8 @@ function submitPlan(event) {
   event.preventDefault();
   $('plan-results').replaceChildren();
   if (!state.scenario) return;
+  $('interest-picker').open = false;
+  $('plan-empty').hidden = true;
   try {
     const { options } = state.scenario;
     const request = { origin_id: $('origin').value, budget_pence: parseBudget($('budget').value.trim()),
@@ -83,6 +92,11 @@ function submitPlan(event) {
       interests: [...document.querySelectorAll('[name=interest]:checked')].map((input) => input.value) };
     const result = recommend(request, state.scenario);
     feedback('plan-status', result.data.message);
+    if (!result.data.recommended) {
+      $('plan-empty').hidden = false;
+      $('plan-empty').querySelector('h3').textContent = 'Let’s give your plan a little more room.';
+      $('plan-empty').querySelector('p').textContent = 'Try a bigger budget, an earlier departure, or a later return. We’ll look for another fit.';
+    }
     if (result.data.recommended) $('plan-results').append(activityCard(result.data.recommended, true, options.timezone));
     for (const activity of result.data.alternatives) $('plan-results').append(activityCard(activity, false, options.timezone));
     const provenance = node('div', undefined, 'provenance');
@@ -101,11 +115,19 @@ function clearSearch() {
   feedback('search-status', '');
 }
 
+function updateInterestSummary() {
+  const checked = [...document.querySelectorAll('#interests input:checked')];
+  $('interest-summary').textContent = checked.length ? checked.map((input) => input.nextElementSibling.textContent).join(', ') : 'Choose your interests';
+}
+
 function renderSources() {
   $('sources').replaceChildren();
   $('source-count').textContent = `${state.sources.length} / ${LIMITS.sources} sources · ${state.selected.size} selected`;
   if (!state.sources.length) $('sources').append(node('p', 'Your library is empty. Paste a note, import a file, or try the fictional guide.', 'muted'));
-  for (const source of state.sources) {
+  const sources = [...state.sources].sort($('source-sort').value === 'title'
+    ? (a, b) => a.title.localeCompare(b.title)
+    : (a, b) => b.created_at.localeCompare(a.created_at));
+  for (const source of sources) {
     const row = node('article', undefined, 'source-item');
     const label = node('label', undefined, 'check');
     const input = document.createElement('input');
@@ -210,7 +232,36 @@ function openSource(source, selectedIndex = -1) {
 $('reload').addEventListener('click', loadScenario);
 $('planner-form').addEventListener('submit', submitPlan);
 $('planner-form').addEventListener('input', () => {
-  $('plan-results').replaceChildren(); feedback('plan-status', 'Preferences changed. Find a plan to update your result.');
+  $('plan-results').replaceChildren();
+  $('plan-empty').hidden = false;
+  $('plan-empty').querySelector('h3').textContent = 'A little adventure starts here.';
+  $('plan-empty').querySelector('p').textContent = 'Tell us where, when and what you enjoy. We’ll match you with something that fits.';
+  updateInterestSummary();
+  feedback('plan-status', 'Preferences changed. Find a plan to update your result.');
+});
+$('budget-preset').addEventListener('change', () => {
+  const custom = $('budget-preset').value === 'custom';
+  $('custom-budget').hidden = !custom;
+  $('budget').required = custom;
+  if (!custom) $('budget').value = Number($('budget-preset').value).toFixed(2);
+  $('budget').dispatchEvent(new Event('input', { bubbles: true }));
+  if (custom) $('budget').focus();
+});
+$('source-sort').addEventListener('change', renderSources);
+document.addEventListener('click', (event) => {
+  for (const dropdown of document.querySelectorAll('.dropdown[open]')) {
+    if (!dropdown.contains(event.target)) dropdown.open = false;
+    else if (event.target.closest('a')) dropdown.open = false;
+  }
+});
+document.addEventListener('keydown', (event) => {
+  if (event.key !== 'Escape' || $('viewer').open) return;
+  const open = [...document.querySelectorAll('.dropdown[open]')];
+  if (!open.length) return;
+  const focused = open.find((dropdown) => dropdown.contains(document.activeElement)) || open[0];
+  for (const dropdown of open) dropdown.open = false;
+  focused.querySelector('summary').focus();
+  event.preventDefault();
 });
 $('paste-toggle').addEventListener('click', () => {
   $('paste-form').hidden = !$('paste-form').hidden;

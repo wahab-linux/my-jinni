@@ -28,6 +28,8 @@ Browser search is explicitly labelled as original excerpts, not AI generation. C
 
 ## Failure and checking
 
+On the user's subsequent request, Codex redesigned the browser frontend with a violet/navy light and dark palette, responsive cards and illustrative empty states; native budget/location/date/sort dropdowns; an accessible multi-interest disclosure; keyboard dismissal/focus handling; and a device-aware theme toggle that persists preferences and syncs tabs. Core calculations and document processing stayed unchanged. Verification passed: 23 actual Chromium browser checks, including themes, blocked storage, dropdowns, text contrast and 320/390/768/1280px layouts; six browser unit tests; all 475 Python tests (including 226 planner parity requests); Ruff lint/format; browser/desktop ESLint; and build/diff checks. The agent inspected light/dark and mobile screenshots and corrected an overlapping dropdown and a tablet overflow found during testing. No new human review, live deployment or live-provider validation is claimed by these local checks.
+
 - Runtime recommendations now use deterministic rules with no LLM dependency. Automated rule/source/integration tests, lint and actual startup/HTTP checks have been performed. Human code review and desktop/demo checks must be recorded separately when they actually occur.
 - If event or travel data is unavailable, return a visible error rather than invented recommendations.
 - Optional source-grounded answers use OpenAI with a user-provided session key. Only the question and selected bounded evidence are sent; no remote file/vector store is created. Invalid provider output/quotes or service failure yields an error. Valid citations support human checking but do not prove every generated claim.
