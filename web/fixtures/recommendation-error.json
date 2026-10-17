@@ -1,0 +1,9 @@
+{
+  "data": null,
+  "error": {
+    "code": "SOURCE_UNAVAILABLE",
+    "message": "Travel information is unavailable. Please retry.",
+    "details": [{"field": "travel", "message": "The travel source timed out."}]
+  },
+  "warnings": []
+}

@@ -1,0 +1,65 @@
+{
+  "data": {
+    "recommended": {
+      "event_id": "event-board-games",
+      "title": "Board Game Night",
+      "venue_name": "Demo West Venue",
+      "category": "games",
+      "starts_at": "2026-10-20T16:30:00+01:00",
+      "ends_at": "2026-10-20T18:00:00+01:00",
+      "ticket_cost_pence": 300,
+      "travel_cost_pence": 200,
+      "total_cost_pence": 500,
+      "outbound_minutes": 15,
+      "return_minutes": 15,
+      "arrive_at": "2026-10-20T16:15:00+01:00",
+      "back_on_campus_at": "2026-10-20T18:15:00+01:00",
+      "reasons": [
+        "Matches your interest in games.",
+        "Costs £5.00 including return travel, within your £10.00 budget.",
+        "Arrive before the activity starts and return before 19:00."
+      ]
+    },
+    "alternatives": [
+      {
+        "event_id": "event-music",
+        "title": "Acoustic Hour",
+        "venue_name": "Demo Hall",
+        "category": "music",
+        "starts_at": "2026-10-20T17:00:00+01:00",
+        "ends_at": "2026-10-20T18:30:00+01:00",
+        "ticket_cost_pence": 400,
+        "travel_cost_pence": 0,
+        "total_cost_pence": 400,
+        "outbound_minutes": 10,
+        "return_minutes": 10,
+        "arrive_at": "2026-10-20T16:10:00+01:00",
+        "back_on_campus_at": "2026-10-20T18:40:00+01:00",
+        "reasons": ["Within your budget and time window; a different interest category."]
+      },
+      {
+        "event_id": "event-film",
+        "title": "Short Film Club",
+        "venue_name": "Demo Cinema",
+        "category": "arts",
+        "starts_at": "2026-10-20T16:45:00+01:00",
+        "ends_at": "2026-10-20T18:15:00+01:00",
+        "ticket_cost_pence": 600,
+        "travel_cost_pence": 200,
+        "total_cost_pence": 800,
+        "outbound_minutes": 12,
+        "return_minutes": 12,
+        "arrive_at": "2026-10-20T16:12:00+01:00",
+        "back_on_campus_at": "2026-10-20T18:27:00+01:00",
+        "reasons": ["Within your budget and time window; a different interest category."]
+      }
+    ],
+    "message": "Found an activity that fits your interests, budget, and return deadline.",
+    "sources": [
+      {"id": "events", "label": "AfterClass Events Demo", "kind": "mock", "is_simulated": true, "status": "ok", "updated_at": "2026-10-20T15:50:00+01:00"},
+      {"id": "travel", "label": "AfterClass Travel Demo", "kind": "mock", "is_simulated": true, "status": "ok", "updated_at": "2026-10-20T15:50:00+01:00"}
+    ]
+  },
+  "error": null,
+  "warnings": [{"code": "SIMULATED_DATA", "message": "All event and travel data are fictional demo fixtures."}]
+}

@@ -1,0 +1,12 @@
+{
+  "provider": "AfterClass Travel Demo",
+  "is_simulated": true,
+  "updated_at": "2026-10-20T15:50:00+01:00",
+  "origin_id": "glasgow-main-campus",
+  "journeys": [
+    {"destination_id": "venue-west", "outbound_minutes": 15, "return_minutes": 15, "return_fare_pence": 200, "available": true},
+    {"destination_id": "venue-cinema", "outbound_minutes": 12, "return_minutes": 12, "return_fare_pence": 200, "available": true},
+    {"destination_id": "venue-hall", "outbound_minutes": 10, "return_minutes": 10, "return_fare_pence": 0, "available": true},
+    {"destination_id": "venue-sport", "outbound_minutes": 20, "return_minutes": 20, "return_fare_pence": 200, "available": false}
+  ]
+}

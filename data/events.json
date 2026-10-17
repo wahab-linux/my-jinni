@@ -1,0 +1,15 @@
+{
+  "provider": "AfterClass Events Demo",
+  "is_simulated": true,
+  "updated_at": "2026-10-20T15:50:00+01:00",
+  "events": [
+    {"id": "event-board-games", "title": "Board Game Night", "venue": {"id": "venue-west", "name": "Demo West Venue"}, "category": "games", "starts_at": "2026-10-20T16:30:00+01:00", "ends_at": "2026-10-20T18:00:00+01:00", "price_gbp": "3.00"},
+    {"id": "event-film", "title": "Short Film Club", "venue": {"id": "venue-cinema", "name": "Demo Cinema"}, "category": "arts", "starts_at": "2026-10-20T16:45:00+01:00", "ends_at": "2026-10-20T18:15:00+01:00", "price_gbp": "6.00"},
+    {"id": "event-music", "title": "Acoustic Hour", "venue": {"id": "venue-hall", "name": "Demo Hall"}, "category": "music", "starts_at": "2026-10-20T17:00:00+01:00", "ends_at": "2026-10-20T18:30:00+01:00", "price_gbp": "4.00"},
+    {"id": "event-early-talk", "title": "Science Conversation", "venue": {"id": "venue-hall", "name": "Demo Hall"}, "category": "learning", "starts_at": "2026-10-20T15:00:00+01:00", "ends_at": "2026-10-20T16:00:00+01:00", "price_gbp": "0.00"},
+    {"id": "event-late-quiz", "title": "Late Quiz", "venue": {"id": "venue-west", "name": "Demo West Venue"}, "category": "games", "starts_at": "2026-10-20T18:30:00+01:00", "ends_at": "2026-10-20T20:00:00+01:00", "price_gbp": "1.00"},
+    {"id": "event-premium-games", "title": "Tournament Workshop", "venue": {"id": "venue-west", "name": "Demo West Venue"}, "category": "games", "starts_at": "2026-10-20T17:00:00+01:00", "ends_at": "2026-10-20T18:00:00+01:00", "price_gbp": "12.00"},
+    {"id": "event-sport", "title": "Casual Badminton", "venue": {"id": "venue-sport", "name": "Demo Sports Venue"}, "category": "sport", "starts_at": "2026-10-20T17:00:00+01:00", "ends_at": "2026-10-20T18:00:00+01:00", "price_gbp": "2.00"},
+    {"id": "event-early-art", "title": "Quick Sketch Session", "venue": {"id": "venue-west", "name": "Demo West Venue"}, "category": "arts", "starts_at": "2026-10-20T16:05:00+01:00", "ends_at": "2026-10-20T17:00:00+01:00", "price_gbp": "0.00"}
+  ]
+}
