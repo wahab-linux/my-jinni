@@ -15,8 +15,8 @@ All paths below are additive and retain `/api/v1`. Existing `/api/v1/options` an
 | Method | Path | Request | Successful data |
 | --- | --- | --- | --- |
 | GET | `/api/v1/sources` | None | `sources` and import/provider/retrieval limits |
-| POST | `/api/v1/sources` | JSON `{title, text}` | Created source metadata; HTTP 201 |
-| POST | `/api/v1/sources/upload` | Multipart `file`, optional `title` | Created source metadata; HTTP 201 |
+| POST | `/api/v1/sources` | JSON `{title, text, is_simulated?}` | Created source metadata; HTTP 201 |
+| POST | `/api/v1/sources/upload` | Multipart `file`, optional `title`, optional `is_simulated` | Created source metadata; HTTP 201 |
 | GET | `/api/v1/sources/{id}` | None | `{source, chunks}` for original extracted-text viewing |
 | DELETE | `/api/v1/sources/{id}` | None | `{source_id, deleted: true}` |
 | POST | `/api/v1/chat` | JSON below; key header for actual generation | Answer, checked citations and optional calculated planner result |
@@ -52,6 +52,8 @@ The ephemeral `planner-context` source contains the result computed by the exist
 ## Local source representation and retrieval
 
 Source metadata: `id`, `title`, `kind` (`text`, `markdown`, `pdf`), `filename` or null, `created_at`, `chunk_count`, `character_count`, `is_simulated`. Detail chunks contain `chunk_id`, `source_id`, `source_title`, `page` (one-based PDF page or null), `index`, `text`, `is_simulated`.
+
+Set optional `is_simulated: true` when importing fictional or AI-generated demo material; it defaults to false for ordinary user-provided sources. This label is preserved in retrieved citations. A false value is not verification that a document is factually correct. The sample `source-create.json` is explicitly fictional; use the source ID returned by the real import, not the placeholder ID in chat examples.
 
 Store extracted text and page-aware chunks in a local SQLite database outside the checkout. Uploaded filenames are metadata, never paths to open. Retain extracted original text for citation viewing; retaining original file bytes is outside this increment. Delete removes the source, chunks and retrieval entries. No API key or chat history is stored in the database.
 

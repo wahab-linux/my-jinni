@@ -4,6 +4,8 @@ Wahab owns this implementation boundary. The user confirmed that Electron/Tauri 
 
 Read `docs/prompts/frontend.md` for the complete handoff. Suggested structure:
 
+The confirmed additive extension is a local source panel plus cited OpenAI questions. Read `docs/AI_EXTENSION.md` before implementation. Extend the bridge only with named source/chat operations and keep the API key in session memory. Pass current activity preferences for a calculated plan; the original planner still works without a key. Backend test fixtures are static examples, not proof of a live provider call.
+
 ```text
 desktop/
   main.cjs                  Window, restricted IPC and local backend lifecycle

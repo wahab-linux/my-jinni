@@ -1,0 +1,19 @@
+{
+  "data": {
+    "answer": "The fictional demo guide says Demo West Venue has step-free access through its main entrance.",
+    "status": "answered",
+    "citations": [{
+      "chunk_id": "example-chunk",
+      "source_id": "example-source",
+      "source_title": "Fictional Demo Venue Guide",
+      "page": null,
+      "quote": "Demo West Venue has step-free access through its main entrance.",
+      "is_simulated": true
+    }],
+    "model": "gpt-4.1-mini",
+    "used_source_ids": ["example-source"],
+    "planner": null
+  },
+  "error": null,
+  "warnings": [{"code": "EXAMPLE_ONLY", "message": "Static interface example, not a live OpenAI response."}]
+}

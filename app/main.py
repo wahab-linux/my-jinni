@@ -19,6 +19,7 @@ from app.errors import (
     unexpected_error_handler,
     validation_error_handler,
 )
+from app.knowledge.router import router as knowledge_router
 from app.scenario import (
     DEMO_DATE,
     MAX_BUDGET_PENCE,
@@ -110,8 +111,8 @@ def create_app() -> FastAPI:
         title="PlanScope API",
         version=__version__,
         description=(
-            "Contract v0.2: activity decisions for anyone; students are the first experience. "
-            "Local backend for the desktop client. All source data are simulated."
+            "Contract v0.3: activity planning plus an optional local source library and cited AI. "
+            "The planner uses simulated data; user uploads retain their own provenance."
         ),
         responses=ERROR_RESPONSES,
     )
@@ -234,6 +235,7 @@ def create_app() -> FastAPI:
         )
 
     app.include_router(mock_router)
+    app.include_router(knowledge_router)
 
     @app.get("/", include_in_schema=False)
     def home() -> Envelope[Health]:

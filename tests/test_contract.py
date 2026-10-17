@@ -3,8 +3,9 @@ import json
 import pytest
 from pydantic import ValidationError
 
+from app.knowledge.schemas import ChatData, ChatRequest, TextSourceRequest
 from app.main import create_app
-from app.schemas import ErrorEnvelope, RecommendationEnvelope, RecommendationRequest
+from app.schemas import Envelope, ErrorEnvelope, RecommendationEnvelope, RecommendationRequest
 from app.settings import FIXTURES_DIR, ROOT
 
 
@@ -120,6 +121,18 @@ def test_error_envelope_cannot_hide_success_data():
 
 def test_default_request_is_valid(valid_request):
     assert RecommendationRequest.model_validate(valid_request).budget_pence == 1000
+
+
+@pytest.mark.parametrize(
+    ("filename", "model"),
+    [
+        ("source-create.json", TextSourceRequest),
+        ("chat-request.json", ChatRequest),
+        ("chat-success.json", Envelope[ChatData]),
+    ],
+)
+def test_knowledge_examples_match_additive_contract(filename, model):
+    model.model_validate_json((FIXTURES_DIR / filename).read_text(encoding="utf-8"))
 
 
 def test_openapi_snapshot_matches_running_app():

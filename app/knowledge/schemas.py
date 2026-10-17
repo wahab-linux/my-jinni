@@ -10,7 +10,7 @@ MAX_PDF_PAGES = 40
 MAX_SOURCES = 20
 MAX_RETRIEVED_CHUNKS = 6
 DEFAULT_MODEL = "gpt-4.1-mini"
-SourceId = Annotated[str, Field(min_length=1, max_length=100)]
+SourceId = Annotated[str, Field(min_length=1, max_length=100, pattern=r"^[a-zA-Z0-9_-]+$")]
 SourceKind = Literal["text", "markdown", "pdf", "planner"]
 
 
@@ -51,18 +51,27 @@ class SourceList(Model):
     default_model: str = DEFAULT_MODEL
     storage: Literal["local"] = "local"
     retrieval: Literal["lexical"] = "lexical"
-    cloud_notice: str = "Questions and selected evidence snippets are sent to OpenAI for AI answers."
+    cloud_notice: str = (
+        "Questions and selected evidence snippets are sent to OpenAI for AI answers."
+    )
 
 
 class TextSourceRequest(Model):
     title: Annotated[str, Field(min_length=1, max_length=200)]
     text: Annotated[str, Field(min_length=1, max_length=MAX_SOURCE_CHARACTERS)]
+    is_simulated: StrictBool = False
 
     @field_validator("title", "text")
     @classmethod
     def require_nonblank(cls, value: str) -> str:
         if not value.strip():
             raise ValueError("Text must not be blank")
+        if "\x00" in value:
+            raise ValueError("Text must not contain null characters")
+        try:
+            value.encode("utf-8")
+        except UnicodeEncodeError:
+            raise ValueError("Text must be valid Unicode") from None
         return value
 
 
@@ -83,6 +92,10 @@ class ChatRequest(Model):
     def validate_question_and_selection(self) -> "ChatRequest":
         if not self.question.strip():
             raise ValueError("Question must not be blank")
+        try:
+            self.question.encode("utf-8")
+        except UnicodeEncodeError:
+            raise ValueError("Question must be valid Unicode") from None
         if len(self.source_ids) != len(set(self.source_ids)):
             raise ValueError("source_ids must not contain duplicates")
         if not self.source_ids and self.preferences is None:

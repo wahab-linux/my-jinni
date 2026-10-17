@@ -1,4 +1,6 @@
-# API contract v0.2
+# API contract v0.3
+
+v0.3 adds the source-library and cited OpenAI endpoints defined in [AI_EXTENSION.md](AI_EXTENSION.md). Every v0.2 activity request/response field below is preserved. The optional AI feature uses a session key; the activity planner does not require one. The OpenAPI snapshot includes both sets of endpoints.
 
 Read together before implementation. `docs/openapi.json` is the machine-readable snapshot; it must match `app/schemas.py` and the running API. v0.2 is an explicitly coordinated breaking scaffold update; URLs remain `/api/v1` because the first completed API has not shipped.
 
