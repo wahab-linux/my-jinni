@@ -2,6 +2,8 @@
 
 ## Product and delivery
 
+On 2026-10-18 the user approved language-only work for English, Simplified Chinese, French, Japanese and Russian. Both experiences share a small local presentation runtime, with separate explicit locale catalogs, a native selector and a persisted locale preference. English remains the default. Language switching must preserve current form values, selections, source content, keys and calculated decisions, and cannot trigger cloud calls or re-rank options. Translation is a presentation feature; original exact quotations, API fields, GBP/pence and London-time rules remain intact. Code, comments and documentation stay English; native UI catalogs are the approved exception.
+
 On 2026-10-18 the user renamed the visible product to `jinni` and requested a lamp motif, fresh verification and frontend screenshots. Use original vector/CSS artwork with restrained violet/gold accents. Preserve the decision-first layout and honest source/AI boundaries. Existing technical repository/storage/API identifiers remain compatible with `my-jinni`. Language support is being evaluated separately from the brand; UI translation must not alter numeric units, source quotes or ranking.
 
 The latest user-approved scope is a **general decision workspace**: market, travel, student, sustainability and custom scenarios, with configurable priorities and hard limits. [GENERAL_DECISIONS.md](GENERAL_DECISIONS.md) defines additive v0.5. `app/comparison/engine.py` remains pure and domain-independent; presets live in a catalog and ten fictional option/measurement feeds. New domains can supply custom criteria/data without editing the scoring rules. No preset connects a live market, route, university or environmental service.

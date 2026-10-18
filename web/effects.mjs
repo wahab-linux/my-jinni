@@ -1,3 +1,4 @@
+import { bind, attribute } from './i18n.mjs';
 export function playFeedback(context, kind = 'success') {
   if (!context) return false;
   try {
@@ -25,8 +26,8 @@ export function setupSound(button, environment = window) {
   try { enabled = environment.localStorage.getItem('my-jinni-sound') === 'on'; } catch { /* Optional preference. */ }
   const update = () => {
     button.setAttribute('aria-pressed', String(enabled));
-    button.querySelector('span').textContent = enabled ? 'Sound on' : 'Sound off';
-    button.title = enabled ? 'Turn sound effects off' : 'Turn sound effects on';
+    bind(button.querySelector('span'), enabled ? 'Sound on' : 'Sound off');
+    attribute(button, 'title', enabled ? 'Turn sound effects off' : 'Turn sound effects on');
   };
   const play = (kind = 'success') => {
     if (!enabled) return;

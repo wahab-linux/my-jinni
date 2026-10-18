@@ -1,5 +1,7 @@
 # jinni requirements
 
+**Language-only request, 2026-10-18:** support English (`en`), Simplified Chinese (`zh-CN`), French (`fr`), Japanese (`ja`) and Russian (`ru`) in desktop and browser interfaces. Use explicit local translation resources, default English and a native language selector; remember only the locale preference. Switching must retain decisions/inputs/selections without network calls, changing source evidence or losing session keys. UI translation does not establish multilingual semantic retrieval or localized AI output. Documentation, identifiers and comments remain English.
+
 **Brand update, 2026-10-18:** the user selected the visible name `jinni` and a lamp motif. Preserve existing repository/storage/IPC/API identifiers for compatibility and existing source libraries. Multilingual UI is a separate scope choice; original source quotations, calculation IDs and money/time units must remain intact.
 
 **Latest user request, 2026-10-17:** generalize beyond after-class activities to the challenge's market, travel, student, sustainability and own-idea examples. Add configurable comparisons with criteria/weights/hard limits, decision-first desktop/browser presentation, collapsed source/question tools, reduced-motion-aware animation and optional sound. [GENERAL_DECISIONS.md](GENERAL_DECISIONS.md) defines additive v0.5. Existing FR-01-16/AC-01-25 still cover the preserved activity/library/provider features; FR-17-20 and AC-26-30 below cover the new workspace. All presets are visibly simulated; no live service coverage is implied.
@@ -76,6 +78,7 @@ All requirements below are P0 unless marked P1. IDs are stable so code, tasks, a
 | **FR-18** | Filter known availability and minimum/maximum limits before weighted feasible-set min/max scoring. Return measurements, contribution points, alternatives, exclusion reasons and both provenance records. No LLM or key is needed. | AC-26, AC-27, AC-30 |
 | **FR-19** | Make choices, priorities, hard limits and comparisons the central desktop/browser workspace. Library and question/search dialogs start closed; retain the detailed activity example in a collapsed section. Preserve themes, keyboard access, stale-result handling and existing source features. | AC-28 |
 | **FR-20** | Provide short reduced-motion-aware animations and quiet optional synthesized sounds, default off and gated by user interaction. Explicitly include the actual calculated decision in optional desktop questions, with ephemeral exact-quote citations and a separately returned authoritative result. | AC-28, AC-29 |
+| **FR-21** | Offer English, Simplified Chinese, French, Japanese and Russian through a native language selector in both experiences. Keep English as the default, remember the local preference and translate only explicit interface text. Preserve current inputs, selected evidence, keys, custom labels/units, calculated results and exact original quotations when switching. | AC-31, AC-32 |
 
 ## 5. Business and data rules
 
@@ -164,6 +167,13 @@ General comparison acceptance:
 | **AC-28** | First launch shows scenario choices, priorities and comparison results as the primary workspace; library/question dialogs and detailed activity example start closed. Keyboard opens/closes dialogs with focus restored. Resize/light/dark remain usable. Sound starts off, requires opt-in, and failure cannot block decisions; reduced motion suppresses animations. | Actual Electron/browser |
 | **AC-29** | Explicit decision inclusion returns the exact ordinary evaluation result and bounded ephemeral evidence; citations use exact text and never become saved sources. Invalid/source-failed decisions prevent provider calls. Changing comparison inputs invalidates included answers. | API + mocked provider + actual Electron |
 | **AC-30** | Export validated scenario/dataset data, not calculated rankings, for the browser. Full browser and Python success/empty envelopes agree across presets, varied weights/limits and custom unknown/missing/tied data. Old activity/source/provider regressions remain green. | Build + cross-language parity + regression |
+
+Interface language acceptance:
+
+| ID | Given → action → expected result | Verify |
+| --- | --- | --- |
+| **AC-31** | First visit defaults to English. Select each supported language using its native name: visible labels, controlled states and accessibility text update without reloading or fetching; a new session restores the saved locale. Invalid/blocked preference storage safely falls back to English or the current in-memory choice. Translation placeholders remain complete. | Shared runtime/catalog tests + actual Electron/browser |
+| **AC-32** | Edit a form, calculate a decision, select a source and switch languages. Current inputs, selections and canonical ranked results remain unchanged; original evidence, exact quotes, provider answers and custom labels/units remain verbatim. Long French/Russian labels and CJK text fit supported desktop/phone layouts. | Actual Electron/browser + screenshots + presentation review |
 
 ## 8. Work packages and ownership
 

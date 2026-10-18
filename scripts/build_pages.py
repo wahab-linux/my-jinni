@@ -30,6 +30,7 @@ async def build() -> None:
     if OUTPUT.exists():
         shutil.rmtree(OUTPUT)
     shutil.copytree(ROOT / "web", OUTPUT)
+    shutil.copytree(ROOT / "shared", OUTPUT / "shared")
     shutil.copyfile(ROOT / "contracts" / "fixtures" / "venue-guide.md", OUTPUT / "venue-guide.md")
     with TestClient(app) as client:
         response = client.get("/api/v1/options")

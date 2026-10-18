@@ -273,6 +273,65 @@ async function exerciseGeneralDecisions(page, baseUrl) {
   });
 }
 
+async function exerciseLanguages(page, desktop, baseUrl) {
+  await chooseScenario(page, 'travel');
+  await page.getByTestId('limit-cost-pence').fill('24.75');
+  await compare(page);
+  await check('five UI languages retain edited inputs, calculated comparison and provider-call count', async () => {
+    const request = await page.evaluate(() => window.currentDecisionRequest());
+    const calls = (await (await fetch(`${baseUrl}/__test__/provider-status`)).json()).calls;
+    const winner = await page.locator('.decision-recommendation h3').innerText();
+    const scores = await page.locator('.table-score').allTextContents();
+    for (const locale of ['zh-CN', 'fr', 'ja', 'ru', 'en']) {
+      await page.getByTestId('language-select').selectOption(locale);
+      assert.equal(await page.locator('html').getAttribute('lang'), locale);
+      assert.equal(await page.getByTestId('limit-cost-pence').inputValue(), '24.75');
+      assert.deepEqual(await page.evaluate(() => window.currentDecisionRequest()), request);
+      assert.equal(await page.locator('.decision-recommendation h3').innerText(), winner);
+      assert.deepEqual(await page.locator('.table-score').allTextContents(), scores);
+      assert.equal((await page.locator('#workspace-title').innerText()) === 'A clearer way to choose.', locale === 'en');
+      if (['zh-CN', 'fr', 'ru'].includes(locale)) {
+        await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+        await viewportScreenshot(page, `jinni-desktop-${locale}.png`);
+      }
+    }
+    assert.deepEqual((await (await fetch(`${baseUrl}/__test__/provider-status`)).json()).calls, calls);
+  });
+  await check('custom labels and units that equal interface phrases remain literal', async () => {
+    await chooseScenario(page, 'custom');
+    const definition = customComparison();
+    definition.criteria[1].label = 'Source library';
+    definition.criteria[1].unit = 'hours';
+    await applyDefinition(page, definition);
+    await compare(page);
+    await page.getByTestId('language-select').selectOption('zh-CN');
+    await contains(page.locator('label[for="weight-quality-score"]'), 'Source library');
+    await contains(page.getByTestId('decision-table'), 'Source library');
+    await contains(page.getByTestId('decision-table'), 'hours');
+    await page.getByTestId('language-select').selectOption('en');
+    await chooseScenario(page, 'travel');
+    await compare(page);
+  });
+  await check('long translated labels fit a narrow desktop and blocked locale storage remains usable', async () => {
+    await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(900, 850));
+    for (const locale of ['fr', 'ru']) {
+      await page.getByTestId('language-select').selectOption(locale);
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 2), true);
+    }
+    const fallback = await page.evaluate(() => {
+      const original = Storage.prototype.setItem;
+      try {
+        Storage.prototype.setItem = () => { throw new Error('Storage disabled for this isolated test.'); };
+        window.jinniI18n.setLocale('ja');
+        return { locale: window.jinniI18n.getLocale(), missing: window.jinniI18n.t('An intentionally missing interface key') };
+      } finally { Storage.prototype.setItem = original; }
+    });
+    assert.deepEqual(fallback, { locale: 'ja', missing: 'An intentionally missing interface key' });
+    await page.getByTestId('language-select').selectOption('en');
+    await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1440, 1000));
+  });
+}
+
 async function exerciseMockedProviderDesktop() {
   const directory = tempDirectory();
   let backend = await startMockBackend({ directory });
@@ -285,6 +344,7 @@ async function exerciseMockedProviderDesktop() {
     await waitUntil(() => page.getByTestId('plan-submit').isEnabled());
 
     await exerciseGeneralDecisions(page, backend.baseUrl);
+    await exerciseLanguages(page, desktop, backend.baseUrl);
 
     await check('actual Electron isolation and planner GBP 10 / 4 / 0', async () => {
       await openLegacy(page);
@@ -358,6 +418,18 @@ async function exerciseMockedProviderDesktop() {
       assert.equal(await page.getByTestId('plan-submit').isEnabled(), true);
     });
 
+    await check('missing-key feedback translates without a request and keyless planning stays enabled', async () => {
+      await closeTools(page);
+      await page.getByTestId('language-select').selectOption('zh-CN');
+      await openTool(page, 'chat');
+      await contains(page.getByTestId('chat-feedback'), '密钥');
+      assert.equal(await page.getByTestId('plan-submit').isEnabled(), true);
+      assert.deepEqual(await page.evaluate(() => window.myJinni.getSessionSettings()), { configured: false });
+      await closeTools(page);
+      await page.getByTestId('language-select').selectOption('en');
+      await openTool(page, 'chat');
+    });
+
     await check('session key is memory-only and the input clears after saving', async () => {
       await saveKey(page, TEST_KEY);
       assert.deepEqual(await page.evaluate(() => window.myJinni.getSessionSettings()), { configured: true });
@@ -384,6 +456,29 @@ async function exerciseMockedProviderDesktop() {
       await screenshot(page, '03-original-citation.png');
       await viewportScreenshot(page, 'jinni-desktop-citation-mocked.png');
       await page.getByTestId('source-dialog').getByRole('button', { name: 'Close', exact: true }).click();
+    });
+
+    await check('five languages preserve original citations, source selection, answer and session key', async () => {
+      const answer = await page.getByTestId('chat-answer').innerText();
+      const calls = (await (await fetch(`${backend.baseUrl}/__test__/provider-status`)).json()).calls;
+      for (const locale of ['zh-CN', 'fr', 'ja', 'ru', 'en']) {
+        await closeTools(page);
+        await page.getByTestId('language-select').selectOption(locale);
+        await openTool(page, 'chat');
+        assert.equal(await page.getByTestId('chat-answer').innerText(), answer);
+        assert.equal(await page.getByTestId('cloud-recipient').innerText(), 'OpenAI');
+        await page.getByTestId('citation-reference').first().click();
+        await contains(page.getByTestId('source-dialog-content'), '11:00');
+        assert.equal(await page.locator('.original-quote').innerText(), '“The fictional museum opens at 11:00. The entrance has a ramp.”');
+        assert.equal(await page.getByTestId('source-dialog-content').locator('mark').innerText(), 'The fictional museum opens at 11:00. The entrance has a ramp.');
+        await page.getByTestId('source-close').click();
+        assert.deepEqual(await page.evaluate(() => window.myJinni.getSessionSettings()), { configured: true });
+        assert.equal((await page.evaluate(() => JSON.stringify(window.localStorage))).includes(TEST_KEY), false);
+      }
+      assert.deepEqual((await (await fetch(`${backend.baseUrl}/__test__/provider-status`)).json()).calls, calls);
+      await openTool(page, 'library');
+      assert.equal(await page.locator(`[data-testid="source-checkbox"][value="${imported.id}"]`).isChecked(), true);
+      await openTool(page, 'chat');
     });
 
     await check('MOCKED AI explanation includes the authoritative real city-origin plan', async () => {
@@ -527,6 +622,8 @@ async function exerciseMockedProviderDesktop() {
       await openTool(page, 'library');
       await page.locator(`[data-testid="source-delete"][data-source-id="${excluded.id}"]`).click();
       await waitUntil(async () => !(await sources(backend.baseUrl)).some((source) => source.id === excluded.id));
+      await closeTools(page);
+      await page.getByTestId('language-select').selectOption('fr');
       await desktop.close();
       desktop = null;
       assert.equal((await fetch(`${backend.baseUrl}/health`)).status, 200);
@@ -537,6 +634,10 @@ async function exerciseMockedProviderDesktop() {
       await backend.stop();
       backend = await startMockBackend({ directory, port });
       ({ application: desktop, page } = await launchDesktop(electron, backend.baseUrl, directory));
+      await waitUntil(async () => await page.getByTestId('language-select').locator('option').count() === 5);
+      assert.equal(await page.getByTestId('language-select').inputValue(), 'fr');
+      assert.equal(await page.locator('html').getAttribute('lang'), 'fr');
+      await page.getByTestId('language-select').selectOption('en');
       await openTool(page, 'library');
       await contains(page.getByTestId('source-list'), imported.title);
       const saved = await sources(backend.baseUrl);

@@ -1,5 +1,7 @@
 # jinni architecture
 
+The localization boundary is presentation-only. `shared/i18n.js` provides five fixed locales, local catalog registration, safe text/attribute bindings, interpolation, a native picker and locale-only preference persistence. Browser and Electron catalogs are separate because their existing interfaces differ. The Pages build copies the shared runtime into its artifact; Electron loads it as a local script. Only explicitly marked/bound UI text is translated. User documents, citation quotations, custom labels/JSON, source IDs and API objects retain their exact original content. Changing language must not call an AI service or recompute a recommendation. UI catalogs and localization fixtures are the user-approved native-language exception to English source documentation.
+
 The visible product name is `jinni`. The Electron display name changes while explicitly preserving its previous user-data path; configured data-directory overrides still apply. Repository paths, library locations, browser storage keys, IPC names and the API identity remain compatible. Original lamp SVG/CSS artwork is local and decorative; it cannot change ranking or imply that data is verified.
 
 The general decision path is additive v0.5, defined in [GENERAL_DECISIONS.md](GENERAL_DECISIONS.md):

@@ -1,19 +1,20 @@
 // Friendly display text and units. Stored values and decision calculations stay unchanged.
-import { money } from './planner.mjs';
+import { currency, number as formatNumber, t } from './i18n.mjs';
 
-const number = (value) => new Intl.NumberFormat('en-GB', { maximumFractionDigits: 3 }).format(value);
+const number = (value) => formatNumber(value, { maximumFractionDigits: 3 });
 
-export function displayMeasure(value, unit) {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return 'Unknown';
-  if (unit === 'pence') return money(value);
+export function displayMeasure(value, unit, custom = false) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return t('Unknown');
+  if (unit === 'pence') return currency(value);
+  if (custom) return `${number(value)} ${unit}`;
   if (unit === 'minutes') {
-    if (Number.isInteger(value) && value >= 60) return `${Math.floor(value / 60)} hr${value % 60 ? ` ${value % 60} min` : ''}`;
-    return `${number(value)} min`;
+    if (Number.isInteger(value) && value >= 60) return t(value % 60 ? '{hours} hr {minutes} min' : '{hours} hr', { hours: number(Math.floor(value / 60)), minutes: number(value % 60) });
+    return t('{value} min', { value: number(value) });
   }
   if (unit === 'g CO2e') return value >= 1000 ? `${number(value / 1000)} kg CO₂e` : `${number(value)} g CO₂e`;
-  if (unit === 'score' || unit === 'index') return `${number(value)} points`;
+  if (unit === 'score' || unit === 'index') return t('{value} points', { value: number(value) });
   if (unit === '%') return `${number(value)}%`;
-  return `${number(value)} ${unit}`;
+  return `${number(value)} ${t(unitLabel(unit))}`;
 }
 
 export function unitLabel(unit) {

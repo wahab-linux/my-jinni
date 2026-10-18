@@ -5,6 +5,11 @@ module.exports = [
   { ignores: ['node_modules/**', 'tmp/**', 'dist/**', '.venv/**'] },
   js.configs.recommended,
   {
+    files: ['shared/**/*.js'],
+    languageOptions: { ecmaVersion: 'latest', sourceType: 'script', globals: { ...globals.browser, ...globals.node } },
+    rules: { 'no-unused-vars': ['error', { argsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }] }
+  },
+  {
     files: ['desktop/**/*.cjs', 'tests/desktop/**/*.cjs'],
     languageOptions: { ecmaVersion: 'latest', sourceType: 'commonjs', globals: globals.node },
     rules: { 'no-unused-vars': ['error', { argsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }] }

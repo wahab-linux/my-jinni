@@ -1,5 +1,7 @@
 # API contract v0.5
 
+Interface localization adds no HTTP fields or API migration. Existing canonical responses, source quotes, IDs, GBP/pence values and timezone-aware timestamps are unchanged. Locale preferences remain local to each experience; changing the display language never sends a translation or generation request. Generated provider answers and original evidence retain their returned/source language.
+
 The user-facing product name is `jinni`. The technical OpenAPI title `my-jinni API`, routes, source IDs and response field names remain unchanged for existing clients and backend identity checks. Branding introduces no API migration.
 
 v0.5 adds configurable option comparisons, five initial scenarios and optional calculated comparison evidence in chat. Read [GENERAL_DECISIONS.md](GENERAL_DECISIONS.md) for complete models, ranking, limits, source routes, failure handling and browser export. Existing activity, library and provider operations below are retained unchanged.

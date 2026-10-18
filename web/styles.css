@@ -429,6 +429,15 @@ body { background: radial-gradient(ellipse at 5% 3%, var(--wash-one), transparen
 .intro-visual .spark-two { color: var(--lamp-gold); }
 .intro-visual .visual-card { border-top-color: var(--lamp-gold); }
 
+/* Language choices affect interface copy without changing stored decision data. */
+.language-picker { margin: 0; flex: 0 0 auto; }
+.language-picker select { width: 112px; min-height: 42px; margin: 0; padding: 8px 24px 8px 10px; font-size: 12px; background-color: var(--surface); }
+.intro h1 > span[data-i18n] { color: var(--ink); }
+.criterion-title > label, .topic-text, .scenario-tab, .match-explanation { min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 1100px) { .header { gap: 12px; }.header nav { margin-left: auto; }.header .appearance-caption { display: none; } }
+@media (max-width: 560px) { .header .nav-link[href="#decision-workspace"] { display: none; }.language-picker select { width: 88px; min-height: 40px; padding-left: 6px; font-size: 12px; }.header .brand { gap: 7px; }.header nav { margin-left: auto; }.header { flex-wrap: nowrap; }.header #theme-label { display: none; }.header .appearance-dot { display: inline-block; width: 8px; height: 8px; }.header .appearance-picker > .theme-toggle { width: 44px; padding-inline: 8px; gap: 3px; }.header .appearance-picker .chevron { width: 14px; }.workspace-heading h2 { overflow-wrap: anywhere; } }
+@media (max-width: 370px) { .language-picker select { width: 76px; }.header { gap: 5px; } }
+
 /* Red, green, blue and yellow accents keep labels readable in both themes. */
 :root {
   --red: #b72c3d; --red-soft: #fff0ee; --green: #176b47; --green-soft: #e9f7ee;

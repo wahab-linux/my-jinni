@@ -698,6 +698,115 @@ try {
     await openTools(blocked);
     await addSourceAction(blocked, 'demo-source'); await waitText(blocked.locator('#library-status.error'), 'Planning still works'); await blocked.close();
   });
+  await check('five interface languages preserve current inputs and cached comparisons without requests', async () => {
+    const localized = await browser.newContext({ viewport: { width: 1280, height: 1200 }, colorScheme: 'light', reducedMotion: 'reduce' });
+    const tab = await localized.newPage();
+    tab.on('pageerror', (error) => errors.push(error.message));
+    await tab.goto(base); await waitText(tab.locator('#decision-load-status'), 'Ready to explore');
+    assert.deepEqual(await tab.locator('#language-select option').evaluateAll((options) => options.map((option) => [option.value, option.textContent])), [
+      ['en', 'English'], ['zh-CN', '简体中文'], ['fr', 'Français'], ['ja', '日本語'], ['ru', 'Русский'],
+    ]);
+    assert.equal(await tab.locator('#language-select').inputValue(), 'en');
+    await tab.locator('#limit-cost-pence').fill('25.01');
+    await tab.locator('#priority-emissions-grams').selectOption('100');
+    await tab.locator('#decision-submit').click(); await tab.locator('.decision-card').waitFor();
+    const resultId = await tab.locator('.decision-card').getAttribute('data-option-id');
+    const values = () => tab.locator('#decision-form input, #decision-form select, #custom-json').evaluateAll((items) => items.map((item) => [item.id, item.value]));
+    const before = await values();
+    await tab.evaluate(() => { window.localeFetches = 0; const original = window.fetch; window.fetch = (...args) => { window.localeFetches++; return original(...args); }; });
+    for (const language of ['zh-CN', 'fr', 'ja', 'ru', 'en']) {
+      await tab.locator('#language-select').selectOption(language);
+      assert.equal(await tab.locator('html').getAttribute('lang'), language);
+      assert.deepEqual(await values(), before, `${language} input values`);
+      assert.equal(await tab.locator('.decision-card').getAttribute('data-option-id'), resultId);
+      const expected = await tab.evaluate(() => window.jinniI18n.t('Find my best match'));
+      assert.equal((await tab.locator('#decision-submit').innerText()).replace('→', '').trim(), expected);
+      assert.equal(await tab.locator('#title').innerText(), await tab.evaluate(() => `${window.jinniI18n.t('Compare your options.')}\n${window.jinniI18n.t('Find what suits you.')}`));
+      assert.equal(await tab.locator('#sound-toggle > span').innerText(), await tab.evaluate(() => window.jinniI18n.t('Sound off')));
+      assert.equal(await tab.locator('#sound-toggle').getAttribute('title'), await tab.evaluate(() => window.jinniI18n.t('Turn sound effects on')));
+      assert.match(await tab.locator('.decision-card').innerText(), /£/);
+      if (language !== 'en') {
+        await tab.evaluate(() => scrollTo(0, 0));
+        await tab.screenshot({ path: `tmp/web/jinni-${language}-main.png`, fullPage: false });
+        await tab.locator('.decision-output').screenshot({ path: `tmp/web/jinni-${language}-comparison.png` });
+        await tab.setViewportSize({ width: 390, height: 844 });
+        assert.ok(await tab.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${language} phone overflow`);
+        await tab.screenshot({ path: `tmp/web/jinni-${language}-phone.png`, fullPage: true });
+        await tab.setViewportSize({ width: 1280, height: 1200 });
+      }
+    }
+    assert.equal(await tab.evaluate(() => window.localeFetches), 0);
+    await tab.locator('#language-select').selectOption('fr'); await tab.reload();
+    await tab.locator('#decision-inputs:not([disabled])').waitFor();
+    assert.equal(await tab.locator('#language-select').inputValue(), 'fr');
+    assert.equal(await tab.locator('html').getAttribute('lang'), 'fr');
+    await localized.close();
+  });
+  await check('language changes retain exact note text, source titles, selection and open original passages', async () => {
+    const local = await browser.newContext(); const tab = await local.newPage(); await tab.goto(base);
+    await waitText(tab.locator('#decision-load-status'), 'Ready to explore');
+    await openTools(tab); await addSourceAction(tab, 'paste-toggle');
+    const title = 'Your best match'; const text = 'Price hours exactcontext <img src=x onerror=alert(1)> 日本語 Français 中文 Русский';
+    await tab.locator('#source-title').fill(title); await tab.locator('#source-text').fill(text);
+    await tab.locator('#source-simulated').check(); await tab.locator('#paste-form button[type=submit]').click();
+    await tab.locator('.source-item').waitFor();
+    await tab.locator('#question').fill('exactcontext'); await tab.locator('#search-form button').click();
+    assert.equal(await tab.locator('.excerpt blockquote').textContent(), text);
+    await tab.locator('#library-close').click();
+    for (const language of ['zh-CN', 'fr', 'ja', 'ru', 'en']) {
+      await tab.locator('#language-select').selectOption(language); await openTools(tab);
+      assert.equal(await tab.locator('.source-item label').innerText(), title);
+      assert.equal(await tab.locator('.source-item input').isChecked(), true);
+      assert.equal(await tab.locator('#question').inputValue(), 'exactcontext');
+      assert.equal(await tab.locator('.excerpt blockquote').textContent(), text);
+      assert.equal(await tab.locator('.excerpt img').count(), 0);
+      await tab.locator('.excerpt button').click();
+      assert.equal(await tab.locator('#viewer-title').innerText(), title);
+      assert.equal(await tab.locator('#viewer-content .passage p').textContent(), text);
+      assert.equal(await tab.locator('#viewer-close').innerText(), await tab.evaluate(() => window.jinniI18n.t('Close')));
+      assert.equal(await tab.locator('#viewer-content .passage strong').innerText(), await tab.evaluate(() => window.jinniI18n.t('Passage {index}', { index: 1 })));
+      await tab.locator('#viewer-close').click(); await tab.locator('#library-close').click();
+    }
+    await local.close();
+  });
+  await check('custom labels and units stay literal and actual theme mode survives every language', async () => {
+    const local = await browser.newContext(); const tab = await local.newPage(); await tab.goto(base);
+    await waitText(tab.locator('#decision-load-status'), 'Ready to explore');
+    await tab.locator('.scenario-tab[data-id=custom]').click(); await tab.locator('#custom-editor summary').click();
+    const custom = JSON.parse(await tab.locator('#custom-json').inputValue());
+    custom.title = 'Your best match'; custom.criteria[0].label = 'Price';
+    custom.criteria[1].label = 'Your choices'; custom.criteria[1].unit = 'hours';
+    await tab.locator('#custom-json').fill(JSON.stringify(custom)); await tab.locator('#custom-apply').click();
+    await tab.locator('#decision-submit').click(); await tab.locator('.decision-card').waitFor();
+    const original = await tab.locator('#custom-json').inputValue();
+    await appearance(tab, 'dark');
+    for (const language of ['fr', 'ru', 'ja', 'zh-CN', 'en']) {
+      await tab.locator('#language-select').selectOption(language);
+      assert.equal(await tab.locator('#scenario-title').innerText(), 'Your best match');
+      assert.equal(await tab.locator('.criterion-title label').first().innerText(), 'Price');
+      assert.deepEqual((await tab.locator('.comparison-table').first().locator('thead th').allTextContents()).slice(1, 3), ['Price', 'Your choices']);
+      assert.equal(await tab.locator('#custom-json').inputValue(), original);
+      assert.match(await tab.locator('.comparison-table').first().innerText(), /hours/);
+      assert.equal(await tab.locator('#theme-toggle').getAttribute('aria-label'), await tab.evaluate(() => window.jinniI18n.t('Appearance: {mode}', { mode: window.jinniI18n.t('Dark') })));
+    }
+    await local.close();
+  });
+  await check('translated errors and language choices work when preference storage is blocked', async () => {
+    const local = await browser.newContext();
+    await local.addInitScript(() => Object.defineProperty(window, 'localStorage', { get() { throw new Error('Storage disabled'); } }));
+    const tab = await local.newPage(); await tab.goto(base); await waitText(tab.locator('#decision-load-status'), 'Ready to explore');
+    await tab.locator('#language-select').selectOption('fr');
+    for (const input of await tab.locator('.priority-choice').all()) await input.selectOption('0');
+    await tab.locator('#decision-submit').click();
+    assert.equal(await tab.locator('#decision-status.error').innerText(), await tab.evaluate(() => window.jinniI18n.t('Choose Important or Very important for at least one thing.')));
+    await tab.locator('#language-select').selectOption('ru');
+    assert.equal(await tab.locator('#decision-status.error').innerText(), await tab.evaluate(() => window.jinniI18n.t('Choose Important or Very important for at least one thing.')));
+    await tab.locator('#decision-reset').click(); await tab.locator('#decision-submit').click(); await tab.locator('.decision-card').waitFor();
+    assert.equal(await tab.locator('html').getAttribute('lang'), 'ru');
+    await tab.reload(); await tab.locator('#decision-inputs:not([disabled])').waitFor();
+    assert.equal(await tab.locator('#language-select').inputValue(), 'en');
+    await local.close();
+  });
   assert.deepEqual(errors, [], 'Uncaught browser errors'); assert.deepEqual(external, [], 'Documents/search must never leave this origin');
   console.log(`BROWSER E2E PASSED: ${checks} checks. No backend, API keys or cloud mocks used.`);
 } catch (error) {

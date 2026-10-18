@@ -6,114 +6,117 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
     <title>jinni</title>
     <link rel="stylesheet" href="styles.css">
+    <script src="../../shared/i18n.js"></script>
+    <script src="locales.js"></script>
     <script src="decisions.js" defer></script>
     <script src="app.js" defer></script>
   </head>
   <body>
     <header class="app-header">
       <div class="brand"><span class="brand-mark" aria-hidden="true"><svg data-testid="jinni-lamp" class="lamp-mark" viewBox="0 0 64 64" fill="none" focusable="false"><path class="lamp-body" d="M19 33 H47 C45 44 38 49 27 48 C20 47 16 42 15 38 L6 33 L18 35"/><path d="M19 33 C23 30 29 28 36 29 L43 33 M47 34 C60 30 61 43 46 43"/><path class="lamp-gold" d="M23 52 H42 M32 24 C23 19 39 15 31 9 C28 6 30 3 33 2"/></svg></span><span>jinni</span></div>
-      <span class="workspace-label">YOUR LOCAL WORKSPACE</span>
+      <span class="workspace-label" data-i18n="YOUR LOCAL WORKSPACE">YOUR LOCAL WORKSPACE</span>
       <div class="header-actions">
-        <button id="sound-toggle" data-testid="sound-toggle" class="button small outline" type="button" aria-pressed="false">Sound off</button>
-        <button id="theme-toggle" data-testid="theme-toggle" class="button small outline" type="button" aria-pressed="false">Dark theme</button>
-        <button id="library-open" data-testid="library-open" class="button small outline" type="button" aria-haspopup="dialog">Sources</button>
-        <button id="chat-open" data-testid="chat-open" class="button small primary" type="button" aria-haspopup="dialog">Ask AI ↗</button>
+        <label class="language-control"><span class="sr-only" data-i18n="Language">Language</span><select id="language-select" data-testid="language-select" aria-label="Language" data-i18n-aria-label="Language"></select></label>
+        <button id="sound-toggle" data-testid="sound-toggle" class="button small outline" type="button" aria-pressed="false" data-i18n="Sound off">Sound off</button>
+        <button id="theme-toggle" data-testid="theme-toggle" class="button small outline" type="button" aria-pressed="false" data-i18n="Dark theme">Dark theme</button>
+        <button id="library-open" data-testid="library-open" class="button small outline" type="button" aria-haspopup="dialog" data-i18n="Sources">Sources</button>
+        <button id="chat-open" data-testid="chat-open" class="button small primary" type="button" aria-haspopup="dialog" data-i18n="Ask AI ↗">Ask AI ↗</button>
         <span id="backend-status" data-testid="backend-status" class="connection-badge" role="status">Starting local service…</span>
-        <button id="backend-retry" data-testid="backend-retry" class="button small subtle" type="button" hidden>Retry connection</button>
-        <button id="settings-button" data-testid="settings-button" class="button small outline" type="button"><span aria-hidden="true">⚙</span> AI settings</button>
+        <button id="backend-retry" data-testid="backend-retry" class="button small subtle" type="button" hidden data-i18n="Retry connection">Retry connection</button>
+        <button id="settings-button" data-testid="settings-button" class="button small outline" type="button"><span aria-hidden="true">⚙</span> <span data-i18n="AI settings">AI settings</span></button>
       </div>
     </header>
 
     <main>
       <section class="workspace-intro" aria-labelledby="workspace-title">
-        <div><p class="eyebrow">YOUR CHOICE, WITH A CLEARER VIEW.</p><h1 id="workspace-title">A clearer way to choose.</h1><p class="intro-copy">Compare options, set your priorities, and see the trade-offs behind your next move.</p></div>
-        <div class="workspace-note"><span class="small-orbit" aria-hidden="true">✦</span><span><strong>Your decision assistant</strong><br>Deterministic comparisons. No key needed.<br>Optional sources and AI, when you need them.</span></div>
+        <div><p class="eyebrow" data-i18n="YOUR CHOICE, WITH A CLEARER VIEW.">YOUR CHOICE, WITH A CLEARER VIEW.</p><h1 id="workspace-title" data-i18n="A clearer way to choose.">A clearer way to choose.</h1><p class="intro-copy" data-i18n="Compare options, set your priorities, and see the trade-offs behind your next move.">Compare options, set your priorities, and see the trade-offs behind your next move.</p></div>
+        <div class="workspace-note"><span class="small-orbit" aria-hidden="true">✦</span><span><strong data-i18n="Your decision assistant">Your decision assistant</strong><br><span data-i18n="Deterministic comparisons. No key needed.">Deterministic comparisons. No key needed.</span><br><span data-i18n="Optional sources and AI, when you need them.">Optional sources and AI, when you need them.</span></span></div>
       </section>
 
       <section class="decision-workspace" aria-labelledby="decision-heading">
-        <div class="decision-topline"><div><p class="eyebrow">YOUR DECISION WORKSPACE</p><h2 id="decision-heading">What are you choosing?</h2></div><span class="tag simulation">Fictional example datasets</span></div>
-        <div class="scenario-toolbar"><label for="decision-scenario">Scenario</label><select id="decision-scenario" data-testid="decision-scenario" disabled><option>Loading scenarios…</option></select><span id="scenario-description" class="section-copy"></span></div>
-        <div id="scenario-shortcuts" data-testid="scenario-shortcuts" class="scenario-shortcuts" aria-label="Decision scenarios"></div>
+        <div class="decision-topline"><div><p class="eyebrow" data-i18n="YOUR DECISION WORKSPACE">YOUR DECISION WORKSPACE</p><h2 id="decision-heading" data-i18n="What are you choosing?">What are you choosing?</h2></div><span class="tag simulation" data-i18n="Fictional example datasets">Fictional example datasets</span></div>
+        <div class="scenario-toolbar"><label for="decision-scenario" data-i18n="Scenario">Scenario</label><select id="decision-scenario" data-testid="decision-scenario" disabled><option data-i18n="Loading scenarios…">Loading scenarios…</option></select><span id="scenario-description" class="section-copy"></span></div>
+        <div id="scenario-shortcuts" data-testid="scenario-shortcuts" class="scenario-shortcuts" aria-label="Decision scenarios" data-i18n-aria-label="Decision scenarios"></div>
         <p id="scenario-notice" class="scenario-notice">Built-in examples are simulated; sources and limitations are shown with each result.</p>
         <div class="decision-layout">
           <form id="decision-form" data-testid="decision-form" class="decision-inputs" novalidate>
-            <div class="controls-heading"><h3>Your priorities</h3><span>0 = ignore · 100 = high priority</span></div>
-            <p class="section-copy">Adjust the importance of each measure. Hard limits exclude options before we compare their relative fit.</p>
-            <fieldset id="decision-fields" disabled><div id="decision-controls" data-testid="decision-controls"></div><button id="decision-submit" data-testid="decision-submit" class="button primary decision-submit" type="submit" disabled>Compare my options <span aria-hidden="true">↗</span></button></fieldset>
-            <div id="decision-feedback" data-testid="decision-feedback" class="feedback" role="status" aria-live="polite">Loading the decision workspace…</div><button id="decision-retry" data-testid="decision-retry" class="text-button" type="button" hidden>Retry scenario data</button>
-            <details id="custom-editor" data-testid="custom-editor" class="custom-editor" hidden><summary>Edit your own idea</summary><p class="micro-copy">Define a title, criteria, option catalog and a separate measurement source. Labels and source claims you supply are not independently verified. All validation still happens on the service.</p><label for="custom-json">Custom definition (JSON)</label><textarea id="custom-json" data-testid="custom-json" rows="13" maxlength="200000" spellcheck="false"></textarea><button id="custom-apply" data-testid="custom-apply" class="button small outline" type="button">Apply custom definition</button></details>
+            <div class="controls-heading"><h3 data-i18n="Your priorities">Your priorities</h3><span data-i18n="0 = ignore · 100 = high priority">0 = ignore · 100 = high priority</span></div>
+            <p class="section-copy" data-i18n="Adjust the importance of each measure. Hard limits exclude options before we compare their relative fit.">Adjust the importance of each measure. Hard limits exclude options before we compare their relative fit.</p>
+            <fieldset id="decision-fields" disabled><div id="decision-controls" data-testid="decision-controls"></div><button id="decision-submit" data-testid="decision-submit" class="button primary decision-submit" type="submit" disabled><span data-i18n="Compare my options">Compare my options</span> <span aria-hidden="true">↗</span></button></fieldset>
+            <div id="decision-feedback" data-testid="decision-feedback" class="feedback" role="status" aria-live="polite">Loading the decision workspace…</div><button id="decision-retry" data-testid="decision-retry" class="text-button" type="button" hidden data-i18n="Retry scenario data">Retry scenario data</button>
+            <details id="custom-editor" data-testid="custom-editor" class="custom-editor" hidden><summary data-i18n="Edit your own idea">Edit your own idea</summary><p class="micro-copy" data-i18n="Define a title, criteria, option catalog and a separate measurement source. Labels and source claims you supply are not independently verified. All validation still happens on the service.">Define a title, criteria, option catalog and a separate measurement source. Labels and source claims you supply are not independently verified. All validation still happens on the service.</p><label for="custom-json" data-i18n="Custom definition (JSON)">Custom definition (JSON)</label><textarea id="custom-json" data-testid="custom-json" rows="13" maxlength="200000" spellcheck="false"></textarea><button id="custom-apply" data-testid="custom-apply" class="button small outline" type="button" data-i18n="Apply custom definition">Apply custom definition</button></details>
           </form>
-          <section id="decision-results" data-testid="decision-results" class="decision-results" aria-label="Calculated decision comparison" aria-live="polite"><div class="decision-placeholder"><span aria-hidden="true">↗</span><h3>A choice you can explain.</h3><p>Pick a scenario, set your limits and compare actual measures. The service combines two separately shaped sources before ranking feasible options.</p><div class="rule-pills"><span>Feasibility first</span><span>Relative fit</span><span>Visible trade-offs</span></div></div></section>
+          <section id="decision-results" data-testid="decision-results" class="decision-results" aria-label="Calculated decision comparison" aria-live="polite" data-i18n-aria-label="Calculated decision comparison"><div class="decision-placeholder"><span aria-hidden="true">↗</span><h3 data-i18n="A choice you can explain.">A choice you can explain.</h3><p data-i18n="Pick a scenario, set your limits and compare actual measures. The service combines two separately shaped sources before ranking feasible options.">Pick a scenario, set your limits and compare actual measures. The service combines two separately shaped sources before ranking feasible options.</p><div class="rule-pills"><span data-i18n="Feasibility first">Feasibility first</span><span data-i18n="Relative fit">Relative fit</span><span data-i18n="Visible trade-offs">Visible trade-offs</span></div></div></section>
         </div>
       </section>
-      <details id="legacy-planner" data-testid="legacy-planner" class="legacy-planner"><summary id="legacy-toggle" data-testid="legacy-toggle"><span>Detailed activity itinerary</span><small>Explore the original budget, arrival and return example</small><span aria-hidden="true">＋</span></summary><div class="workspace-grid">
+      <details id="legacy-planner" data-testid="legacy-planner" class="legacy-planner"><summary id="legacy-toggle" data-testid="legacy-toggle"><span data-i18n="Detailed activity itinerary">Detailed activity itinerary</span><small data-i18n="Explore the original budget, arrival and return example">Explore the original budget, arrival and return example</small><span aria-hidden="true">＋</span></summary><div class="workspace-grid">
 
 
         <section class="panel planner-panel" aria-labelledby="planner-heading">
-          <div class="panel-heading"><span class="section-number">02</span><div><p class="eyebrow">TURN TIME INTO A PLAN</p><h2 id="planner-heading">Find your next activity</h2></div><span class="tag simulation">Simulated demo data</span></div>
-          <p class="section-copy">Set your starting point, time and budget. We check the activity and the journey back.</p>
+          <div class="panel-heading"><span class="section-number">02</span><div><p class="eyebrow" data-i18n="TURN TIME INTO A PLAN">TURN TIME INTO A PLAN</p><h2 id="planner-heading" data-i18n="Find your next activity">Find your next activity</h2></div><span class="tag simulation" data-i18n="Simulated demo data">Simulated demo data</span></div>
+          <p class="section-copy" data-i18n="Set your starting point, time and budget. We check the activity and the journey back.">Set your starting point, time and budget. We check the activity and the journey back.</p>
           <div id="options-state" data-testid="options-state" class="feedback" role="status">Loading your planning options…</div>
-          <button id="options-retry" data-testid="options-retry" class="button small outline" type="button" hidden>Retry planning options</button>
+          <button id="options-retry" data-testid="options-retry" class="button small outline" type="button" hidden data-i18n="Retry planning options">Retry planning options</button>
           <form id="planner-form" data-testid="planner-form" novalidate>
             <fieldset id="planner-fields" disabled>
-              <div class="field"><label for="origin">Start and return to</label><select id="origin" data-testid="origin" required></select></div>
+              <div class="field"><label for="origin" data-i18n="Start and return to">Start and return to</label><select id="origin" data-testid="origin" required></select></div>
               <div class="form-grid">
-                <div class="field"><label for="date">Day</label><select id="date" data-testid="date" required></select></div>
-                <div class="field"><label for="budget">Total budget</label><div class="money-input"><span aria-hidden="true">£</span><input id="budget" data-testid="budget" inputmode="decimal" autocomplete="off" placeholder="10.00" aria-describedby="budget-help" required></div></div>
-                <div class="field"><label for="depart">Leave at</label><input id="depart" data-testid="depart" type="time" required></div>
-                <div class="field"><label for="return">Be back by</label><input id="return" data-testid="return" type="time" required></div>
+                <div class="field"><label for="date" data-i18n="Day">Day</label><select id="date" data-testid="date" required></select></div>
+                <div class="field"><label for="budget" data-i18n="Total budget">Total budget</label><div class="money-input"><span aria-hidden="true">£</span><input id="budget" data-testid="budget" inputmode="decimal" autocomplete="off" placeholder="10.00" aria-describedby="budget-help" required></div></div>
+                <div class="field"><label for="depart" data-i18n="Leave at">Leave at</label><input id="depart" data-testid="depart" type="time" required></div>
+                <div class="field"><label for="return" data-i18n="Be back by">Be back by</label><input id="return" data-testid="return" type="time" required></div>
               </div>
               <div class="form-help"><span id="timezone-label">Times shown in Europe/London</span><span id="budget-help">Includes return travel</span></div>
-              <fieldset class="interest-fieldset"><legend>What sounds good?</legend><div id="interests" data-testid="interests" class="interest-options"></div></fieldset>
-              <button id="plan-submit" data-testid="plan-submit" class="button primary plan-button" type="submit">Find a feasible plan <span aria-hidden="true">↗</span></button>
+              <fieldset class="interest-fieldset"><legend data-i18n="What sounds good?">What sounds good?</legend><div id="interests" data-testid="interests" class="interest-options"></div></fieldset>
+              <button id="plan-submit" data-testid="plan-submit" class="button primary plan-button" type="submit"><span data-i18n="Find a feasible plan">Find a feasible plan</span> <span aria-hidden="true">↗</span></button>
             </fieldset>
           </form>
           <div id="planner-feedback" data-testid="planner-feedback" class="feedback" role="status" aria-live="polite"></div>
           <div id="planner-result" data-testid="planner-result" class="planner-result" aria-live="polite">
-            <div class="empty-plan"><span class="empty-symbol" aria-hidden="true">↗</span><h3>A plan that fits real constraints.</h3><p>We compare your interests, total cost, arrival time and return deadline. No AI key needed.</p><div class="rule-pills"><span>Budget</span><span>Time</span><span>Journey</span></div></div>
+            <div class="empty-plan"><span class="empty-symbol" aria-hidden="true">↗</span><h3 data-i18n="A plan that fits real constraints.">A plan that fits real constraints.</h3><p data-i18n="We compare your interests, total cost, arrival time and return deadline. No AI key needed.">We compare your interests, total cost, arrival time and return deadline. No AI key needed.</p><div class="rule-pills"><span data-i18n="Budget">Budget</span><span data-i18n="Time">Time</span><span data-i18n="Journey">Journey</span></div></div>
           </div>
         </section>
 
 
       </div></details>
-      <footer class="app-footer"><span>jinni · DYHTG 2026 prototype</span><span>Built-in data is fictional · Relative fit is not a probability or forecast</span></footer>
+      <footer class="app-footer"><span data-i18n="jinni · DYHTG 2026 prototype">jinni · DYHTG 2026 prototype</span><span data-i18n="Built-in data is fictional · Relative fit is not a probability or forecast">Built-in data is fictional · Relative fit is not a probability or forecast</span></footer>
     </main>
 
-    <dialog id="library-drawer" data-testid="library-drawer" class="tool-drawer library-drawer" aria-labelledby="library-heading"><div class="drawer-toolbar"><span>YOUR OPTIONAL TOOLS</span><button id="library-close" data-testid="library-close" class="icon-button" aria-label="Close sources" type="button">×</button></div>
+    <dialog id="library-drawer" data-testid="library-drawer" class="tool-drawer library-drawer" aria-labelledby="library-heading"><div class="drawer-toolbar"><span data-i18n="YOUR OPTIONAL TOOLS">YOUR OPTIONAL TOOLS</span><button id="library-close" data-testid="library-close" class="icon-button" aria-label="Close sources" type="button" data-i18n-aria-label="Close sources">×</button></div>
         <aside class="panel library-panel" aria-labelledby="library-heading">
-          <div class="panel-heading"><span class="section-number">01</span><div><p class="eyebrow">YOUR CONTEXT</p><h2 id="library-heading">Source library</h2></div></div>
-          <p class="section-copy">Keep useful notes and guides together. Select the ones your next question can use.</p>
+          <div class="panel-heading"><span class="section-number">01</span><div><p class="eyebrow" data-i18n="YOUR CONTEXT">YOUR CONTEXT</p><h2 id="library-heading" data-i18n="Source library">Source library</h2></div></div>
+          <p class="section-copy" data-i18n="Keep useful notes and guides together. Select the ones your next question can use.">Keep useful notes and guides together. Select the ones your next question can use.</p>
           <div class="library-actions">
             <button id="import-source" data-testid="import-source" class="button primary" type="button"><span aria-hidden="true">＋</span> Import a file</button>
-            <button id="add-text-toggle" data-testid="add-text-toggle" class="button outline" type="button" aria-expanded="false" aria-controls="text-source-form">Paste text</button>
+            <button id="add-text-toggle" data-testid="add-text-toggle" class="button outline" type="button" aria-expanded="false" aria-controls="text-source-form" data-i18n="Paste text">Paste text</button>
           </div>
-          <label class="check-row import-label"><input id="source-simulated" data-testid="source-simulated" type="checkbox"><span>Imported file is fictional / AI-generated</span></label>
+          <label class="check-row import-label"><input id="source-simulated" data-testid="source-simulated" type="checkbox"><span data-i18n="Imported file is fictional / AI-generated">Imported file is fictional / AI-generated</span></label>
           <p id="library-limits" class="micro-copy">TXT, Markdown and text PDFs. No scanned documents.</p>
           <form id="text-source-form" class="paste-form" hidden novalidate>
-            <label for="source-title">Source title</label><input id="source-title" data-testid="source-title" maxlength="200" placeholder="e.g. Venue access notes" required>
-            <label for="source-text">Source text</label><textarea id="source-text" data-testid="source-text" rows="6" maxlength="150000" placeholder="Paste the text you want to ask about…" required></textarea>
-            <label class="check-row"><input id="text-source-simulated" data-testid="text-source-simulated" type="checkbox"><span>Fictional / AI-generated material</span></label>
-            <button id="add-source-submit" data-testid="add-source-submit" class="button primary" type="submit">Add to library</button>
+            <label for="source-title" data-i18n="Source title">Source title</label><input id="source-title" data-testid="source-title" maxlength="200" placeholder="e.g. Venue access notes" required data-i18n-placeholder="e.g. Venue access notes">
+            <label for="source-text" data-i18n="Source text">Source text</label><textarea id="source-text" data-testid="source-text" rows="6" maxlength="150000" placeholder="Paste the text you want to ask about…" required data-i18n-placeholder="Paste the text you want to ask about…"></textarea>
+            <label class="check-row"><input id="text-source-simulated" data-testid="text-source-simulated" type="checkbox"><span data-i18n="Fictional / AI-generated material">Fictional / AI-generated material</span></label>
+            <button id="add-source-submit" data-testid="add-source-submit" class="button primary" type="submit" data-i18n="Add to library">Add to library</button>
           </form>
           <div id="library-status" data-testid="library-status" class="feedback" role="status" aria-live="polite"></div>
-          <div class="library-list-heading"><span id="source-count">YOUR SOURCES</span><button id="library-refresh" class="text-button" type="button">Refresh</button></div>
-          <div id="source-list" data-testid="source-list" class="source-list" aria-label="Sources available for selection"></div>
-          <div class="library-footer"><span aria-hidden="true">⌂</span><p>Stored locally. Only selected evidence is sent when you ask AI.</p></div>
+          <div class="library-list-heading"><span id="source-count">YOUR SOURCES</span><button id="library-refresh" class="text-button" type="button" data-i18n="Refresh">Refresh</button></div>
+          <div id="source-list" data-testid="source-list" class="source-list" aria-label="Sources available for selection" data-i18n-aria-label="Sources available for selection"></div>
+          <div class="library-footer"><span aria-hidden="true">⌂</span><p data-i18n="Stored locally. Only selected evidence is sent when you ask AI.">Stored locally. Only selected evidence is sent when you ask AI.</p></div>
         </aside>
     </dialog>
-    <dialog id="chat-drawer" data-testid="chat-drawer" class="tool-drawer chat-drawer" aria-labelledby="chat-heading"><div class="drawer-toolbar"><span>YOUR OPTIONAL TOOLS</span><button id="chat-close" data-testid="chat-close" class="icon-button" aria-label="Close questions" type="button">×</button></div>
+    <dialog id="chat-drawer" data-testid="chat-drawer" class="tool-drawer chat-drawer" aria-labelledby="chat-heading"><div class="drawer-toolbar"><span data-i18n="YOUR OPTIONAL TOOLS">YOUR OPTIONAL TOOLS</span><button id="chat-close" data-testid="chat-close" class="icon-button" aria-label="Close questions" type="button" data-i18n-aria-label="Close questions">×</button></div>
         <section class="panel chat-panel" aria-labelledby="chat-heading">
-          <div class="panel-heading"><span class="section-number">03</span><div><p class="eyebrow">ASK. CHECK. DECIDE.</p><h2 id="chat-heading">Ask your sources</h2></div><span class="tag ai-tag">Optional AI</span></div>
-          <p class="section-copy">Get a concise answer with source quotes you can open and read for yourself.</p>
-          <div class="cloud-notice"><span aria-hidden="true">↗</span><p>Questions and selected evidence snippets are sent to <strong id="cloud-recipient" data-testid="cloud-recipient">the selected provider</strong>. <span>API processing is subject to that provider's data policies.</span></p></div>
-          <button id="chat-settings-button" data-testid="chat-settings-button" class="text-button chat-settings-button" type="button">AI session settings</button><div class="chat-context"><span id="chat-selection" data-testid="chat-selection">No sources selected</span><span id="key-indicator" class="key-indicator">Key not set</span></div>
+          <div class="panel-heading"><span class="section-number">03</span><div><p class="eyebrow" data-i18n="ASK. CHECK. DECIDE.">ASK. CHECK. DECIDE.</p><h2 id="chat-heading" data-i18n="Ask your sources">Ask your sources</h2></div><span class="tag ai-tag" data-i18n="Optional AI">Optional AI</span></div>
+          <p class="section-copy" data-i18n="Get a concise answer with source quotes you can open and read for yourself.">Get a concise answer with source quotes you can open and read for yourself.</p>
+          <div class="cloud-notice"><span aria-hidden="true">↗</span><p><span data-i18n="Questions and selected evidence snippets are sent to">Questions and selected evidence snippets are sent to</span> <strong id="cloud-recipient" data-testid="cloud-recipient" data-i18n="the selected provider">the selected provider</strong>. <span data-i18n="API processing is subject to that provider&#x27;s data policies.">API processing is subject to that provider's data policies.</span></p></div>
+          <button id="chat-settings-button" data-testid="chat-settings-button" class="text-button chat-settings-button" type="button" data-i18n="AI session settings">AI session settings</button><div class="chat-context"><span id="chat-selection" data-testid="chat-selection">No sources selected</span><span id="key-indicator" class="key-indicator">Key not set</span></div>
           <form id="chat-form" data-testid="chat-form" novalidate>
-            <label for="provider">AI provider</label><select id="provider" data-testid="provider" class="provider-select" disabled><option value="">Loading providers…</option></select>
-            <label for="question">Your question</label><textarea id="question" data-testid="question" maxlength="2000" rows="4" placeholder="What do these sources say about access or opening hours?" required></textarea>
-            <label class="check-row include-decision"><input id="include-decision" data-testid="include-decision" type="checkbox"><span>Include my current comparison<small>Recalculates the selected scenario, weights and limits.</small></span></label>
-            <label class="check-row include-plan"><input id="include-plan" data-testid="include-plan" type="checkbox"><span>Include my current activity preferences<small>Uses the detailed activity itinerary below the main workspace.</small></span></label>
-            <details class="model-settings"><summary>Model settings</summary><label for="model">Provider model</label><input id="model" data-testid="model" maxlength="100" autocomplete="off" placeholder="Loaded from service"><p class="micro-copy">Editable for each provider. Requires a compatible model your API account can access.</p></details>
-            <button id="ask-submit" data-testid="ask-submit" class="button dark" type="submit">Ask with selected context <span aria-hidden="true">↑</span></button>
+            <label for="provider" data-i18n="AI provider">AI provider</label><select id="provider" data-testid="provider" class="provider-select" disabled><option value="" data-i18n="Loading providers…">Loading providers…</option></select>
+            <label for="question" data-i18n="Your question">Your question</label><textarea id="question" data-testid="question" maxlength="2000" rows="4" placeholder="What do these sources say about access or opening hours?" required data-i18n-placeholder="What do these sources say about access or opening hours?"></textarea>
+            <label class="check-row include-decision"><input id="include-decision" data-testid="include-decision" type="checkbox"><span><span data-i18n="Include my current comparison">Include my current comparison</span><small data-i18n="Recalculates the selected scenario, weights and limits.">Recalculates the selected scenario, weights and limits.</small></span></label>
+            <label class="check-row include-plan"><input id="include-plan" data-testid="include-plan" type="checkbox"><span><span data-i18n="Include my current activity preferences">Include my current activity preferences</span><small data-i18n="Uses the detailed activity itinerary below the main workspace.">Uses the detailed activity itinerary below the main workspace.</small></span></label>
+            <details class="model-settings"><summary data-i18n="Model settings">Model settings</summary><label for="model" data-i18n="Provider model">Provider model</label><input id="model" data-testid="model" maxlength="100" autocomplete="off" placeholder="Loaded from service" data-i18n-placeholder="Loaded from service"><p class="micro-copy" data-i18n="Editable for each provider. Requires a compatible model your API account can access.">Editable for each provider. Requires a compatible model your API account can access.</p></details>
+            <button id="ask-submit" data-testid="ask-submit" class="button dark" type="submit"><span data-i18n="Ask with selected context">Ask with selected context</span> <span aria-hidden="true">↑</span></button>
           </form>
           <div id="chat-feedback" data-testid="chat-feedback" class="feedback" role="status" aria-live="polite"></div>
           <div id="chat-result" data-testid="chat-result" class="chat-result" aria-live="polite" hidden>
@@ -123,19 +126,19 @@
             <div id="chat-planner" data-testid="chat-planner" class="chat-planner"></div>
             <div id="chat-decision" data-testid="chat-decision" class="chat-decision"></div><div id="chat-warnings"></div><p id="chat-model-label" class="micro-copy"></p>
           </div>
-          <div id="chat-empty" class="chat-empty"><div class="context-illustration" aria-hidden="true"><span></span><span></span><b>“</b></div><h3>A useful answer starts with context.</h3><p>Select a source, or include your current comparison or activity preferences. Then ask a specific question.</p></div>
-          <p class="chat-footnote">Each question starts fresh. Quote checks help you verify evidence; they do not prove every claim is true. Local search may miss paraphrases.</p>
+          <div id="chat-empty" class="chat-empty"><div class="context-illustration" aria-hidden="true"><span></span><span></span><b>“</b></div><h3 data-i18n="A useful answer starts with context.">A useful answer starts with context.</h3><p data-i18n="Select a source, or include your current comparison or activity preferences. Then ask a specific question.">Select a source, or include your current comparison or activity preferences. Then ask a specific question.</p></div>
+          <p class="chat-footnote" data-i18n="Each question starts fresh. Quote checks help you verify evidence; they do not prove every claim is true. Local search may miss paraphrases.">Each question starts fresh. Quote checks help you verify evidence; they do not prove every claim is true. Local search may miss paraphrases.</p>
         </section>
     </dialog>
     <dialog id="settings-dialog" data-testid="settings-dialog" aria-labelledby="settings-title">
-      <div class="dialog-heading"><div><p class="eyebrow">OPTIONAL AI PROVIDERS</p><h2 id="settings-title">A key for this session</h2></div><button id="settings-close" data-testid="settings-close" class="icon-button" aria-label="Close" type="button">×</button></div>
-      <p class="section-copy">Your activity planner and local library work without a key. Each AI provider uses its own API account and session key.</p>
-      <form id="settings-form" novalidate><label for="settings-provider">AI provider</label><select id="settings-provider" data-testid="settings-provider" class="provider-select" disabled><option value="">Loading providers…</option></select><label for="settings-model">Model for this provider</label><input id="settings-model" data-testid="settings-model" class="provider-model" maxlength="100" autocomplete="off" placeholder="Loaded from service"><label id="api-key-label" for="api-key">Provider API key</label><input id="api-key" data-testid="api-key" type="password" autocomplete="off" spellcheck="false" placeholder="Enter a key to enable AI answers"><p class="micro-copy">Held in desktop memory for this session only. Never shared with another provider or saved to your library. The field clears after saving.</p><div class="dialog-actions"><button id="save-key" data-testid="save-key" class="button primary" type="submit">Use for this session</button><button id="clear-key" data-testid="clear-key" class="button outline" type="button">Clear this provider's key</button></div></form>
+      <div class="dialog-heading"><div><p class="eyebrow" data-i18n="OPTIONAL AI PROVIDERS">OPTIONAL AI PROVIDERS</p><h2 id="settings-title" data-i18n="A key for this session">A key for this session</h2></div><button id="settings-close" data-testid="settings-close" class="icon-button" aria-label="Close" type="button" data-i18n-aria-label="Close">×</button></div>
+      <p class="section-copy" data-i18n="Your activity planner and local library work without a key. Each AI provider uses its own API account and session key.">Your activity planner and local library work without a key. Each AI provider uses its own API account and session key.</p>
+      <form id="settings-form" novalidate><label for="settings-provider" data-i18n="AI provider">AI provider</label><select id="settings-provider" data-testid="settings-provider" class="provider-select" disabled><option value="" data-i18n="Loading providers…">Loading providers…</option></select><label for="settings-model" data-i18n="Model for this provider">Model for this provider</label><input id="settings-model" data-testid="settings-model" class="provider-model" maxlength="100" autocomplete="off" placeholder="Loaded from service" data-i18n-placeholder="Loaded from service"><label id="api-key-label" for="api-key">Provider API key</label><input id="api-key" data-testid="api-key" type="password" autocomplete="off" spellcheck="false" placeholder="Enter a key to enable AI answers" data-i18n-placeholder="Enter a key to enable AI answers"><p class="micro-copy" data-i18n="Held in desktop memory for this session only. Never shared with another provider or saved to your library. The field clears after saving.">Held in desktop memory for this session only. Never shared with another provider or saved to your library. The field clears after saving.</p><div class="dialog-actions"><button id="save-key" data-testid="save-key" class="button primary" type="submit" data-i18n="Use for this session">Use for this session</button><button id="clear-key" data-testid="clear-key" class="button outline" type="button" data-i18n="Clear this provider&#x27;s key">Clear this provider's key</button></div></form>
       <div id="key-status" data-testid="key-status" class="feedback" role="status" aria-live="polite"></div>
     </dialog>
 
     <dialog id="source-dialog" data-testid="source-dialog" class="source-dialog" aria-labelledby="source-dialog-title">
-      <div class="dialog-heading"><div><p class="eyebrow">CHECK THE ORIGINAL CONTEXT</p><h2 id="source-dialog-title" data-testid="source-dialog-title">Source</h2></div><button id="source-close" data-testid="source-close" class="icon-button" aria-label="Close" type="button">×</button></div>
+      <div class="dialog-heading"><div><p class="eyebrow" data-i18n="CHECK THE ORIGINAL CONTEXT">CHECK THE ORIGINAL CONTEXT</p><h2 id="source-dialog-title" data-testid="source-dialog-title">Source</h2></div><button id="source-close" data-testid="source-close" class="icon-button" aria-label="Close" type="button" data-i18n-aria-label="Close">×</button></div>
       <div id="citation-quote" data-testid="citation-quote" class="citation-quote" hidden></div>
       <div id="source-dialog-content" data-testid="source-dialog-content" class="source-dialog-content"></div>
     </dialog>

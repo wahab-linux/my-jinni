@@ -1,16 +1,17 @@
-import { fromLocal, money, parseBudget, recommend, time } from './planner.mjs';
+import { fromLocal, parseBudget, recommend, time } from './planner.mjs';
 import { createSource, LIMITS, openLibrary, searchSources } from './library.mjs';
+import { bind, t, option, attribute, currency as money, locale, number } from './i18n.mjs';
 
 const $ = (id) => document.getElementById(id);
 const state = { scenario: null, library: null, sources: [], selected: new Set(), busy: false, viewer: null, pendingDelete: null, starters: new Map() };
-const node = (tag, text, className = '') => {
+const node = (tag, text, className = '', raw = false) => {
   const item = document.createElement(tag);
-  if (text !== undefined) item.textContent = text;
+  if (text !== undefined) bind(item, raw ? '{text}' : text, raw ? { text } : {});
   item.className = className;
   return item;
 };
-function feedback(id, message = '', error = false) {
-  $(id).textContent = message;
+function feedback(id, message = '', error = false, params = {}) {
+  bind($(id), message, params);
   $(id).className = `feedback${error ? ' error' : ''}`;
 }
 
@@ -30,7 +31,7 @@ function clearFieldErrors() {
 function fieldError(kind, message) {
   const field = kind === 'interest' ? $('interest-picker').querySelector('summary')
     : kind === 'time' ? $('return') : $('custom-budget').hidden ? $('budget-preset') : $('budget');
-  $(`${kind}-error`).textContent = message;
+  bind($(`${kind}-error`), message);
   $(`${kind}-error`).hidden = false;
   field.setAttribute('aria-invalid', 'true');
   field.focus();
@@ -40,8 +41,8 @@ function preferencesChanged() {
   clearFieldErrors();
   $('plan-results').replaceChildren();
   $('plan-empty').hidden = false;
-  $('plan-empty').querySelector('h3').textContent = 'A little adventure starts here.';
-  $('plan-empty').querySelector('p').textContent = 'Tell us where, when and what you enjoy. We’ll match you with something that fits.';
+  bind($('plan-empty').querySelector('h3'), 'A little adventure starts here.');
+  bind($('plan-empty').querySelector('p'), 'Tell us where, when and what you enjoy. We’ll match you with something that fits.');
   updateInterestSummary();
   feedback('plan-status', 'Preferences changed. Find a plan to update your result.');
 }
@@ -77,8 +78,12 @@ async function loadScenario() {
     state.scenario = scenario;
     const { options } = scenario;
     const defaults = options.default_request;
-    $('origin').replaceChildren(...options.origins.map((item) => new Option(item.label, item.id)));
-    $('date').replaceChildren(...options.supported_dates.map((date) => new Option(new Intl.DateTimeFormat('en-GB', { dateStyle: 'long', timeZone: options.timezone }).format(new Date(`${date}T12:00:00Z`)), date)));
+    $('origin').replaceChildren(...options.origins.map((item) => option(item.label, item.id, true)));
+    $('date').replaceChildren(...options.supported_dates.map((date) => {
+      const item = option('', date, true);
+      bind(item, '{date}', () => ({ date: new Intl.DateTimeFormat(locale() === 'en' ? 'en-GB' : locale(), { dateStyle: 'long', timeZone: options.timezone }).format(new Date(`${date}T12:00:00Z`)) }));
+      return item;
+    }));
     $('origin').value = defaults.origin_id;
     $('date').value = options.demo_date;
     $('depart').value = time(defaults.depart_at, options.timezone);
@@ -92,7 +97,7 @@ async function loadScenario() {
     ]) {
       if (budget <= options.max_budget_pence && interests.every((interest) => options.interests.some((item) => item.id === interest))) state.starters.set(id, { label, interests, budget });
     }
-    $('starter').replaceChildren(new Option('Build my own plan', ''), ...[...state.starters].map(([id, starter]) => new Option(starter.label, id)));
+    $('starter').replaceChildren(option('Build my own plan', ''), ...[...state.starters].map(([id, starter]) => option(starter.label, id)));
     $('interests').replaceChildren(...options.interests.map((interest) => {
       const label = node('label');
       const input = document.createElement('input');
@@ -102,7 +107,7 @@ async function loadScenario() {
       return label;
     }));
     updateInterestSummary();
-    $('coverage').textContent = `Fictional demo · ${options.timezone} · Budget up to ${money(options.max_budget_pence)}`;
+    bind($('coverage'), 'Fictional demo · {zone} · Budget up to {amount}', () => ({ zone: options.timezone, amount: money(options.max_budget_pence) }));
     $('preferences').disabled = false;
     feedback('setup-status', 'Ready. No account or API key needed.');
   } catch {
@@ -115,18 +120,18 @@ function activityCard(activity, featured, zone) {
   const card = node('article', undefined, `activity${featured ? ' featured' : ''}`);
   const top = node('div', undefined, 'activity-top');
   const heading = node('div');
-  heading.append(node('p', featured ? 'YOUR BEST FIT' : 'ANOTHER POSSIBILITY', 'eyebrow'), node('h3', activity.title));
-  top.append(heading, node('div', money(activity.total_cost_pence), 'price'));
-  card.append(top, node('p', `${activity.venue_name} · ${activity.category} · Fictional activity`, 'muted'));
+  heading.append(node('p', featured ? 'YOUR BEST FIT' : 'ANOTHER POSSIBILITY', 'eyebrow'), node('h3', activity.title, '', true));
+  top.append(heading, bind(node('div', undefined, 'price'), '{value}', () => ({ value: money(activity.total_cost_pence) })));
+  card.append(top, bind(node('p', undefined, 'muted'), '{venue} · {category} · Fictional activity', () => ({ venue: activity.venue_name, category: t(activity.category) })));
   const timing = node('dl');
   for (const [label, value] of [['Arrive', time(activity.arrive_at, zone)], ['Activity', `${time(activity.starts_at, zone)}–${time(activity.ends_at, zone)}`], ['Back at origin', time(activity.return_at, zone)]]) {
     const group = node('div'); group.append(node('dt', label), node('dd', value)); timing.append(group);
   }
-  card.append(timing, node('p', `${money(activity.ticket_cost_pence)} ticket + ${money(activity.travel_cost_pence)} return travel = ${money(activity.total_cost_pence)}`, 'muted'));
+  card.append(timing, bind(node('p', undefined, 'muted'), '{ticket} ticket + {travel} return travel = {total}', () => ({ ticket: money(activity.ticket_cost_pence), travel: money(activity.travel_cost_pence), total: money(activity.total_cost_pence) })));
   const notes = node('details', undefined, 'activity-notes');
   notes.append(node('summary', 'Why this plan fits'));
   const reasons = node('ul');
-  reasons.append(...activity.reasons.map((reason) => node('li', reason.replaceAll('GBP ', '£'))));
+  reasons.append(...activity.reasons.map((reason) => bind(node('li'), '{text}', () => ({ text: plannerReason(reason) }))));
   notes.append(reasons);
   card.append(notes);
   return card;
@@ -145,7 +150,7 @@ function submitPlan(event) {
     try { budget = parseBudget($('budget').value.trim()); }
     catch (error) { fieldError('budget', error.message); throw error; }
     if (budget > options.max_budget_pence) {
-      const message = `This demo supports budgets up to ${money(options.max_budget_pence)}.`;
+      const message = t('This demo supports budgets up to {amount}.', { amount: money(options.max_budget_pence) });
       fieldError('budget', message); throw new Error(message);
     }
     const interests = [...document.querySelectorAll('[name=interest]:checked')].map((input) => input.value);
@@ -165,16 +170,19 @@ function submitPlan(event) {
     feedback('plan-status', result.data.message);
     if (!result.data.recommended) {
       $('plan-empty').hidden = false;
-      $('plan-empty').querySelector('h3').textContent = 'Let’s give your plan a little more room.';
-      $('plan-empty').querySelector('p').textContent = 'Try a bigger budget, an earlier departure, or a later return. We’ll look for another fit.';
+      bind($('plan-empty').querySelector('h3'), 'Let’s give your plan a little more room.');
+      bind($('plan-empty').querySelector('p'), 'Try a bigger budget, an earlier departure, or a later return. We’ll look for another fit.');
     }
     if (result.data.recommended) $('plan-results').append(activityCard(result.data.recommended, true, options.timezone));
     for (const activity of result.data.alternatives) $('plan-results').append(activityCard(activity, false, options.timezone));
     const provenance = node('div', undefined, 'provenance');
     const origin = options.origins.find((item) => item.id === request.origin_id);
-    provenance.append(node('strong', `Start and return: ${origin.label}`), node('p', `All times: ${options.timezone}. Calculated locally from the following fictional datasets:`));
-    for (const source of result.data.sources) provenance.append(node('p', `${source.label} · Simulated snapshot ${source.updated_at}${source.origin_id ? ` · ${origin.label}` : ''}`));
-    for (const warning of result.warnings) provenance.append(node('p', warning.message));
+    provenance.append(bind(node('strong'), 'Start and return: {origin}', { origin: origin.label }), bind(node('p'), 'All times: {zone}. Calculated locally from the following fictional datasets:', { zone: options.timezone }));
+    for (const source of result.data.sources) provenance.append(bind(node('p'), '{source} · Simulated snapshot {updated}{origin}', { source: source.label, updated: source.updated_at, origin: source.origin_id ? ` · ${origin.label}` : '' }));
+    for (const warning of result.warnings) {
+      const missing = /^Excluded (\d+) activities with missing or unavailable return travel\.$/.exec(warning.message);
+      provenance.append(missing ? bind(node('p'), 'Excluded {count} activities with missing or unavailable return travel.', { count: missing[1] }) : node('p', warning.message));
+    }
     $('plan-results').append(provenance);
     if (window.matchMedia('(max-width: 760px)').matches) {
       $('results-title').focus({ preventScroll: true });
@@ -192,12 +200,12 @@ function clearSearch() {
 
 function updateInterestSummary() {
   const checked = [...document.querySelectorAll('#interests input:checked')];
-  $('interest-summary').textContent = checked.length ? checked.map((input) => input.nextElementSibling.textContent).join(', ') : 'Choose your interests';
+  bind($('interest-summary'), checked.length ? '{text}' : 'Choose your interests', () => ({ text: checked.map((input) => t(state.scenario.options.interests.find((item) => item.id === input.value).label)).join(', ') }));
 }
 
 function renderSources() {
   $('sources').replaceChildren();
-  $('source-count').textContent = `${state.sources.length} / ${LIMITS.sources} saved items · ${state.selected.size} selected`;
+  bind($('source-count'), '{count} / {limit} saved items · {selected} selected', { count: state.sources.length, limit: LIMITS.sources, selected: state.selected.size });
   $('select-all').disabled = !state.sources.length || state.selected.size === state.sources.length;
   $('clear-selection').disabled = !state.selected.size;
   if (!state.sources.length) {
@@ -217,20 +225,20 @@ function renderSources() {
     input.addEventListener('change', () => {
       if (input.checked) state.selected.add(source.id); else state.selected.delete(source.id);
       clearSearch();
-      $('source-count').textContent = `${state.sources.length} / ${LIMITS.sources} saved items · ${state.selected.size} selected`;
+      bind($('source-count'), '{count} / {limit} saved items · {selected} selected', { count: state.sources.length, limit: LIMITS.sources, selected: state.selected.size });
       $('select-all').disabled = state.selected.size === state.sources.length;
       $('clear-selection').disabled = !state.selected.size;
     });
     label.append(input, document.createTextNode(source.title));
-    row.append(label, node('p', `${source.kind.toUpperCase()} · ${source.character_count.toLocaleString()} characters · ${source.is_simulated ? 'Fictional / AI-generated' : 'Source accuracy not independently verified'}`, 'hint'));
+    row.append(label, bind(node('p', undefined, 'hint'), '{kind} · {count} characters · {label}', () => ({ kind: source.kind.toUpperCase(), count: number(source.character_count), label: t(source.is_simulated ? 'Fictional / AI-generated' : 'Source accuracy not independently verified') })));
     const actions = node('div', undefined, 'source-actions');
     const view = node('button', 'Read saved text', 'text-button'); view.type = 'button';
     view.addEventListener('click', () => openSource(source));
     const remove = node('button', 'Delete', 'text-button'); remove.type = 'button';
-    remove.setAttribute('aria-label', `Delete ${source.title}`);
+    attribute(remove, 'aria-label', 'Delete {title}', { title: source.title });
     remove.addEventListener('click', () => {
       state.pendingDelete = source;
-      $('delete-description').textContent = `“${source.title}” will be removed from your notes and files.`;
+      bind($('delete-description'), '“{title}” will be removed from your notes and files.', { title: source.title });
       $('delete-dialog').showModal();
     });
     actions.append(view, remove); row.append(actions); $('sources').append(row);
@@ -301,11 +309,11 @@ async function extractFile(file) {
 
 function openSource(source, selectedIndex = -1) {
   state.viewer = source;
-  $('viewer-title').textContent = source.title;
-  $('viewer-meta').textContent = `${source.kind.toUpperCase()} · Extracted text${source.is_simulated ? ' · Fictional / AI-generated source' : ' · Accuracy not independently verified'}`;
+  bind($('viewer-title'), '{text}', { text: source.title });
+  bind($('viewer-meta'), '{kind} · Extracted text · {label}', () => ({ kind: source.kind.toUpperCase(), label: t(source.is_simulated ? 'Fictional / AI-generated source' : 'Accuracy not independently verified') }));
   $('viewer-content').replaceChildren(...source.chunks.map((chunk, index) => {
     const passage = node('section', undefined, `passage${index === selectedIndex ? ' selected' : ''}`);
-    passage.append(node('strong', `${chunk.page ? `Page ${chunk.page} · ` : ''}Passage ${index + 1}`), node('p', chunk.text));
+    passage.append(bind(node('strong'), chunk.page ? 'Page {page} · Passage {index}' : 'Passage {index}', { page: chunk.page, index: index + 1 }), node('p', chunk.text, '', true));
     return passage;
   }));
   if (!$('viewer').open) $('viewer').showModal();
@@ -324,7 +332,7 @@ $('starter').addEventListener('change', () => {
   setBudget(starter.budget);
   for (const input of document.querySelectorAll('#interests input')) input.checked = starter.interests.includes(input.value);
   preferencesChanged();
-  feedback('plan-status', `${starter.label}: interests and budget set. Your time and starting point are unchanged.`);
+  feedback('plan-status', '{label}: interests and budget set. Your time and starting point are unchanged.', false, () => ({ label: t(starter.label) }));
 });
 $('reset-planner').addEventListener('click', resetPreferences);
 $('budget-preset').addEventListener('change', () => {
@@ -408,10 +416,10 @@ $('search-form').addEventListener('submit', (event) => {
     return;
   }
   const matches = searchSources(question, state.sources, state.selected);
-  feedback('search-status', matches.length ? `${matches.length} matching passages. Open the original to check the surrounding context.` : 'No matching text in the selected notes or files. Try different words.');
+  feedback('search-status', matches.length ? '{count} matching passages. Open the original to check the surrounding context.' : 'No matching text in the selected notes or files. Try different words.', false, { count: matches.length });
   for (const { source, chunk, index } of matches) {
     const item = node('article', undefined, 'excerpt');
-    item.append(node('h4', source.title), node('p', `${chunk.page ? `Page ${chunk.page} · ` : ''}${source.is_simulated ? 'Fictional / AI-generated source' : 'Source accuracy not independently verified'}`, 'hint'), node('blockquote', chunk.text));
+    item.append(node('h4', source.title, '', true), bind(node('p', undefined, 'hint'), chunk.page ? 'Page {page} · {label}' : '{label}', () => ({ page: chunk.page, label: t(source.is_simulated ? 'Fictional / AI-generated source' : 'Source accuracy not independently verified') })), node('blockquote', chunk.text, '', true));
     const view = node('button', 'Read full text', 'text-button'); view.type = 'button';
     view.addEventListener('click', () => openSource(source, index)); item.append(view); $('search-results').append(item);
   }
@@ -428,10 +436,25 @@ $('download-source').addEventListener('click', () => {
   const link = document.createElement('a'); link.href = url; link.download = 'jinni-source.txt'; link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 });
+
+function plannerReason(reason) {
+  let match = /^Matches your interest in (.+)\.$/.exec(reason);
+  if (match) return t('Matches your interest in {category}.', { category: t(match[1]) });
+  match = /^A different interest category \((.+)\) that fits your constraints\.$/.exec(reason);
+  if (match) return t('A different interest category ({category}) that fits your constraints.', { category: t(match[1]) });
+  match = /^Costs GBP ([\d.]+) including return travel, within your GBP ([\d.]+) budget\.$/.exec(reason);
+  if (match) return t('Costs {total} including return travel, within your {budget} budget.', { total: money(Number(match[1]) * 100), budget: money(Number(match[2]) * 100) });
+  match = /^Arrive at (.+), at or before the activity starts; return to your selected origin at (.+), by your (.+) deadline \((.+)\)\.$/.exec(reason);
+  if (match) return t('Arrive at {arrival}, at or before the activity starts; return at {returned}, by your {deadline} deadline ({zone}).', { arrival: match[1], returned: match[2], deadline: match[3], zone: match[4] });
+  return t(reason);
+}
+
+globalThis.jinniI18n?.onChange(updateInterestSummary);
+
 void loadScenario();
 void (async () => {
   try {
     state.library = await openLibrary(); state.sources = await state.library.all(); renderSources();
     feedback('library-status', 'Library ready. Sources are saved only in this browser on this device.');
-  } catch (error) { feedback('library-status', error.message, true); }
+  } catch { feedback('library-status', 'Browser storage is unavailable. Allow site storage to save a library. Planning still works.', true); }
 })();

@@ -1,4 +1,4 @@
-/* global $, element, clear, call, unwrap, ServiceError, showFeedback, showError, renderWarnings, invalidateChat */
+/* global $, element, uiElement, uiText, bindUIAttribute, i18n, clear, call, unwrap, ServiceError, showFeedback, showError, renderWarnings, invalidateChat */
 /* exported initDecisionUI, loadDecisionCatalog, currentDecisionRequest, renderDecisionBrief, playFeedback */
 "use strict";
 
@@ -7,11 +7,34 @@ const decisionState = {
   token: 0, catalogToken: 0, result: null, busy: false, sound: false, audio: null,
 };
 
-function displayMeasure(value, criterion) {
-  if (typeof value !== "number" || !Number.isFinite(value)) return "Unknown";
+function displayMeasure(value, criterion, custom = false) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return i18n.t("Unknown");
   if (criterion.unit === "pence") return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(value / 100);
   const number = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 4 }).format(value);
-  return `${number}${criterion.unit ? ` ${criterion.unit}` : ""}`;
+  return `${number}${criterion.unit ? ` ${custom ? criterion.unit : i18n.t(criterion.unit)}` : ""}`;
+}
+
+function configuredText(value, custom = Boolean(decisionState.custom)) {
+  return custom ? value : i18n.t(value);
+}
+
+function configuredElement(tag, className, value, custom = Boolean(decisionState.custom)) {
+  return custom ? element(tag, className, value) : uiElement(tag, className, value);
+}
+
+function decisionReason(text, custom = false) {
+  const rules = [
+    [/^For (.+), lower values are preferred\.$/, "For {label}, lower values are preferred."],
+    [/^For (.+), higher values are preferred\.$/, "For {label}, higher values are preferred."],
+    [/^Missing value for (.+)\.$/, "Missing value for {label}."],
+    [/^(.+) exceeds its selected maximum\.$/, "{label} exceeds its selected maximum."],
+    [/^(.+) is below its selected minimum\.$/, "{label} is below its selected minimum."],
+  ];
+  for (const [pattern, key] of rules) {
+    const match = pattern.exec(text);
+    if (match) return uiElement("span", "", key, { label: () => configuredText(match[1], custom) });
+  }
+  return uiElement("span", "", text);
 }
 
 function metricValue(metrics, id) {
@@ -25,14 +48,14 @@ function fitLabel(score) {
 function setDecisionBusy(busy) {
   decisionState.busy = busy;
   $("decision-submit").disabled = busy || !decisionState.scenario;
-  $("decision-submit").replaceChildren(document.createTextNode(busy ? "Comparing both sources…" : "Compare my options"), element("span", "", "↗"));
+  $("decision-submit").replaceChildren(uiElement("span", "", busy ? "Comparing both sources…" : "Compare my options"), element("span", "", "↗"));
 }
 
 function decisionPlaceholder(pending = false) {
   clear($("decision-results"));
   const placeholder = element("div", "decision-placeholder");
   placeholder.dataset.testid = "decision-empty";
-  placeholder.append(element("span", "", "↗"), element("h3", "", pending ? "Comparing your options…" : "Your comparison will appear here."), element("p", "", pending ? "The service is checking both sources, applying hard limits and comparing your priorities." : "Set the importance of each measure and any hard limits, then choose Compare my options. You will see actual measurements, relative fit and the trade-offs behind the result."));
+  placeholder.append(element("span", "", "↗"), uiElement("h3", "", pending ? "Comparing your options…" : "Your comparison will appear here."), uiElement("p", "", pending ? "The service is checking both sources, applying hard limits and comparing your priorities." : "Set the importance of each measure and any hard limits, then choose Compare my options. You will see actual measurements, relative fit and the trade-offs behind the result."));
   $("decision-results").append(placeholder);
 }
 
@@ -52,14 +75,14 @@ function criteriaControls(scenario) {
   for (const criterion of scenario.criteria) {
     const control = element("section", "criterion-control");
     const heading = element("div", "criterion-heading");
-    const label = element("label", "", criterion.label);
+    const label = configuredElement("label", "", criterion.label);
     label.htmlFor = `weight-${criterion.id}`;
-    heading.append(label, element("span", "criterion-direction", criterion.direction === "minimize" ? "Lower is better" : "Higher is better"));
+    heading.append(label, uiElement("span", "criterion-direction", criterion.direction === "minimize" ? "Lower is better" : "Higher is better"));
     const row = element("div", "weight-row");
     const slider = document.createElement("input");
     slider.type = "range"; slider.min = "0"; slider.max = "100"; slider.step = "any";
     slider.id = `range-${criterion.id}`; slider.dataset.testid = slider.id;
-    slider.setAttribute("aria-label", `${criterion.label} importance`);
+    bindUIAttribute(slider, "aria-label", "{label} importance", { label: () => configuredText(criterion.label) });
     const number = document.createElement("input");
     number.type = "number"; number.min = "0"; number.max = "100"; number.step = "any";
     number.id = `weight-${criterion.id}`; number.dataset.testid = number.id;
@@ -73,18 +96,19 @@ function criteriaControls(scenario) {
     const check = document.createElement("input");
     check.type = "checkbox"; check.id = `limit-enabled-${criterion.id}`; check.dataset.testid = check.id; check.checked = Boolean(constraint);
     const checkLabel = element("label", "check-row limit-label");
-    checkLabel.append(check, element("span", "", `Hard limit${criterion.unit === "pence" ? " · GBP" : criterion.unit ? ` · ${criterion.unit}` : ""}`));
+    checkLabel.append(check, uiElement("span", "", "Hard limit"));
+    if (criterion.unit) checkLabel.append(element("span", "", " · "), configuredElement("span", "", criterion.unit === "pence" ? "GBP" : criterion.unit));
     const limitRow = element("div", "limit-row");
     const operator = document.createElement("select");
     operator.id = `limit-operator-${criterion.id}`; operator.dataset.testid = operator.id;
-    operator.setAttribute("aria-label", `${criterion.label} limit comparison`);
-    operator.append(new Option("At most", "lte"), new Option("At least", "gte"));
+    bindUIAttribute(operator, "aria-label", "{label} limit comparison", { label: () => configuredText(criterion.label) });
+    for (const [text, value] of [["At most", "lte"], ["At least", "gte"]]) { const option = new Option("", value); uiText(option, text); operator.append(option); }
     operator.value = constraint?.operator || (criterion.direction === "minimize" ? "lte" : "gte");
     const limit = document.createElement("input");
     limit.type = "text"; limit.inputMode = "decimal"; limit.autocomplete = "off";
     limit.id = `limit-${criterion.id}`; limit.dataset.testid = limit.id;
-    limit.setAttribute("aria-label", `${criterion.label} hard limit${criterion.unit === "pence" ? " in pounds" : ""}`);
-    limit.placeholder = "Enter a limit";
+    bindUIAttribute(limit, "aria-label", criterion.unit === "pence" ? "{label} hard limit in pounds" : "{label} hard limit", { label: () => configuredText(criterion.label) });
+    bindUIAttribute(limit, "placeholder", "Enter a limit");
     if (constraint) limit.value = criterion.unit === "pence" ? (constraint.value / 100).toFixed(2) : String(constraint.value);
     limitRow.hidden = !check.checked;
     check.addEventListener("change", () => { limitRow.hidden = !check.checked; invalidateDecision(); if (check.checked) limit.focus(); });
@@ -96,9 +120,9 @@ function criteriaControls(scenario) {
 }
 
 function finiteInput(value, name, limit = 1e12) {
-  if (!value.trim() || !/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(value.trim())) throw new ServiceError(`Enter a valid number for ${name}.`, 422);
+  if (!value.trim() || !/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(value.trim())) throw new ServiceError("Enter a valid number for {name}.", 422, [], { name });
   const number = Number(value);
-  if (!Number.isFinite(number) || Math.abs(number) > limit) throw new ServiceError(`${name} must be finite and no larger than ${limit} in magnitude.`, 422);
+  if (!Number.isFinite(number) || Math.abs(number) > limit) throw new ServiceError("{name} must be finite and no larger than {limit} in magnitude.", 422, [], { name, limit });
   return number;
 }
 
@@ -117,9 +141,9 @@ function currentDecisionRequest() {
       let value;
       if (criterion.unit === "pence") {
         const match = /^([+-]?)(\d+)(?:\.(\d{1,2}))?$/.exec(text.trim());
-        if (!match) throw new ServiceError(`${criterion.label} needs a GBP amount with at most two decimal places.`, 422);
+        if (!match) throw new ServiceError("{label} needs a GBP amount with at most two decimal places.", 422, [], { label: () => configuredText(criterion.label) });
         value = (Number(match[2]) * 100 + Number((match[3] || "").padEnd(2, "0"))) * (match[1] === "-" ? -1 : 1);
-        if (!Number.isSafeInteger(value) || Math.abs(value) > 1e12) throw new ServiceError(`${criterion.label} exceeds the supported money range.`, 422);
+        if (!Number.isSafeInteger(value) || Math.abs(value) > 1e12) throw new ServiceError("{label} exceeds the supported money range.", 422, [], { label: () => configuredText(criterion.label) });
       } else value = finiteInput(text, criterion.label);
       constraints.push({ criterion_id: criterion.id, operator: $(`limit-operator-${criterion.id}`).value, value });
     }
@@ -131,45 +155,45 @@ function currentDecisionRequest() {
 function renderDecisionBrief(container, result) {
   const card = element("article", "decision-recommendation");
   const heading = element("div", "decision-recommendation-heading");
-  heading.append(element("span", "eyebrow", "CALCULATED RECOMMENDATION"), element("span", "fit-score", result.recommended ? fitLabel(result.recommended.score) : "No match"));
+  heading.append(uiElement("span", "eyebrow", "CALCULATED RECOMMENDATION"), result.recommended ? element("span", "fit-score", fitLabel(result.recommended.score)) : uiElement("span", "fit-score", "No match"));
   card.append(heading);
   if (!result.recommended) {
-    card.append(element("h3", "", "No option meets these limits."), element("p", "section-copy", result.summary));
+    card.append(uiElement("h3", "", "No option meets these limits."), uiElement("p", "section-copy", result.summary));
   } else {
     card.append(element("h3", "", result.recommended.name), element("p", "section-copy", result.recommended.description));
     const facts = element("div", "decision-facts");
     for (const criterion of result.criteria) {
       const fact = element("div", "decision-fact");
-      fact.append(element("span", "", criterion.label), element("strong", "", displayMeasure(metricValue(result.recommended.metrics, criterion.id), criterion)));
+      fact.append(configuredElement("span", "", criterion.label, result.scenario_id === "custom"), uiElement("strong", "", "{value}", { value: () => displayMeasure(metricValue(result.recommended.metrics, criterion.id), criterion, result.scenario_id === "custom") }));
       facts.append(fact);
     }
     card.append(facts);
     const reasons = element("ul", "reasons");
-    for (const reason of result.recommended.reasons || []) reasons.append(element("li", "", reason));
+    for (const reason of result.recommended.reasons || []) { const item = element("li"); item.append(decisionReason(reason, result.scenario_id === "custom")); reasons.append(item); }
     card.append(reasons);
   }
-  card.append(element("p", "fit-explainer", "Relative preference fit among feasible options, not a probability, forecast or independent truth check."));
+  card.append(uiElement("p", "fit-explainer", "Relative preference fit among feasible options, not a probability, forecast or independent truth check."));
   container.append(card);
 }
 
 function renderDecision(container, result, warnings) {
   clear(container);
   container.classList.remove("result-enter");
-  container.append(element("p", "comparison-summary", result.summary));
+  container.append(uiElement("p", "comparison-summary", result.summary));
   renderDecisionBrief(container, result);
   if (result.ranked.length) {
     const heading = element("div", "comparison-table-heading");
-    heading.append(element("h3", "", "Compare the trade-offs"), element("span", "micro-copy", `${result.ranked.length} feasible · ${result.excluded.length} excluded`));
+    heading.append(uiElement("h3", "", "Compare the trade-offs"), uiElement("span", "micro-copy", "{count} feasible · {excluded} excluded", { count: result.ranked.length, excluded: result.excluded.length }));
     container.append(heading);
     const scroll = element("div", "comparison-scroll");
-    scroll.tabIndex = 0; scroll.setAttribute("role", "region"); scroll.setAttribute("aria-label", "Option comparison table");
+    scroll.tabIndex = 0; scroll.setAttribute("role", "region"); bindUIAttribute(scroll, "aria-label", "Option comparison table");
     const table = element("table", "comparison-table");
     table.dataset.testid = "decision-table";
-    const caption = element("caption", "sr-only", "Feasible options ranked by relative preference fit. Actual measurements and units are listed for comparison.");
+    const caption = uiElement("caption", "sr-only", "Feasible options ranked by relative preference fit. Actual measurements and units are listed for comparison.");
     const head = element("thead");
     const headingRow = element("tr");
-    headingRow.append(element("th", "", "Option"), element("th", "", "Relative fit"));
-    for (const criterion of result.criteria) headingRow.append(element("th", "", criterion.label));
+    headingRow.append(uiElement("th", "", "Option"), uiElement("th", "", "Relative fit"));
+    for (const criterion of result.criteria) headingRow.append(configuredElement("th", "", criterion.label, result.scenario_id === "custom"));
     head.append(headingRow);
     const body = element("tbody");
     for (const [index, option] of result.ranked.entries()) {
@@ -177,33 +201,36 @@ function renderDecision(container, result, warnings) {
       const name = element("th", "", option.name); name.scope = "row";
       name.append(element("small", "", option.category));
       const score = element("td", "table-score", fitLabel(option.score));
-      const meter = document.createElement("meter"); meter.min = 0; meter.max = 100; meter.value = option.score; meter.setAttribute("aria-label", `${option.name} relative fit`);
+      const meter = document.createElement("meter"); meter.min = 0; meter.max = 100; meter.value = option.score; bindUIAttribute(meter, "aria-label", "{name} relative fit", { name: option.name });
       score.append(meter);
       row.append(name, score);
-      for (const criterion of result.criteria) row.append(element("td", "", displayMeasure(metricValue(option.metrics, criterion.id), criterion)));
+      for (const criterion of result.criteria) row.append(uiElement("td", "", "{value}", { value: () => displayMeasure(metricValue(option.metrics, criterion.id), criterion, result.scenario_id === "custom") }));
       body.append(row);
     }
     table.append(caption, head, body); scroll.append(table); container.append(scroll);
     const explanation = element("details", "decision-explanation");
-    explanation.append(element("summary", "", "Why this result? Show weighted contributions"));
-    for (const contribution of result.recommended.contributions || []) explanation.append(element("p", "", `${contribution.label}: ${displayMeasure(contribution.value, contribution)} · importance ${contribution.weight} · ${Number(contribution.points.toFixed(2))} fit points.`));
+    explanation.append(uiElement("summary", "", "Why this result? Show weighted contributions"));
+    for (const contribution of result.recommended.contributions || []) explanation.append(uiElement("p", "", "{label}: {value} · importance {weight} · {points} fit points.", { label: () => configuredText(contribution.label, result.scenario_id === "custom"), value: () => displayMeasure(contribution.value, contribution, result.scenario_id === "custom"), weight: contribution.weight, points: Number(contribution.points.toFixed(2)) }));
     container.append(explanation);
   }
   if (result.excluded.length) {
     const excluded = element("details", "decision-excluded");
     excluded.dataset.testid = "decision-exclusions"; excluded.open = true;
-    excluded.append(element("summary", "", `${result.excluded.length} excluded by limits, availability or missing data`));
+    excluded.append(uiElement("summary", "", "{count} excluded by limits, availability or missing data", { count: result.excluded.length }));
     for (const option of result.excluded) {
       const item = element("div", "excluded-option");
-      item.append(element("strong", "", option.name), element("p", "", option.reasons.join(" ")));
+      item.append(element("strong", "", option.name));
+      const reasons = element("p");
+      for (const reason of option.reasons) reasons.append(decisionReason(reason, result.scenario_id === "custom"), document.createTextNode(" "));
+      item.append(reasons);
       excluded.append(item);
     }
     container.append(excluded);
   }
   const provenance = element("details", "provenance decision-provenance");
-  provenance.append(element("summary", "", "Two-source provenance and limitations"));
-  for (const source of result.sources) provenance.append(element("p", "", `${source.label} · ${source.is_simulated ? "Simulated" : "User-labelled; not independently verified"} · Updated ${source.updated_at}`));
-  for (const limitation of result.limitations || []) provenance.append(element("p", "", limitation));
+  provenance.append(uiElement("summary", "", "Two-source provenance and limitations"));
+  for (const source of result.sources) provenance.append(uiElement("p", "", "{label} · {simulation} · Updated {date}", { label: source.label, simulation: () => i18n.t(source.is_simulated ? "Simulated" : "User-labelled; not independently verified"), date: source.updated_at }));
+  for (const limitation of result.limitations || []) provenance.append(uiElement("p", "", limitation));
   container.append(provenance);
   renderWarnings(container, warnings);
   requestAnimationFrame(() => container.classList.add("result-enter"));
@@ -253,8 +280,8 @@ async function loadDecisionScenario(id) {
     if (token !== decisionState.token) return;
     decisionState.scenario = envelope.data.scenario;
     decisionState.dataset = envelope.data.dataset;
-    $("scenario-description").textContent = envelope.data.scenario.description;
-    $("scenario-notice").textContent = envelope.data.scenario.notice;
+    uiText($("scenario-description"), envelope.data.scenario.description);
+    uiText($("scenario-notice"), envelope.data.scenario.notice);
     criteriaControls(envelope.data.scenario);
     $("decision-fields").disabled = false;
     setDecisionBusy(false);
@@ -279,8 +306,8 @@ async function loadDecisionCatalog() {
     decisionState.scenarios = envelope.data.scenarios;
     clear($("decision-scenario")); clear($("scenario-shortcuts"));
     for (const scenario of decisionState.scenarios) {
-      $("decision-scenario").append(new Option(scenario.title, scenario.id));
-      const button = element("button", "scenario-shortcut", scenario.title);
+      const option = new Option("", scenario.id); uiText(option, scenario.title); $("decision-scenario").append(option);
+      const button = uiElement("button", "scenario-shortcut", scenario.title);
       button.type = "button"; button.dataset.scenarioId = scenario.id;
       button.addEventListener("click", () => { playFeedback("select"); void loadDecisionScenario(scenario.id); });
       $("scenario-shortcuts").append(button);
@@ -347,13 +374,13 @@ function initDecisionUI() {
   $("sound-toggle").addEventListener("click", () => {
     decisionState.sound = !decisionState.sound;
     $("sound-toggle").setAttribute("aria-pressed", String(decisionState.sound));
-    $("sound-toggle").textContent = decisionState.sound ? "Sound on" : "Sound off";
+    uiText($("sound-toggle"), decisionState.sound ? "Sound on" : "Sound off");
     playFeedback("select");
   });
   const applyTheme = (dark) => {
     document.documentElement.dataset.theme = dark ? "dark" : "light";
     $("theme-toggle").setAttribute("aria-pressed", String(dark));
-    $("theme-toggle").textContent = dark ? "Light theme" : "Dark theme";
+    uiText($("theme-toggle"), dark ? "Light theme" : "Dark theme");
   };
   try { applyTheme(localStorage.getItem("my-jinni-theme") === "dark"); } catch { applyTheme(false); }
   $("theme-toggle").addEventListener("click", () => {

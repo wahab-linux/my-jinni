@@ -220,9 +220,11 @@ mark { background: #e6d994; color: inherit; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 
 :root[data-theme="dark"] { color-scheme: dark; --ink: #efedf9; --muted: #b1aec4; --teal: #b3a4ff; --teal-dark: #c5baff; --line: #343547; --cream: #10121c; --paper: #1a1c29; --soft: #2d2848; --lamp-gold: #e9c779; --danger: #ffb6a8; }
-.app-header { background: var(--paper); gap: 18px; }
+.app-header { background: var(--paper); gap: 18px; min-height: 76px; height: auto; padding-block: 14px; }
 .workspace-label { display: none; }
-.header-actions { gap: 8px; }
+.header-actions { gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.language-control { margin: 0; display: flex; align-items: center; }
+.language-control select { width: 108px; min-height: 35px; margin: 0; padding: 6px 9px; font-size: 11px; border-color: var(--line); background: var(--paper); color: var(--ink); }
 .header-actions .button { white-space: nowrap; }
 .button.primary { color: #fff; }
 [data-theme="dark"] .button.primary { color: #19132e; }

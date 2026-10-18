@@ -9,6 +9,8 @@
     if (stored === 'light' || stored === 'dark') preference = stored;
   } catch { storageAvailable = false; }
 
+  const i18n = window.jinniI18n;
+  const translate = (key, params = {}) => i18n ? i18n.t(key, params) : key;
   function apply() {
     const theme = preference === 'system' ? (system.matches ? 'dark' : 'light') : preference;
     document.documentElement.dataset.theme = theme;
@@ -16,15 +18,20 @@
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#10121c' : '#f5f5fa');
     const toggle = document.getElementById('theme-toggle');
     if (toggle) {
-      toggle.setAttribute('aria-label', `Appearance: ${preference === 'system' ? 'Match device' : preference === 'light' ? 'Light' : 'Dark'}`);
-      document.getElementById('theme-label').textContent = preference === 'system' ? 'Auto' : preference === 'light' ? 'Light' : 'Dark';
+      toggle.removeAttribute('data-i18n-aria-label');
+      toggle.setAttribute('aria-label', translate('Appearance: {mode}', { mode: translate(preference === 'system' ? 'Match device' : preference === 'light' ? 'Light' : 'Dark') }));
+      document.getElementById('theme-label').replaceChildren();
+      i18n.bindText(document.getElementById('theme-label'), preference === 'system' ? 'Auto' : preference === 'light' ? 'Light' : 'Dark');
       for (const input of document.querySelectorAll('[name="appearance"]')) input.checked = input.value === preference;
-      document.getElementById('theme-status').textContent = preference === 'system'
-        ? `Follows your device. Currently ${theme}.`
-        : `${theme === 'light' ? 'Light' : 'Dark'} appearance.${storageAvailable ? ' Remembered for your next visit.' : ' For this visit; browser storage is unavailable.'}`;
+      document.getElementById('theme-status').replaceChildren();
+      i18n.bindText(document.getElementById('theme-status'), preference === 'system'
+        ? 'Follows your device. Currently {theme}.'
+        : storageAvailable ? '{theme} appearance. Remembered for your next visit.' : '{theme} appearance. For this visit; browser storage is unavailable.',
+      { theme: preference === 'system' && i18n.getLocale() === 'en' ? theme : translate(theme === 'light' ? 'Light' : 'Dark') });
     }
   }
   apply();
+  i18n.onChange(apply);
   system.addEventListener('change', () => { if (preference === 'system') apply(); });
   window.addEventListener('storage', (event) => {
     if (event.key !== key && event.key !== null) return;
@@ -58,9 +65,10 @@
     if (!input) return;
     input.checked = enabled && !reduced.matches;
     input.disabled = reduced.matches;
-    document.getElementById('waves-status').textContent = reduced.matches
+    document.getElementById('waves-status').replaceChildren();
+    window.jinniI18n.bindText(document.getElementById('waves-status'), reduced.matches
       ? 'Waves are still because your device requests reduced motion.'
-      : enabled ? 'Slow, subtle movement. Turn it off whenever you like.' : 'Waves are still. Your other settings stay the same.';
+      : enabled ? 'Slow, subtle movement. Turn it off whenever you like.' : 'Waves are still. Your other settings stay the same.');
   };
   apply();
   reduced.addEventListener('change', apply);

@@ -7,6 +7,8 @@ Repository: [wahab-linux/my-jinni](https://github.com/wahab-linux/my-jinni). Loc
 
 The product is named **jinni**. Its original lamp mark connects the idea of a helpful genie with making an informed choice. It is the team's independent prototype, not an official BlackRock or Aladdin product. Existing repository URLs, launcher filename, local storage identifiers and API identity retain `my-jinni` so existing installations and source libraries continue to work.
 
+The desktop and browser interfaces support English, Simplified Chinese, French, Japanese and Russian through the language selector. English is the default; each experience remembers its local language preference. This changes interface text, not the original language of imported documents, exact citation quotations or provider answers. Comparison inputs, GBP amounts and canonical API data retain their existing meaning. Cross-language search is not added by UI translation.
+
 ## Browser edition on GitHub Pages
 
 The browser edition runs the general comparison workspace, detailed activity example, local source library, TXT/Markdown/text-PDF import and selected-source passage search without installing Python or Electron. All preset data is visibly fictional. Sources stay in this browser's IndexedDB; they are separate from the desktop library. Cloud AI questions remain a desktop feature; browser search returns original excerpts, not generated answers.

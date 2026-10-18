@@ -26,12 +26,35 @@ const state = {
 
 const $ = (id) => document.getElementById(id);
 const bridge = window.myJinni;
+const i18n = window.jinniI18n;
+const presentationBindings = new Set();
+
+function resolvedParams(params) {
+  return Object.fromEntries(Object.entries(params).map(([key, value]) => [key, typeof value === "function" ? value() : value]));
+}
+
+function uiText(node, key, params = {}) {
+  i18n.bindText(node, key, resolvedParams(params));
+  if (Object.values(params).some((value) => typeof value === "function")) presentationBindings.add({ target: new WeakRef(node), key, params });
+  return node;
+}
+
+function uiElement(tag, className, key, params = {}) {
+  return uiText(element(tag, className), key, params);
+}
+
+function bindUIAttribute(node, attribute, key, params = {}) {
+  const binding = { target: new WeakRef(node), attribute, key, params };
+  presentationBindings.add(binding);
+  node.setAttribute(attribute, i18n.t(key, resolvedParams(params)));
+}
 
 class ServiceError extends Error {
-  constructor(message, status = 0, details = []) {
+  constructor(message, status = 0, details = [], params = {}) {
     super(message);
     this.status = status;
     this.details = details;
+    this.params = params;
   }
 }
 
@@ -46,14 +69,14 @@ function clear(container) {
   container.replaceChildren();
 }
 
-function showFeedback(id, message = "", kind = "", retry = null) {
+function showFeedback(id, message = "", kind = "", retry = null, params = {}) {
   const target = typeof id === "string" ? $(id) : id;
   target.className = `feedback${kind ? ` ${kind}` : ""}`;
   target.setAttribute("role", kind === "error" ? "alert" : "status");
   clear(target);
-  if (message) target.append(element("span", "", message));
+  if (message) target.append(uiElement("span", "", message, params));
   if (retry) {
-    const button = element("button", "text-button", "Try again");
+    const button = uiElement("button", "text-button", "Try again");
     button.type = "button";
     button.addEventListener("click", retry);
     target.append(button);
@@ -64,7 +87,7 @@ function showError(id, error, retry = null) {
   const safe = error instanceof ServiceError
     ? error
     : new ServiceError("The desktop service could not complete this request. Please try again.");
-  showFeedback(id, safe.message, "error", retry);
+  showFeedback(id, safe.message, "error", retry, safe.params);
   if (safe.details.length) {
     const list = element("ul");
     for (const detail of safe.details) {
@@ -92,9 +115,10 @@ function unwrap(response) {
   if (response.status < 200 || response.status >= 300 || response.body?.error) {
     const error = response.body?.error;
     throw new ServiceError(
-      error?.message || `The request failed (HTTP ${response.status}). Please try again.`,
+      error?.message || "The request failed (HTTP {status}). Please try again.",
       response.status,
       Array.isArray(error?.details) ? error.details : [],
+      { status: response.status },
     );
   }
   if (!response.body || response.body.data === null || response.body.data === undefined) {
@@ -123,7 +147,7 @@ function timeLabel(timestamp) {
 }
 
 function dateLabel(date) {
-  return new Intl.DateTimeFormat("en-GB", {
+  return new Intl.DateTimeFormat(i18n.getLocale() === "en" ? "en-GB" : i18n.getLocale(), {
     timeZone: "UTC", weekday: "short", day: "numeric", month: "short", year: "numeric",
   }).format(new Date(`${date}T12:00:00Z`));
 }
@@ -174,7 +198,7 @@ function currentPreferences() {
   if (!state.options) throw new ServiceError("Load the activity options before including a plan.", 422);
   const budget = penceFromText($("budget").value);
   if (budget > state.options.max_budget_pence) {
-    throw new ServiceError(`The demo budget limit is ${currency(state.options.max_budget_pence)}.`, 422);
+    throw new ServiceError("The demo budget limit is {limit}.", 422, [], { limit: currency(state.options.max_budget_pence) });
   }
   const interests = Array.from($("interests").querySelectorAll("input:checked")).map((input) => input.value);
   if (!interests.length) throw new ServiceError("Choose at least one interest.", 422);
@@ -194,7 +218,7 @@ function originLabel(id) {
 
 function updatePlanButton() {
   $("plan-submit").disabled = !state.options || state.planBusy;
-  $("plan-submit").replaceChildren(document.createTextNode(state.planBusy ? "Checking activities and journeys…" : "Find a feasible plan"), element("span", "", "↗"));
+  $("plan-submit").replaceChildren(uiElement("span", "", state.planBusy ? "Checking activities and journeys…" : "Find a feasible plan"), element("span", "", "↗"));
 }
 
 function invalidatePlan() {
@@ -211,30 +235,42 @@ function invalidatePlan() {
 function renderWarnings(container, warnings = []) {
   if (!warnings.length) return;
   const list = element("ul", "warning-list");
-  for (const warning of warnings) list.append(element("li", "", warning.message));
+  for (const warning of warnings) list.append(uiElement("li", "", warning.message));
   container.append(list);
+}
+
+function activityReason(reason) {
+  const interest = /^Matches your interest in (.+)\.$/.exec(reason);
+  if (interest) return uiElement("li", "", "Matches your interest in {category}.", { category: () => i18n.t(interest[1]) });
+  const different = /^A different interest category \((.+)\) that fits your constraints\.$/.exec(reason);
+  if (different) return uiElement("li", "", "A different interest category ({category}) that fits your constraints.", { category: () => i18n.t(different[1]) });
+  const cost = /^Costs (GBP [\d.]+) including return travel, within your (GBP [\d.]+) budget\.$/.exec(reason);
+  if (cost) return uiElement("li", "", "Costs {cost} including return travel, within your {budget} budget.", { cost: cost[1], budget: cost[2] });
+  const timing = /^Arrive at ([\d:]+), at or before the activity starts; return to your selected origin at ([\d:]+), by your ([\d:]+) deadline \(([^)]+)\)\.$/.exec(reason);
+  if (timing) return uiElement("li", "", "Arrive at {arrival}, at or before the activity starts; return to your selected origin at {return}, by your {deadline} deadline ({timezone}).", { arrival: timing[1], return: timing[2], deadline: timing[3], timezone: timing[4] });
+  return uiElement("li", "", reason);
 }
 
 function activityCard(activity, originId) {
   const card = element("article", "recommendation");
   const top = element("div", "recommendation-top");
-  top.append(element("span", "", "YOUR MATCH"), element("span", "", activity.category.toUpperCase()));
+  top.append(uiElement("span", "", "YOUR MATCH"), uiElement("span", "", activity.category.toUpperCase()));
   const heading = element("div", "recommendation-title");
   const title = element("div");
   title.append(element("h3", "", activity.title), element("p", "venue-label", activity.venue_name));
   const price = element("div", "total-price", currency(activity.total_cost_pence));
-  price.append(element("small", "", "Total, including travel"));
+  price.append(uiElement("small", "", "Total, including travel"));
   heading.append(title, price);
-  const cost = element("p", "cost-line", `${currency(activity.ticket_cost_pence)} ticket + ${currency(activity.travel_cost_pence)} return travel`);
+  const cost = uiElement("p", "cost-line", "{ticket} ticket + {travel} return travel", { ticket: currency(activity.ticket_cost_pence), travel: currency(activity.travel_cost_pence) });
   const journey = element("div", "journey-row");
   const arrival = element("div", "journey-step");
-  arrival.append(element("span", "", `Arrive · ${activity.outbound_minutes} min journey`), element("b", "", timeLabel(activity.arrive_at)));
+  arrival.append(uiElement("span", "", "Arrive · {minutes} min journey", { minutes: activity.outbound_minutes }), element("b", "", timeLabel(activity.arrive_at)));
   const back = element("div", "journey-step");
-  back.append(element("span", "", `Return · ${activity.return_minutes} min journey`), element("b", "", timeLabel(activity.return_at)));
-  journey.append(arrival, element("span", "journey-arrow", "→"), back);
-  const hours = element("p", "event-hours", `Activity ${timeLabel(activity.starts_at)}–${timeLabel(activity.ends_at)} · Back to ${originLabel(originId)}`);
+  back.append(uiElement("span", "", "Return · {minutes} min journey", { minutes: activity.return_minutes }), element("b", "", timeLabel(activity.return_at)));
+  journey.append(arrival, uiElement("span", "journey-arrow", "→"), back);
+  const hours = uiElement("p", "event-hours", "Activity {start}–{end} · Back to {origin}", { start: timeLabel(activity.starts_at), end: timeLabel(activity.ends_at), origin: () => i18n.t(originLabel(originId)) });
   const reasons = element("ul", "reasons");
-  for (const reason of activity.reasons) reasons.append(element("li", "", reason));
+  for (const reason of activity.reasons) reasons.append(activityReason(reason));
   card.append(top, heading, cost, journey, hours, reasons);
   return card;
 }
@@ -245,28 +281,32 @@ function renderPlan(container, data, warnings, originId, compact = false) {
     container.append(activityCard(data.recommended, originId));
   } else {
     const noMatch = element("div", "no-match");
-    noMatch.append(element("h3", "", "No activity fits this window yet."), element("p", "", data.message || "Try a different budget, time window or interest."));
+    noMatch.append(uiElement("h3", "", "No activity fits this window yet."), uiElement("p", "", data.message || "Try a different budget, time window or interest."));
     container.append(noMatch);
   }
   if (!compact && data.alternatives?.length) {
-    container.append(element("p", "alternatives-heading", "A COUPLE OF ALTERNATIVES"));
+    container.append(uiElement("p", "alternatives-heading", "A COUPLE OF ALTERNATIVES"));
     for (const activity of data.alternatives.slice(0, 2)) {
       const alternative = element("article", "alternative");
       const description = element("div");
       description.append(element("h4", "", activity.title), element("p", "", `${activity.venue_name} · ${timeLabel(activity.starts_at)}–${timeLabel(activity.ends_at)}`));
       const price = element("div", "alternative-price", currency(activity.total_cost_pence));
-      price.append(element("small", "", `Back ${timeLabel(activity.return_at)}`));
+      price.append(uiElement("small", "", "Back {time}", { time: timeLabel(activity.return_at) }));
       alternative.append(description, price);
       container.append(alternative);
     }
   }
   const provenance = element("details", "provenance");
-  provenance.append(element("summary", "", "Source details · simulated activity and travel"));
+  provenance.append(uiElement("summary", "", "Source details · simulated activity and travel"));
   for (const source of data.sources || []) {
     const date = new Intl.DateTimeFormat("en-GB", {
       timeZone: state.options?.timezone || "Europe/London", dateStyle: "medium", timeStyle: "short",
     }).format(new Date(source.updated_at));
-    provenance.append(element("p", "", `${source.label} · Updated ${date}${source.origin_id ? ` · From ${originLabel(source.origin_id)}` : ""}. Fictional data; not live freshness.`));
+    const line = element("p");
+    line.append(element("span", "", source.label), uiElement("span", "", " · Updated {date}", { date }));
+    if (source.origin_id) line.append(uiElement("span", "", " · From {origin}", { origin: () => i18n.t(originLabel(source.origin_id)) }));
+    line.append(uiElement("span", "", ". Fictional data; not live freshness."));
+    provenance.append(line);
   }
   container.append(provenance);
   renderWarnings(container, warnings);
@@ -316,9 +356,9 @@ function populateOptions(options) {
   } : null;
   state.options = options;
   clear($("origin"));
-  for (const origin of options.origins) $("origin").append(new Option(origin.label, origin.id));
+  for (const origin of options.origins) { const option = new Option("", origin.id); uiText(option, origin.label); $("origin").append(option); }
   clear($("date"));
-  for (const date of options.supported_dates) $("date").append(new Option(dateLabel(date), date));
+  for (const date of options.supported_dates) { const option = new Option("", date); uiText(option, "{date}", { date: () => dateLabel(date) }); $("date").append(option); }
   const defaults = options.default_request;
   const departure = zoneParts(Date.parse(defaults.depart_at), options.timezone);
   const back = zoneParts(Date.parse(defaults.return_by), options.timezone);
@@ -336,11 +376,11 @@ function populateOptions(options) {
     input.value = interest.id;
     input.checked = (previous?.interests || defaults.interests).includes(interest.id);
     input.dataset.testid = `interest-${interest.id}`;
-    label.append(input, element("span", "", interest.label));
+    label.append(input, uiElement("span", "", interest.label));
     $("interests").append(label);
   }
-  $("timezone-label").textContent = `Times in ${options.timezone}`;
-  $("budget-help").textContent = `Includes travel · Max ${currency(options.max_budget_pence)}`;
+  uiText($("timezone-label"), "Times in {timezone}", { timezone: options.timezone });
+  uiText($("budget-help"), "Includes travel · Max {limit}", { limit: currency(options.max_budget_pence) });
   $("planner-fields").disabled = false;
   updatePlanButton();
 }
@@ -370,17 +410,17 @@ async function loadOptions() {
 
 function updateSelection() {
   const count = state.selectedSources.size;
-  $("chat-selection").textContent = `${count} source${count === 1 ? "" : "s"} selected`;
+  uiText($("chat-selection"), count === 1 ? "{count} source selected" : "{count} sources selected", { count });
 }
 
 function renderSources() {
   const container = $("source-list");
   clear(container);
   const sources = state.library?.sources || [];
-  $("source-count").textContent = `YOUR SOURCES · ${sources.length}`;
+  uiText($("source-count"), "YOUR SOURCES · {count}", { count: sources.length });
   if (!sources.length) {
     const empty = element("div", "library-empty");
-    empty.append(element("span", "empty-symbol", "≡"), element("h3", "", "Bring your own context."), element("p", "", "Add a guide, a useful note, or a few lines of text to get started."));
+    empty.append(uiElement("span", "empty-symbol", "≡"), uiElement("h3", "", "Bring your own context."), uiElement("p", "", "Add a guide, a useful note, or a few lines of text to get started."));
     container.append(empty);
   }
   for (const source of sources) {
@@ -400,21 +440,21 @@ function renderSources() {
       invalidateChat("Source selection changed. Ask again to use the selected context.");
     });
     const text = element("span", "source-text");
-    text.append(element("span", "source-title", source.title), element("span", "source-meta", `${source.kind} · ${source.chunk_count} passage${source.chunk_count === 1 ? "" : "s"}`));
-    if (source.is_simulated) text.append(element("span", "source-simulation", "Fictional / AI-generated"));
+    text.append(element("span", "source-title", source.title), uiElement("span", "source-meta", "{kind} · {count} passages", { kind: source.kind, count: source.chunk_count }));
+    if (source.is_simulated) text.append(uiElement("span", "source-simulation", "Fictional / AI-generated"));
     label.append(checkbox, text);
     const actions = element("div", "source-actions");
-    const view = element("button", "text-button", "View text ↗");
+    const view = uiElement("button", "text-button", "View text ↗");
     view.type = "button";
     view.dataset.testid = "source-view";
     view.dataset.sourceId = source.id;
-    view.setAttribute("aria-label", `View ${source.title}`);
+    bindUIAttribute(view, "aria-label", "View {title}", { title: source.title });
     view.addEventListener("click", () => openSource(source.id));
-    const remove = element("button", "text-button remove", "Remove");
+    const remove = uiElement("button", "text-button remove", "Remove");
     remove.type = "button";
     remove.dataset.testid = "source-delete";
     remove.dataset.sourceId = source.id;
-    remove.setAttribute("aria-label", `Remove ${source.title}`);
+    bindUIAttribute(remove, "aria-label", "Remove {title}", { title: source.title });
     remove.addEventListener("click", () => deleteSource(source.id, remove));
     actions.append(view, remove);
     item.append(label, actions);
@@ -435,7 +475,7 @@ async function refreshSources() {
     if (previousCount !== state.selectedSources.size) invalidateChat("A selected source was removed. Choose sources and ask again.");
     state.library = envelope.data;
     populateProviders(envelope.data);
-    $("library-limits").textContent = `TXT, Markdown, text PDFs · ${Math.floor(envelope.data.max_upload_bytes / 1024 / 1024)} MiB · ${envelope.data.max_sources} sources max`;
+    uiText($("library-limits"), "TXT, Markdown, text PDFs · {size} MiB · {count} sources max", { size: Math.floor(envelope.data.max_upload_bytes / 1024 / 1024), count: envelope.data.max_sources });
     renderSources();
     showFeedback("library-status");
     return true;
@@ -534,11 +574,16 @@ async function openSource(id, citation = null, planner = null, originId = null, 
   $("source-dialog-content").className = "source-dialog-content";
   $("source-dialog-title").textContent = citation?.source_title || "Source text";
   $("citation-quote").hidden = !citation;
-  $("citation-quote").textContent = citation ? `“${citation.quote}”${citation.page ? `\nPage ${citation.page}` : ""}${citation.is_simulated ? "\nFictional / simulated source" : ""}` : "";
+  clear($("citation-quote"));
+  if (citation) {
+    $("citation-quote").append(element("span", "original-quote", `“${citation.quote}”`));
+    if (citation.page) $("citation-quote").append(uiElement("div", "", "Page {page}", { page: citation.page }));
+    if (citation.is_simulated) $("citation-quote").append(uiElement("div", "", "Fictional / simulated source"));
+  }
   clear($("source-dialog-content"));
   if (!$("source-dialog").open) $("source-dialog").showModal();
   if (id === "planner-context") {
-    $("source-dialog-content").append(element("p", "section-copy", "Calculated for this question from the activity form. This simulated context is temporary and is not saved in your library."));
+    $("source-dialog-content").append(uiElement("p", "section-copy", "Calculated for this question from the activity form. This simulated context is temporary and is not saved in your library."));
     if (planner) {
       const plan = element("div");
       renderPlan(plan, planner, [], originId, true);
@@ -547,7 +592,7 @@ async function openSource(id, citation = null, planner = null, originId = null, 
     return;
   }
   if (id === "decision-context") {
-    $("source-dialog-content").append(element("p", "section-copy", "Calculated for this question from your current comparison settings. The returned decision is authoritative; this temporary context is not a saved library source."));
+    $("source-dialog-content").append(uiElement("p", "section-copy", "Calculated for this question from your current comparison settings. The returned decision is authoritative; this temporary context is not a saved library source."));
     if (decision) renderDecisionBrief($("source-dialog-content"), decision);
     return;
   }
@@ -559,10 +604,10 @@ async function openSource(id, citation = null, planner = null, originId = null, 
     $("source-dialog-title").textContent = source.title;
     $("source-dialog-content").className = "source-dialog-content";
     clear($("source-dialog-content"));
-    $("source-dialog-content").append(element("p", "micro-copy", `${source.kind.toUpperCase()} · Extracted text${source.is_simulated ? " · Fictional / AI-generated" : " · Source content is not independently verified"}`));
+    $("source-dialog-content").append(uiElement("p", "micro-copy", "{kind} · Extracted text · {notice}", { kind: source.kind.toUpperCase(), notice: () => i18n.t(source.is_simulated ? "Fictional / AI-generated" : "Source content is not independently verified") }));
     for (const chunk of chunks) {
       const passage = element("section", "source-chunk");
-      passage.append(element("p", "chunk-heading", chunk.page ? `Page ${chunk.page} · Passage ${chunk.index + 1}` : `Passage ${chunk.index + 1}`), highlightedText(chunk.text, citation?.quote));
+      passage.append(chunk.page ? uiElement("p", "chunk-heading", "Page {page} · Passage {index}", { page: chunk.page, index: chunk.index + 1 }) : uiElement("p", "chunk-heading", "Passage {index}", { index: chunk.index + 1 }), highlightedText(chunk.text, citation?.quote));
       $("source-dialog-content").append(passage);
     }
     const highlight = $("source-dialog-content").querySelector("mark");
@@ -575,7 +620,7 @@ async function openSource(id, citation = null, planner = null, originId = null, 
 
 function updateChatButton() {
   $("ask-submit").disabled = state.chatBusy;
-  $("ask-submit").replaceChildren(document.createTextNode(state.chatBusy ? "Reading selected evidence…" : "Ask with selected context"), element("span", "", "↑"));
+  $("ask-submit").replaceChildren(uiElement("span", "", state.chatBusy ? "Reading selected evidence…" : "Ask with selected context"), element("span", "", "↑"));
 }
 
 function resetChatResult() {
@@ -603,7 +648,7 @@ function renderChat(envelope, preferences) {
   state.chatData = data;
   $("chat-empty").hidden = true;
   $("chat-result").hidden = false;
-  $("answer-label").textContent = data.status === "insufficient_evidence" ? "INSUFFICIENT EVIDENCE" : "SOURCE-GROUNDED ANSWER";
+  uiText($("answer-label"), data.status === "insufficient_evidence" ? "INSUFFICIENT EVIDENCE" : "SOURCE-GROUNDED ANSWER");
   $("chat-answer").textContent = data.answer;
   clear($("citations"));
   for (const [index, citation] of (data.citations || []).entries()) {
@@ -612,27 +657,31 @@ function renderChat(envelope, preferences) {
     button.dataset.testid = "citation-reference";
     button.dataset.sourceId = citation.source_id;
     const label = element("span", "", citation.source_title);
-    label.append(element("small", "", `${citation.page ? `Page ${citation.page} · ` : ""}${citation.is_simulated ? "Simulated source · " : ""}Open exact quote ↗`));
+    const details = element("small");
+    if (citation.page) details.append(uiElement("span", "", "Page {page}", { page: citation.page }), document.createTextNode(" · "));
+    if (citation.is_simulated) details.append(uiElement("span", "", "Simulated source"), document.createTextNode(" · "));
+    details.append(uiElement("span", "", "Open exact quote ↗"));
+    label.append(details);
     button.append(element("b", "", index + 1), label);
     button.addEventListener("click", () => openSource(citation.source_id, citation, data.planner, preferences?.origin_id, data.decision));
     $("citations").append(button);
   }
   clear($("chat-planner"));
   if (data.planner) {
-    $("chat-planner").append(element("h4", "", "YOUR CALCULATED PLAN · AUTHORITATIVE COST AND TIMING"));
+    $("chat-planner").append(uiElement("h4", "", "YOUR CALCULATED PLAN · AUTHORITATIVE COST AND TIMING"));
     const planner = element("div");
     renderPlan(planner, data.planner, [], preferences?.origin_id, true);
     $("chat-planner").append(planner);
   }
   clear($("chat-decision"));
   if (data.decision) {
-    $("chat-decision").append(element("h4", "", "AUTHORITATIVE CALCULATED COMPARISON"));
+    $("chat-decision").append(uiElement("h4", "", "AUTHORITATIVE CALCULATED COMPARISON"));
     renderDecisionBrief($("chat-decision"), data.decision);
   }
   clear($("chat-warnings"));
   renderWarnings($("chat-warnings"), envelope.warnings);
   const recipient = providerLabel(data.provider || state.provider);
-  $("chat-model-label").textContent = data.model ? `${recipient} · ${data.model} · This question has no chat history.` : `${recipient} selected · No AI call was needed for this response.`;
+  uiText($("chat-model-label"), data.model ? "{provider} · {model} · This question has no chat history." : "{provider} selected · No AI call was needed for this response.", { provider: recipient, model: data.model });
 }
 
 async function submitChat(event) {
@@ -671,7 +720,7 @@ async function submitChat(event) {
     resetChatResult();
     showError("chat-feedback", error, submitChat);
     if (error instanceof ServiceError && error.status === 401) {
-      const settings = element("button", "text-button", "Open AI session settings");
+      const settings = uiElement("button", "text-button", "Open AI session settings");
       settings.type = "button";
       settings.addEventListener("click", openSettings);
       $("chat-feedback").append(settings);
@@ -686,7 +735,7 @@ async function submitChat(event) {
 
 function setKeyIndicator(configured) {
   state.keyConfigured = Boolean(configured);
-  $("key-indicator").textContent = configured ? "Session key saved" : "Key not set";
+  uiText($("key-indicator"), configured ? "Session key saved" : "Key not set");
   $("key-indicator").classList.toggle("configured", Boolean(configured));
 }
 
@@ -724,8 +773,8 @@ function renderProviderChoice() {
   $("settings-provider").value = state.provider;
   $("model").value = state.models.get(state.provider) || "";
   $("settings-model").value = state.models.get(state.provider) || "";
-  $("cloud-recipient").textContent = providerLabel();
-  $("api-key-label").textContent = `${providerLabel()} API key`;
+  uiText($("cloud-recipient"), providerLabel());
+  uiText($("api-key-label"), "{provider} API key", { provider: providerLabel() });
 }
 
 function chooseProvider(providerId) {
@@ -766,14 +815,14 @@ async function refreshKeySettings() {
   $("save-key").disabled = false;
   $("clear-key").disabled = false;
   state.keyConfigured = false;
-  $("key-indicator").textContent = "Checking session key…";
+  uiText($("key-indicator"), "Checking session key…");
   $("key-indicator").classList.remove("configured");
-  showFeedback("key-status", `Checking the ${providerLabel(provider)} session key…`, "loading");
+  showFeedback("key-status", "Checking the {provider} session key…", "loading", null, { provider: providerLabel(provider) });
   try {
     const settings = sessionSettings(await call("getSessionSettings", provider));
     if (token !== state.keySettingsToken || provider !== state.provider) return;
     setKeyIndicator(settings.configured);
-    showFeedback("key-status", settings.configured ? `${providerLabel(provider)} key saved for this session. Account access has not been checked.` : `No ${providerLabel(provider)} key is saved. Planning and your library are still available.`);
+    showFeedback("key-status", settings.configured ? "{provider} key saved for this session. Account access has not been checked." : "No {provider} key is saved. Planning and your library are still available.", "", null, { provider: providerLabel(provider) });
   } catch (error) {
     if (token !== state.keySettingsToken || provider !== state.provider) return;
     setKeyIndicator(false);
@@ -796,7 +845,7 @@ async function saveKey(event) {
     const settings = sessionSettings(await call("setSessionApiKey", { provider, key }));
     if (token !== state.keySettingsToken || provider !== state.provider) return;
     setKeyIndicator(settings.configured);
-    showFeedback("key-status", `${providerLabel(provider)} key saved for this session. Access is checked when you ask an AI question.`, "success");
+    showFeedback("key-status", "{provider} key saved for this session. Access is checked when you ask an AI question.", "success", null, { provider: providerLabel(provider) });
   } catch (error) {
     if (token !== state.keySettingsToken || provider !== state.provider) return;
     showError("key-status", error);
@@ -814,7 +863,7 @@ async function clearKey() {
     const settings = sessionSettings(await call("clearSessionApiKey", provider));
     if (token !== state.keySettingsToken || provider !== state.provider) return;
     setKeyIndicator(settings.configured);
-    showFeedback("key-status", `${providerLabel(provider)} session key cleared. Other providers, the planner and library are unchanged.`, "success");
+    showFeedback("key-status", "{provider} session key cleared. Other providers, the planner and library are unchanged.", "success", null, { provider: providerLabel(provider) });
   } catch (error) {
     if (token !== state.keySettingsToken || provider !== state.provider) return;
     showError("key-status", error);
@@ -826,7 +875,7 @@ async function clearKey() {
 function renderBackendStatus(status) {
   state.backend = status.state;
   $("backend-status").className = `connection-badge ${status.state}`;
-  $("backend-status").textContent = status.state === "ready" ? "Local service ready" : status.message || "Starting local service…";
+  uiText($("backend-status"), status.state === "ready" ? "Local service ready" : status.message || "Starting local service…");
   $("backend-status").title = status.message || "";
   $("backend-retry").hidden = status.state !== "error";
 }
@@ -903,3 +952,13 @@ updateChatButton();
 initDecisionUI();
 pollBackend();
 void refreshKeySettings();
+i18n.mountPicker($("language-select"));
+i18n.apply(document);
+i18n.onChange(() => {
+  for (const binding of presentationBindings) {
+    const node = binding.target.deref();
+    if (!node?.isConnected) { presentationBindings.delete(binding); continue; }
+    if (binding.attribute) node.setAttribute(binding.attribute, i18n.t(binding.key, resolvedParams(binding.params)));
+    else i18n.bindText(node, binding.key, resolvedParams(binding.params));
+  }
+});

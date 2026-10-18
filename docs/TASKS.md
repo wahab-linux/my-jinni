@@ -1,6 +1,8 @@
 # Development tasks and integration checkpoints
 
-Current brand is `jinni` (user decision, 2026-10-18). Verify the original lamp mark and product title in both experiences, keep the actual decision flow central, and inspect fresh light/dark/mobile screenshots. Preserve existing data paths and technical contracts. Distinguish mocked-provider checks from any separately observed real-key test. Language choice remains a separate decision under the repository's English-content rule.
+Current authorized work is language support only: English, Simplified Chinese, French, Japanese and Russian in both interfaces. Shared runtime/catalog tests cover fallback, local preference failures and explicit-only translation; actual browser/Electron checks cover five-language switching, persistence, long text/layout and unchanged inputs/decisions/source quotations. Keep code/docs English and use dedicated native UI resources. No backend, retrieval, provider, currency or decision-policy expansion belongs to this increment.
+
+Current brand is `jinni` (user decision, 2026-10-18). Verify the original lamp mark and product title in both experiences, keep the actual decision flow central, and inspect fresh light/dark/mobile screenshots. Preserve existing data paths and technical contracts. Distinguish mocked-provider checks from any separately observed real-key test. The user approved a narrow English-content exception for native UI catalogs and localization fixtures; other tracked content remains English.
 
 The latest scope is additive v0.5: a general comparison workspace across market, travel, student, sustainability and custom criteria/data. [GENERAL_DECISIONS.md](GENERAL_DECISIONS.md) owns its frozen contract. Preserve all previous activity/library/provider/browser work, and treat the detailed activity flow below as a retained example rather than the product boundary.
 

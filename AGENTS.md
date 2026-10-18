@@ -2,7 +2,7 @@
 
 - The product's visible name is `jinni`, as requested on 2026-10-18. Use an original lamp motif and keep decisions central. Repository paths, existing storage/IPC identifiers and the technical API identity retain `my-jinni` for compatibility; a visible brand update must not move or discard existing user data.
 
-- Keep all tracked repository content in English, including documentation, prompts, comments, UI copy, metadata, and AI usage records.
+- Keep code, comments, documentation, prompts, metadata and AI usage records in English. The user approved English, Simplified Chinese (`zh-CN`), French (`fr`), Japanese (`ja`) and Russian (`ru`) interface resources on 2026-10-18. Native-language strings are allowed in dedicated locale catalogs, language autonyms and localization test fixtures. Default to English, with an explicit language selector. This exception does not authorize translating user evidence, exact quotations, schema identifiers or stored decision inputs.
 - Read `docs/PROJECT_PLAN.md`, `docs/REQUIREMENTS.md`, `docs/ARCHITECTURE.md`, `docs/API.md`, `docs/TASKS.md`, and your assigned prompt before editing.
 - The user owns backend work; Wahab owns the Electron desktop interface. Backend changes belong in `app/`, `data/`, `tests/`, and `scripts/`; client changes belong in `desktop/`. Coordinate shared contracts, Node/Python dependencies, and documentation before editing them.
 - Preserve the contract in `docs/openapi.json` and the response examples in `contracts/fixtures/`. Do not silently rename fields or change money/time units.
