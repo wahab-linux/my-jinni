@@ -4,6 +4,10 @@ This historical log preserves the team's original Level 4 intention and the late
 
 The final submission statement is maintained separately in [AI_USAGE_SUBMISSION.md](AI_USAGE_SUBMISSION.md). It reports Level 5 based on the team's later clarification and the official scale, while preserving the earlier Level 4 intention in this historical record.
 
+## Post-event closeout 2026-10-18
+
+Theo confirmed the event had ended and explicitly requested archiving and closeout. Codex checked the clean, up-to-date repository, completed-agent states and absence of attached worktrees or pull requests, prepared the English closeout record and marked earlier task/plan entries historical. Required Ruff lint/format and all 677 Python tests passed during closeout; the existing dependency warning remains. Product code and dependencies were unchanged. The final source snapshot and materials are preserved through Git and a local archive; credentials, personal libraries and runtime dependencies are excluded. The current chat is archived only after those actions finish. Provider accounts, user-owned processes and Discord messages are not changed. No judging or prize outcome is claimed.
+
 ## Confirmed development model and paid access 2026-10-18
 
 Theo explicitly identified the development model as **GPT-6.1 Sol through Codex** and confirmed that at least one team member used paid subscription access or paid credits. These facts supersede earlier statements that the exact model or premium access had not been recorded. The judge-facing report, README, pitch and speaker guide now identify that model and paid use directly. Runtime DeepSeek deepseek-flash verification remains separate. No specific subscription tier, account owner or additional development model is inferred.

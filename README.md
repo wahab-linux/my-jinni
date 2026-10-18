@@ -2,6 +2,8 @@
 
 # Jinni
 
+Hackathon milestone closed on **18 October 2026**. [Final materials and closeout record](docs/HACKATHON_WRAP_UP.md).
+
 Compare your options using priorities, hard limits and evidence. Jinni shows why a choice fits, what you give up, and which alternatives remain.
 
 Built by **Team39** — **Theo** (backend) and **Wahab** (interface) — for the **DYHTG 2026 BlackRock challenge**. Independent team prototype; not an official BlackRock or Aladdin product.

@@ -1,5 +1,7 @@
 # Jinni project plan
 
+**Hackathon development closed on 18 October 2026 at Theo's request.** See [the closeout record](HACKATHON_WRAP_UP.md) for the final baseline, materials, verification and future backlog. The increments below are historical development records; they are not active assignments.
+
 Latest credential-storage direction, 2026-10-18: the user explicitly requested persistent provider keys. Desktop main now stores only OS-encrypted, provider-bound ciphertext in `jinni-credentials.json` under its existing user-data directory, using Electron `safeStorage` (Windows DPAPI). Restart restores keys; deleting a provider removes its saved entry; quitting clears only decrypted memory. Unavailable encryption, Linux `basic_text`, corrupt/decryption failures and failed writes fail closed without plaintext fallback. Settings still return only `{configured}` and existing IPC names and header-only HTTP contracts are retained. No keys enter SQLite, renderer storage, prompts, logs or Git. This supersedes earlier session-only storage descriptions. Model choices remain session-only; Google ADC is unchanged.
 
 ## Product and delivery
