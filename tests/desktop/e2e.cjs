@@ -52,8 +52,26 @@ async function library(page) {
   await closeTools(page); await page.locator('#library-open').click();
 }
 async function ai(page) {
-  if (await page.locator('#desktop-ai-dialog').isVisible()) return;
   await closeTools(page); await page.locator('#desktop-ai-open').click();
+}
+async function settings(page, trigger = 'desktop-ai-settings-open') {
+  if (await page.locator('#desktop-ai-settings').isVisible()) return;
+  await closeTools(page); await page.locator(`#${trigger}`).click();
+  await page.locator('#desktop-ai-settings').waitFor();
+}
+async function closeSettings(page) {
+  if (await page.locator('#desktop-ai-settings').isVisible()) await page.locator('#desktop-ai-settings-close').click();
+}
+async function provider(page, id) {
+  await settings(page); await page.locator('#desktop-ai-provider').selectOption(id); await closeSettings(page);
+}
+async function chooseModel(page, value) {
+  await settings(page);
+  const values = await page.locator('#desktop-ai-model-select option').evaluateAll((options) => options.map((option) => option.value));
+  await page.locator('#desktop-ai-model-select').selectOption(values.includes(value) ? value : '__custom__');
+  if (!values.includes(value)) await page.locator('#desktop-ai-model').fill(value);
+  assert.equal(await page.locator('#desktop-ai-model').inputValue(), value);
+  await closeSettings(page);
 }
 async function legacy(page) {
   await closeTools(page);
@@ -98,26 +116,29 @@ async function paste(page, base, title, text) {
 async function select(page, ids) {
   await library(page);
   for (const row of await page.locator('.source-item').all()) await row.locator('input[type=checkbox]').setChecked(ids.includes(await row.getAttribute('data-source-id')));
+  assert.deepEqual((await context(page)).sources.sort(), [...ids].sort());
 }
 async function importFile(page, app, base, directory, filename, bytes) {
   const file = path.join(directory, filename); fs.writeFileSync(file, bytes);
   await app.evaluate(({ dialog }, selected) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [selected] }); }, file);
   await library(page); await page.locator('#import-simulated').check(); await menu(page, 'import-button');
-  return waitUntil(async () => (await sources(base)).find((item) => item.filename === filename));
+  const result = await waitUntil(async () => (await sources(base)).find((item) => item.filename === filename));
+  await page.locator(`.source-item[data-source-id="${result.id}"]`).waitFor();
+  await waitUntil(() => page.locator('#import-button').isEnabled());
+  return result;
 }
 async function key(page, value, provider = 'openai') {
-  await ai(page); await page.locator('#desktop-ai-provider').selectOption(provider);
-  if (!await page.locator('#desktop-ai-key').isVisible()) await page.locator('#desktop-ai-settings > summary').click();
+  await settings(page); await page.locator('#desktop-ai-provider').selectOption(provider);
   await page.locator('#desktop-ai-key').fill(value);
   await page.locator('#desktop-ai-key-save').click();
   await waitUntil(async () => (await page.evaluate((id) => window.myJinni.getSessionSettings(id), provider)).configured);
   assert.equal(await page.locator('#desktop-ai-key').inputValue(), '');
   assert.equal((await page.evaluate(() => JSON.stringify(window.localStorage))).includes(value), false);
+  await closeSettings(page);
 }
 async function ask(page, base, question, model = 'gpt-4.1-mini') {
   await ai(page); await page.locator('#desktop-ai-include-plan').uncheck(); await page.locator('#desktop-ai-include-decision').uncheck();
-  if (!await page.locator('#desktop-ai-model').isVisible()) await page.locator('#desktop-ai-model').locator('xpath=ancestor::details[1]/summary').click();
-  await page.locator('#desktop-ai-model').fill(model); await page.locator('#desktop-ai-question').fill(question);
+  await chooseModel(page, model); await page.locator('#desktop-ai-question').fill(question);
   return submit(page, base, 'chat', '#desktop-ai-ask');
 }
 async function appearance(page, mode) {
@@ -239,6 +260,61 @@ async function sourceLibrary(page, app, base, directory) {
 
 async function providers(page, base, saved) {
   const question = 'When does the fictional museum open?';
+  await check('Ask is inline by default, while independent settings support keyboard, Escape and restored focus', async () => {
+    await closeTools(page);
+    assert.equal(await page.locator('#desktop-ai-dialog').evaluate((node) => node.tagName), 'SECTION');
+    assert.equal(await page.locator('#desktop-ai-question').isVisible(), true);
+    assert.equal(await page.locator('#desktop-ai-settings').evaluate((node) => node.tagName), 'DIALOG');
+    assert.equal(await page.locator('dialog[open]').count(), 0);
+    await page.locator('#desktop-ai-open').click();
+    assert.equal(await page.evaluate(() => document.activeElement.id), 'desktop-ai-question');
+    await page.locator('#decision-submit').click(); await page.locator('.decision-card').waitFor();
+    assert.equal(await page.locator('dialog[open]').count(), 0);
+    for (const trigger of ['desktop-ai-settings-open', 'desktop-ai-settings-nav']) {
+      await page.locator(`#${trigger}`).focus(); await page.keyboard.press('Enter');
+      assert.equal(await page.locator('#desktop-ai-settings').isVisible(), true);
+      assert.equal(await page.locator('#desktop-ai-provider').isVisible(), true);
+      await page.keyboard.press('Tab');
+      assert.equal(await page.evaluate(() => document.getElementById('desktop-ai-settings').contains(document.activeElement)), true);
+      await page.keyboard.press('Escape');
+      assert.equal(await page.locator('#desktop-ai-settings').isVisible(), false);
+      assert.equal(await page.evaluate(() => document.activeElement.id), trigger);
+    }
+    await screenshot(page, 'inline-ai-default.png');
+  });
+  await check('provider-specific suggested models and custom model selections retain independent session memory', async () => {
+    const catalog = (await json(base, '/api/v1/sources')).data.providers;
+    const optionLists = new Map();
+    await settings(page);
+    for (const item of catalog) {
+      await page.locator('#desktop-ai-provider').selectOption(item.id);
+      const values = await page.locator('#desktop-ai-model-select option').evaluateAll((options) => options.map((option) => option.value));
+      assert.equal(new Set(values).size, values.length); assert.ok(values.includes('__custom__'));
+      if (item.default_model) assert.ok(values.includes(item.default_model));
+      optionLists.set(item.id, values.filter((value) => value !== '__custom__'));
+      const suggested = values.find((value) => value !== '__custom__' && value !== item.default_model) || item.default_model;
+      if (suggested) {
+        await page.locator('#desktop-ai-model-select').selectOption(suggested);
+        assert.equal(await page.locator('#desktop-ai-model').inputValue(), suggested);
+        assert.equal(await page.locator('#desktop-ai-model').isVisible(), false);
+      }
+      await page.locator('#desktop-ai-model-select').selectOption('__custom__');
+      await page.locator('#desktop-ai-model').fill(`custom-${item.id}-model`);
+      assert.equal(await page.locator('#desktop-ai-model').isVisible(), true);
+    }
+    assert.notDeepEqual(optionLists.get('openai'), optionLists.get('deepseek'));
+    for (const item of catalog) {
+      await page.locator('#desktop-ai-provider').selectOption(item.id);
+      assert.equal(await page.locator('#desktop-ai-model-select').inputValue(), '__custom__');
+      assert.equal(await page.locator('#desktop-ai-model').inputValue(), `custom-${item.id}-model`);
+      await contains(page.locator('#desktop-ai-cloud-notice'), item.label);
+      if (item.default_model) await page.locator('#desktop-ai-model-select').selectOption(item.default_model);
+      else await page.locator('#desktop-ai-model').fill('');
+    }
+    await page.locator('#desktop-ai-provider').selectOption('openai');
+    await closeSettings(page); await contains(page.locator('#desktop-ai-cloud-notice'), 'OpenAI');
+    await settings(page); await screenshot(page, 'independent-ai-settings.png'); await closeSettings(page);
+  });
   await check('missing-key feedback stays explicit while deterministic planning remains enabled', async () => {
     assert.equal((await ask(page, base, question)).status, 401); await contains(page.locator('#desktop-ai-feedback'), 'key');
     assert.deepEqual(await page.evaluate(() => window.myJinni.getSessionSettings()), { configured: false }); assert.equal(await page.locator('#plan-submit').isEnabled(), true);
@@ -255,6 +331,12 @@ async function providers(page, base, saved) {
     await page.locator('#desktop-ai-citations button').first().click(); await contains(page.locator('#viewer-content'), saved.text);
     assert.equal(await page.locator('#viewer-content mark').innerText(), result.body.data.citations[0].quote); await contains(page.locator('#viewer-content'), 'Page 1');
     await screenshot(page, 'shared-desktop-citation-mocked.png'); await closeTools(page);
+  });
+  await check('changing selected sources clears the previous answer and changes the evidence used', async () => {
+    const calls = (await status(base)).calls; await select(page, [saved.guide.id]);
+    assert.equal(await page.locator('#desktop-ai-result').isVisible(), false);
+    const reply = await ask(page, base, question); assert.equal(reply.body.data.status, 'insufficient_evidence');
+    assert.deepEqual((await status(base)).calls, calls); await select(page, [saved.imported.id]);
   });
   await check('AI context returns exactly the real city-origin planner and comparison JSON', async () => {
     await scenario(page, 'travel'); await compare(page, base); const current = await context(page);
@@ -284,13 +366,13 @@ async function providers(page, base, saved) {
     assert.equal((await submit(page, base, 'chat', '#desktop-ai-ask')).status, 200); await contains(page.locator('#desktop-ai-answer'), '11:00');
   });
   await check('editing a slow MOCKED question prevents stale success', async () => {
-    await page.locator('#desktop-ai-model').fill('test-slow'); await page.locator('#desktop-ai-question').fill(question); await page.locator('#desktop-ai-ask').click();
+    await chooseModel(page, 'test-slow'); await page.locator('#desktop-ai-question').fill(question); await page.locator('#desktop-ai-ask').click();
     await page.locator('#desktop-ai-question').fill('A different question now'); await page.waitForTimeout(650);
     assert.equal((await page.locator('#desktop-ai-answer').innerText()).includes('11:00'), false);
   });
   await check('DeepSeek, Gemini and Claude never borrow keys and return checked MOCKED citations', async () => {
     for (const [provider, model, label] of [['deepseek', 'deepseek-flash', 'DeepSeek'], ['gemini', 'gemini-3.8-flash', 'Gemini'], ['anthropic', 'claude-sonnet-4-6', 'Claude']]) {
-      await page.locator('#desktop-ai-provider').selectOption(provider); assert.equal(await page.locator('#desktop-ai-model').inputValue(), model);
+      await settings(page); await page.locator('#desktop-ai-provider').selectOption(provider); assert.equal(await page.locator('#desktop-ai-model').inputValue(), model); await closeSettings(page);
       assert.deepEqual(await page.evaluate((id) => window.myJinni.getSessionSettings(id), provider), { configured: false }); assert.equal((await ask(page, base, question, model)).status, 401);
       await key(page, `sk-${provider}-test-placeholder`, provider); const result = await ask(page, base, question, model); assert.equal(result.status, 200); assert.equal(result.body.data.provider, provider);
       assert.equal(result.body.data.citations[0].quote, saved.text); await contains(page.locator('#desktop-ai-dialog'), label);
@@ -299,18 +381,19 @@ async function providers(page, base, saved) {
     }
   });
   await check('clearing one provider preserves other keys; provider switching clears unsaved keys and stale answers', async () => {
-    await page.locator('#desktop-ai-provider').selectOption('deepseek');
+    await provider(page, 'deepseek');
     assert.equal((await ask(page, base, question, 'test-provider-error')).status, 503);
     assert.equal((await submit(page, base, 'chat', '#desktop-ai-ask')).status, 200);
-    await page.locator('#desktop-ai-key-clear').click();
+    await settings(page); await page.locator('#desktop-ai-key-clear').click();
     await waitUntil(async () => !(await page.evaluate(() => window.myJinni.getSessionSettings('deepseek'))).configured);
+    await closeSettings(page);
     for (const id of ['openai', 'gemini', 'anthropic']) assert.deepEqual(await page.evaluate((provider) => window.myJinni.getSessionSettings(provider), id), { configured: true });
     assert.equal((await ask(page, base, question, 'deepseek-flash')).status, 401); await key(page, 'sk-deepseek-test-placeholder', 'deepseek');
-    await page.locator('#desktop-ai-model').fill('test-slow'); await page.locator('#desktop-ai-question').fill(question); await page.locator('#desktop-ai-ask').click();
-    await page.locator('#desktop-ai-key').fill('unsaved-placeholder'); await page.locator('#desktop-ai-provider').selectOption('openai'); assert.equal(await page.locator('#desktop-ai-key').inputValue(), '');
+    await chooseModel(page, 'test-slow'); await page.locator('#desktop-ai-question').fill(question); await page.locator('#desktop-ai-ask').click();
+    await settings(page); await page.locator('#desktop-ai-key').fill('unsaved-placeholder'); await page.locator('#desktop-ai-provider').selectOption('openai'); assert.equal(await page.locator('#desktop-ai-key').inputValue(), ''); await closeSettings(page);
     await page.waitForTimeout(650); assert.equal((await page.locator('#desktop-ai-answer').innerText()).includes('11:00'), false);
-    await page.locator('#desktop-ai-provider').selectOption('deepseek'); await screenshot(page, 'shared-desktop-deepseek-settings.png');
-    await page.locator('#desktop-ai-provider').selectOption('openai'); await ask(page, base, question);
+    await settings(page); await page.locator('#desktop-ai-provider').selectOption('deepseek'); await screenshot(page, 'shared-desktop-deepseek-settings.png');
+    await page.locator('#desktop-ai-provider').selectOption('openai'); await closeSettings(page); await ask(page, base, question);
   });
 }
 
@@ -320,21 +403,24 @@ async function languages(page, app, base, saved) {
     const current = await context(page); const raw = await page.locator('#custom-json').inputValue(); const calls = (await status(base)).calls;
     await ask(page, base, 'When does the fictional museum open?');
     await ai(page); const answer = await page.locator('#desktop-ai-answer').innerText(); assert.ok(answer.includes('11:00'));
-    await page.locator('#desktop-ai-key').fill('unsaved-locale-placeholder');
+    await settings(page); await page.locator('#desktop-ai-key').fill('unsaved-locale-placeholder');
     for (const id of ['zh-CN', 'fr', 'ja', 'ru', 'en']) {
       await page.evaluate((value) => window.jinniI18n.setLocale(value), id); assert.equal(await page.locator('html').getAttribute('lang'), id);
       assert.equal(await page.locator('#custom-json').inputValue(), raw); assert.deepEqual(await context(page), current);
       assert.deepEqual(await page.locator('#decision-results .comparison-table').first().locator('thead th').allTextContents(), [await page.evaluate(() => window.jinniI18n.t('Your choices')), 'Price', 'Your choices']);
       assert.ok((await page.locator('#decision-results .comparison-table').first().innerText()).includes('hours'));
-      await ai(page); assert.equal(await page.locator('#desktop-ai-answer').innerText(), answer); assert.equal(await page.locator('#desktop-ai-key').inputValue(), 'unsaved-locale-placeholder');
+      assert.equal(await page.locator('#desktop-ai-answer').innerText(), answer); assert.equal(await page.locator('#desktop-ai-key').inputValue(), 'unsaved-locale-placeholder');
       assert.deepEqual(await page.evaluate(() => window.myJinni.getSessionSettings('openai')), { configured: true }); assert.equal((await page.evaluate(() => JSON.stringify(window.localStorage))).includes(TEST_KEY), false);
-      await page.locator('#desktop-ai-citations button').first().click();
-      assert.equal(await page.locator('#viewer-content mark').innerText(), saved.text);
-      await page.locator('#viewer-close').click();
     }
     const afterCalls = (await status(base)).calls;
     assert.equal(Object.values(afterCalls).reduce((sum, count) => sum + count, 0), Object.values(calls).reduce((sum, count) => sum + count, 0) + 1);
-    await page.locator('#desktop-ai-key').fill(''); await library(page);
+    await page.locator('#desktop-ai-key').fill(''); await closeSettings(page);
+    for (const id of ['zh-CN', 'fr', 'ja', 'ru', 'en']) {
+      await page.locator('#language-select').selectOption(id);
+      await page.locator('#desktop-ai-citations button').first().click();
+      assert.equal(await page.locator('#viewer-content mark').innerText(), saved.text); await page.locator('#viewer-close').click();
+    }
+    await library(page);
     for (const id of ['zh-CN', 'fr', 'ja', 'ru', 'en']) {
       await page.evaluate((value) => window.jinniI18n.setLocale(value), id);
       assert.equal(await page.locator(`.source-item[data-source-id="${saved.imported.id}"] input[type=checkbox]`).isChecked(), true);
@@ -395,7 +481,9 @@ async function sharedDesktop() {
       const info = await app.evaluate(({ app, BrowserWindow }) => { const settings = BrowserWindow.getAllWindows()[0].webContents.getLastWebPreferences(); return { name: app.getName(), userData: app.getPath('userData'), contextIsolation: settings.contextIsolation, nodeIntegration: settings.nodeIntegration, sandbox: settings.sandbox }; });
       assert.deepEqual(info, { name: 'Jinni', userData: path.join(directory, 'desktop'), contextIsolation: true, nodeIntegration: false, sandbox: true }); assert.equal(await page.evaluate(() => typeof window.require), 'undefined');
       assert.equal(await page.locator('.brand').innerText(), 'Jinni'); assert.equal(await page.locator('.brand .lamp-mark path').count(), 3);
-      assert.equal(await page.locator('#library-dialog').isVisible(), false); assert.equal(await page.locator('#desktop-ai-dialog').isVisible(), false); assert.equal(await page.locator('#legacy-planner').evaluate((node) => node.open), false);
+      assert.equal(await page.locator('#library-dialog').isVisible(), false); assert.equal(await page.locator('#desktop-ai-settings').isVisible(), false);
+      assert.equal(await page.locator('#desktop-ai-dialog').evaluate((node) => node.tagName), 'SECTION'); assert.equal(await page.locator('#desktop-ai-question').isVisible(), true);
+      assert.equal(await page.locator('#legacy-planner').evaluate((node) => node.open), false);
     });
     await decisions(page, backend.baseUrl); await planner(page, backend.baseUrl);
     const saved = await sourceLibrary(page, app, backend.baseUrl, directory); await providers(page, backend.baseUrl, saved); await languages(page, app, backend.baseUrl, saved);

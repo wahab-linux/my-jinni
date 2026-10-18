@@ -6,10 +6,10 @@ Jinni calculates comparisons in Python and can ask OpenAI to explain the calcula
 
 1. From the repository root, run `uv sync --locked` and `npm ci` once. Start with `npm run desktop`, or use `start-my-jinni.cmd` on Windows after setup.
 2. Choose a topic, set importance and limits, and calculate a comparison.
-3. Open **Ask AI** and select **OpenAI**.
-4. Expand **AI session settings**. Enter your own OpenAI API key and choose **Use for this session**. The field clears after saving. Saving a key is not a connection test.
-5. Under **Model settings**, keep the default `gpt-4.1-mini` or enter a compatible Responses/structured-output model your API account can access. API access, billing and quota are separate from having a ChatGPT subscription.
-6. Tick **Include my current comparison**. Optionally select relevant notes/files in the library. Review the notice naming OpenAI as the recipient of your question and selected evidence.
+3. Open **AI settings** from the header or the visible Ask AI panel and select **OpenAI**.
+4. Enter your own OpenAI API key and choose **Use for this session**. The field clears after saving. Saving a key is not a connection test.
+5. Keep the default `gpt-4.1-mini`, choose a suggested model, or select **Custom model** and enter a compatible Responses/structured-output model your API account can access. API access, billing and quota are separate from having a ChatGPT subscription.
+6. Close settings. In **Ask AI**, tick **Include my current comparison**. Optionally select relevant notes/files in the library. Review the notice naming OpenAI as the recipient of your question and selected evidence.
 7. Ask a question. Open a returned citation and compare the quote and calculated result with the answer.
 
 The app keeps each provider key in the Electron main process's session memory. It sends only the selected provider's key in a request header. It does not save keys in SQLite, the frontend's local storage, the presentation or Git. Restarting clears session keys. Do not paste a genuine key into chat, slides or source code.
@@ -23,6 +23,8 @@ The app keeps each provider key in the Electron main process's session memory. I
 - “What information is missing before I rely on this comparison?”
 
 Comparison questions need **Include my current comparison**. Document questions need selected, relevant notes/files. The separate **Include my current activity preferences** checkbox calculates the optional detailed itinerary. Questions do not automatically change form values or infer a budget from prose.
+
+Selected matching document passages inform AI analysis with original citations. They do not automatically fill comparison metrics or change its deterministic ranking. Enter or review structured custom data separately when a document contains measurements you want to compare.
 
 ## What OpenAI receives
 

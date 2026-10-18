@@ -1,12 +1,13 @@
-.desktop-ai-dialog { width: min(620px, calc(100% - 32px)); max-height: 90vh; }
-.desktop-ai-dialog h2 { margin-top: 0; }
-.desktop-ai-dialog form { display: grid; gap: 10px; }
-.desktop-ai-dialog label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 0; }
-.desktop-ai-dialog textarea, .desktop-ai-dialog input:not([type="checkbox"]), .desktop-ai-dialog select { width: 100%; border: 1px solid var(--control-line); background: var(--input); color: var(--ink); padding: 10px; border-radius: 8px; margin-bottom: 0; }
-.desktop-ai-dialog textarea { resize: vertical; }
-.desktop-ai-dialog .desktop-ai-check { display: flex; align-items: center; gap: 10px; }
-.desktop-ai-dialog .desktop-ai-check input { width: 17px; height: 17px; accent-color: var(--accent); }
-.desktop-ai-dialog .muted, .desktop-ai-footnote { font-size: 11px; }
+.desktop-ai-panel { margin-top: 24px; padding: 24px 28px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); scroll-margin-top: 24px; }
+.desktop-ai-settings-dialog { width: min(660px, calc(100% - 32px)); max-height: 90vh; }
+:is(.desktop-ai-panel, .desktop-ai-settings-dialog) h2 { margin-top: 0; }
+:is(.desktop-ai-panel, .desktop-ai-settings-dialog) form { display: grid; gap: 10px; }
+:is(.desktop-ai-panel, .desktop-ai-settings-dialog) label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 0; }
+:is(.desktop-ai-panel, .desktop-ai-settings-dialog) textarea, :is(.desktop-ai-panel, .desktop-ai-settings-dialog) input:not([type="checkbox"]), :is(.desktop-ai-panel, .desktop-ai-settings-dialog) select { width: 100%; border: 1px solid var(--control-line); background: var(--input); color: var(--ink); padding: 10px; border-radius: 8px; margin-bottom: 0; }
+:is(.desktop-ai-panel, .desktop-ai-settings-dialog) textarea { resize: vertical; }
+:is(.desktop-ai-panel, .desktop-ai-settings-dialog) .desktop-ai-check { display: flex; align-items: center; gap: 10px; }
+:is(.desktop-ai-panel, .desktop-ai-settings-dialog) .desktop-ai-check input { width: 17px; height: 17px; accent-color: var(--accent); }
+:is(.desktop-ai-panel, .desktop-ai-settings-dialog) .muted, .desktop-ai-footnote { font-size: 11px; }
 .desktop-ai-notice { border: 1px solid var(--line); background: var(--accent-soft); padding: 12px; border-radius: 10px; font-size: 12px; }
 .desktop-ai-settings { padding-block: 12px; margin-block: 10px; border-top: 1px solid var(--line); font-size: 12px; }
 .desktop-ai-settings summary { margin-bottom: 10px; color: var(--accent-ink); }
@@ -24,3 +25,15 @@
 .desktop-vertex-settings legend { font-size: 15px; padding-inline: 6px; }
 .desktop-vertex-settings .muted, .desktop-vertex-settings .feedback { font-size: 13px; }
 .desktop-vertex-settings pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; padding: 12px; background: var(--surface-soft); border-radius: 8px; }
+
+.desktop-ai-panel > .dialog-top, .desktop-ai-settings-dialog > .dialog-top { align-items: center; flex-wrap: wrap; gap: 12px; }
+.desktop-ai-panel > .muted, .desktop-ai-summary { margin-block: 8px 12px; }
+.desktop-ai-summary { font-size: 13px; font-weight: 650; overflow-wrap: anywhere; }
+.desktop-ai-source-tools { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.desktop-ai-source-tools p { margin-block: 4px 12px; }
+.desktop-ai-model-settings { margin-block: 14px 20px; }
+#desktop-ai-custom-model { margin-top: 12px; }
+#desktop-ai-credentials { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+#desktop-ai-settings-nav { white-space: nowrap; }
+@media (max-width: 1000px) { #desktop-ai-settings-nav { display: none; } }
+@media (max-width: 560px) { .desktop-ai-panel { padding: 20px; }.desktop-ai-panel > .dialog-top h2 { font-size: 22px; } }

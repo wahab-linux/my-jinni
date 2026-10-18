@@ -1,5 +1,7 @@
 # API contract v0.5
 
+The 2026-10-18 independent AI settings, visible Ask AI panel and model suggestion list are presentation changes only. They add no HTTP fields, credential discovery, schema changes or ranking behavior. Notes/files affect explicitly selected retrieved AI evidence; comparison metrics remain explicit source/custom data. The backend catalog defaults are preserved, and custom model IDs still use the existing validation.
+
 Additive v0.6 Google ADC support extends chat with provider `vertex` and `vertex: {project_id, location}`, and adds `POST /api/v1/ai/vertex/check`. A Vertex model ID is explicitly required; API-key headers are rejected on that path. Existing calculation/source/chat fields and envelopes are preserved. See [AI_PROVIDERS.md](AI_PROVIDERS.md#google-cloud-adc-extension-v06-2026-10-18), [OpenAPI](openapi.json) and [GOOGLE_ADC_SETUP.md](GOOGLE_ADC_SETUP.md).
 
 The shared frontend adds no API fields or schema migration. Desktop operations use the same named IPC routes and authoritative Python responses; browser calculations retain existing parity. Library-source creation/upload returns a `LibrarySource` directly in `data`, while source detail returns `{source,chunks}`. The platform adapter preserves those existing envelopes and canonical IDs.

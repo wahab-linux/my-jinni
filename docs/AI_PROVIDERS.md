@@ -1,5 +1,23 @@
 # Multiple AI providers: additive contract v0.4
 
+## Independent settings and model choices, 2026-10-18
+
+Desktop **Ask AI** starts visible in the shared decision workspace. **AI settings** opens a separate dialog for provider selection, model choices, session API keys or Google project/location/ADC setup. Close settings to ask a question; the selected provider and exact model remain visible with the cloud notice. The source library starts closed. This supersedes the earlier embedded/expandable session-settings layout.
+
+`web/provider-models.mjs` provides this curated, non-exhaustive suggestion list, checked against official documentation on 2026-10-18:
+
+| Provider | Suggested IDs |
+| --- | --- |
+| OpenAI | `gpt-4.1-mini`, `gpt-4.1` |
+| DeepSeek | `deepseek-flash`, `deepseek-v4-pro` |
+| Google Gemini | `gemini-3.8-flash`, `gemini-3.6-flash`, `gemini-3.5-flash-lite` |
+| Anthropic Claude | `claude-sonnet-5-5`, `claude-haiku-5-5`, `claude-opus-5-5` |
+| Google Vertex AI (ADC) | `gemini-3.8-flash`, `gemini-3.5-flash-lite` |
+
+The existing backend default is also included first when present, including `claude-sonnet-4-6`; this UI change does not upgrade defaults or replace a user's model. Vertex intentionally starts without a selected model. Users explicitly choose a suggestion or **Custom model** and enter a compatible ID. Model choices are separate per provider in session memory and clear on app restart. The list does not enumerate account entitlements or guarantee compatibility, access, billing, region or quota; those remain subject to the provider and the existing request validation. No model-list request, credential discovery or automatic provider/model fallback is added.
+
+Official sources: [OpenAI GPT-4.1 Mini](https://developers.openai.com/api/docs/models/gpt-4.1-mini), [GPT-4.1](https://developers.openai.com/api/docs/models/gpt-4.1), [DeepSeek models](https://api-docs.deepseek.com/quick_start/pricing/), [Gemini models](https://ai.google.dev/gemini-api/docs/models), [Claude models](https://platform.claude.com/docs/en/models/overview), [Claude structured outputs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs), [Vertex Gemini 3.8 Flash](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/gemini/3-8-flash), [Vertex Gemini 3.5 Flash-Lite](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/gemini/3-5-flash-lite).
+
 ## Google Cloud ADC extension, v0.6 (2026-10-18)
 
 The user additionally requested Google Cloud trial-credit access through ADC in the desktop app. Provider `vertex` is **Google Vertex AI (ADC)**, separate from the Gemini Developer API-key provider `gemini`. Follow [GOOGLE_ADC_SETUP.md](GOOGLE_ADC_SETUP.md) for the local Google sign-in walkthrough. The new `google-auth[requests]` dependency is recorded in the lockfile.

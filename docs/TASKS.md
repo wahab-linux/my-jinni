@@ -1,5 +1,7 @@
 # Development tasks and integration checkpoints
 
+Current AI interface increment, 2026-10-18: root owns model suggestions, evidence-flow verification and documentation; the integration agent owns the shared native AI panel/settings/locales; the engine agent owns Electron/Vertex UI verification. Ask AI is visible, while library/settings remain closed. Preserve Vertex ADC and all previous source/provider boundaries. No extraction of document measurements into ranking is implemented or implied. Earlier closed-question descriptions below are superseded for desktop Ask AI.
+
 Current authorized work is frontend consolidation and concise copy: desktop follows the same `web/` interface as the browser, with the visible name Jinni. Native operations move behind the platform adapter while retaining existing API/storage/provider boundaries. Preserve the five languages and locale invariants. Remove redundant text while keeping essential units, simulation, trade-offs, errors and cloud disclosure. No new backend domain, retrieval, provider, currency or decision policy is requested.
 
 Current brand is `Jinni` (user decision, 2026-10-18). Verify the original lamp mark and product title in both experiences, keep the actual decision flow central, and inspect fresh light/dark/mobile screenshots. Preserve existing data paths and technical contracts. Distinguish mocked-provider checks from any separately observed real-key test. The user approved a narrow English-content exception for native UI catalogs and localization fixtures; other tracked content remains English.

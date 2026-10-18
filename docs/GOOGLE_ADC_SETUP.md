@@ -51,13 +51,13 @@ npm run desktop
 
 On Windows, after installing dependencies, you can also use `start-my-jinni.cmd`. Restart an already-running app and any separately managed Python backend to load the new dependency and provider. Leave normal data-directory settings unchanged to preserve your library.
 
-1. Open **Ask AI**.
+1. Open **AI settings** from the header or the visible Ask AI panel.
 2. Choose **Google Vertex AI (ADC)**.
 3. Enter your **Project ID**.
 4. Use **Location** `global`, or a supported region such as `europe-west2` that serves your chosen model. Global is a routing option, not a promise about regional data residency.
 5. Click **Check Google sign-in**. A success means the backend can obtain a Google access token. It does **not** prove model access, billing eligibility or quota. No model call is made by this button.
-6. In **Model settings**, enter a Gemini **model ID currently available in Vertex AI Studio for your project/location**. Jinni intentionally leaves this blank: it cannot know which models your new account can access, and it must not silently choose a different or more expensive model. Copy the model ID, not a display name or a full URL.
-7. Tick **Include my current comparison**, enter a question and click **Ask**. This action sends the question and selected evidence to Google and can consume model credits.
+6. Choose a suggested Gemini model, or choose **Custom model** and enter a **model ID currently available in Vertex AI Studio for your project/location**. Jinni intentionally starts without a selected Vertex model: suggestions are not an account-access check. Copy a model ID, not a display name or a full URL.
+7. Close settings. In the visible **Ask AI** panel, tick **Include my current comparison**, enter a question and click **Ask**. This action sends the question and selected evidence to Google and can consume model credits.
 
 Try: “Explain why this option ranked first. Show its price in £, its travel time and the main trade-offs. Cite the calculated evidence.”
 

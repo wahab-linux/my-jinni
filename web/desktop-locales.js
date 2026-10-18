@@ -414,6 +414,17 @@
   }
 });
   Object.assign(native, {"Enter a model ID available in Vertex AI Studio.": {"zh-CN": "输入 Vertex AI Studio 中可用的模型 ID。", "fr": "Indiquez un ID de modèle disponible dans Vertex AI Studio.", "ja": "Vertex AI Studio で利用可能なモデル ID を入力してください。", "ru": "Введите ID модели, доступной в Vertex AI Studio."}});
+  Object.assign(native, {
+    "Ask AI": { "zh-CN": "询问 AI", "fr": "Demander à l’IA", "ja": "AI に質問", "ru": "Спросить ИИ" },
+    "AI settings": { "zh-CN": "AI 设置", "fr": "Réglages IA", "ja": "AI 設定", "ru": "Настройки ИИ" },
+    "Custom model ID": { "zh-CN": "自定义模型 ID", "fr": "ID du modèle personnalisé", "ja": "独自のモデル ID", "ru": "Свой ID модели" },
+    "Custom model…": { "zh-CN": "自定义模型…", "fr": "Modèle personnalisé…", "ja": "独自のモデル…", "ru": "Своя модель…" },
+    "Suggested models; availability depends on your account.": { "zh-CN": "建议模型；实际可用性取决于你的账号。", "fr": "Modèles suggérés ; disponibilité selon votre compte.", "ja": "推奨モデルです。利用可否はアカウントにより異なります。", "ru": "Рекомендуемые модели; доступность зависит от аккаунта." },
+    "Model not set": { "zh-CN": "尚未设置模型", "fr": "Modèle non défini", "ja": "モデル未設定", "ru": "Модель не задана" },
+    "{provider} · {model}": { "zh-CN": "{provider} · {model}", "fr": "{provider} · {model}", "ja": "{provider} · {model}", "ru": "{provider} · {model}" },
+    "Choose a model in AI settings.": { "zh-CN": "请在 AI 设置中选择模型。", "fr": "Choisissez un modèle dans les réglages IA.", "ja": "AI 設定でモデルを選んでください。", "ru": "Выберите модель в настройках ИИ." },
+    "Comparison ranking uses option metrics. Selected notes inform AI analysis, not ranking.": { "zh-CN": "比较排序依据选项指标。所选笔记用于 AI 分析，不参与排序。", "fr": "Le classement utilise les mesures des options. Les notes sélectionnées servent à l’analyse IA, pas au classement.", "ja": "比較順位は選択肢の指標で決まります。選択したノートは AI 分析に使い、順位には影響しません。", "ru": "Рейтинг основан на показателях вариантов. Выбранные заметки используются для анализа ИИ, а не для рейтинга." }
+  });
   const shared = window.jinniMessages || {};
   const additions = Object.fromEntries(Object.entries(native).filter(([key]) => !Object.hasOwn(shared, key)));
   window.jinniI18n.registerMessages(additions);

@@ -1,5 +1,7 @@
 # Jinni requirements
 
+**AI interface request, 2026-10-18:** desktop Ask AI starts visible beside the decision workflow; provider/model/credentials and Vertex ADC setup belong in a separate settings dialog. Keep notes/files closed until requested. Model selection offers provider-specific suggestions and a custom ID. Preserve session isolation and all five languages. Selected retrieved source evidence informs AI prose; it does not automatically edit comparison measurements or ranking. This supersedes the earlier requirement that the question dialog start closed. FR-23 and AC-35/36 cover this increment.
+
 **Shared frontend and concise copy, 2026-10-18:** desktop must follow the browser frontend through the same source files, not manually mirrored markup. The visible brand is `Jinni`. Keep native API/SQLite/import/provider operations through the existing restricted bridge; browser behavior and data remain local. Remove copy that adds no understanding or action, while retaining units, simulation labels, meaningful explanations, errors and cloud-recipient disclosure. FR-22 and AC-33/34 cover this change.
 
 **Language-only request, 2026-10-18:** support English (`en`), Simplified Chinese (`zh-CN`), French (`fr`), Japanese (`ja`) and Russian (`ru`) in desktop and browser interfaces. Use explicit local translation resources, default English and a native language selector; remember only the locale preference. Switching must retain decisions/inputs/selections without network calls, changing source evidence or losing session keys. UI translation does not establish multilingual semantic retrieval or localized AI output. Documentation, identifiers and comments remain English.
@@ -82,6 +84,7 @@ All requirements below are P0 unless marked P1. IDs are stable so code, tasks, a
 | **FR-20** | Provide short reduced-motion-aware animations and quiet optional synthesized sounds, default off and gated by user interaction. Explicitly include the actual calculated decision in optional desktop questions, with ephemeral exact-quote citations and a separately returned authoritative result. | AC-28, AC-29 |
 | **FR-21** | Offer English, Simplified Chinese, French, Japanese and Russian through a native language selector in both experiences. Keep English as the default, remember the local preference and translate only explicit interface text. Preserve current inputs, selected evidence, keys, custom labels/units, calculated results and exact original quotations when switching. | AC-31, AC-32 |
 | **FR-22** | Load the same page, CSS, controls, translations and result presentation in browser and Electron. Keep platform-specific operations behind a small adapter and optional native tools. Display Jinni with an uppercase J. Remove text that can be deleted without changing understanding, actions or evidence/privacy boundaries. | AC-33, AC-34 |
+| **FR-23** | Keep desktop Ask AI visible without a modal. Place provider/model/session credentials and Vertex project/sign-in setup in a separately opened, keyboard-accessible settings dialog. Offer provider-specific model suggestions with custom IDs and separate in-memory choices; disclose the actual selected recipient/model. Preserve citations and distinguish AI document analysis from deterministic ranking. | AC-35, AC-36 |
 
 ## 5. Business and data rules
 
@@ -179,6 +182,13 @@ Interface language acceptance:
 | **AC-32** | Edit a form, calculate a decision, select a source and switch languages. Current inputs, selections and canonical ranked results remain unchanged; original evidence, exact quotes, provider answers and custom labels/units remain verbatim. Long French/Russian labels and CJK text fit supported desktop/phone layouts. | Actual Electron/browser + screenshots + presentation review |
 | **AC-33** | Electron loads `jinni://app/index.html` from the actual `web/index.html` and uses common CSS/modules. Desktop comparisons/planning/library operations call the named bridge and real local API; browser operations retain exported-data calculations and IndexedDB. No desktop fixture fallback, generic IPC, remote page or arbitrary file serving is introduced. Existing source/provider/lifecycle behavior remains covered. | Native asset/bridge tests + actual Electron/browser + API equality |
 | **AC-34** | The visible title and wordmark use Jinni in every supported locale. The main workspace starts with choices, controls and results; repeated slogans, marketing reassurance, layout narration and non-actionable ready text are absent. Simulation, units, limits, failure/retry and actual cloud-recipient notices remain understandable. Compare actual light/dark/narrow screenshots of both editions. | Copy review + actual Electron/browser + screenshots |
+
+AI interface acceptance, 2026-10-18:
+
+| ID | Given → action → expected result | Verify |
+| --- | --- | --- |
+| **AC-35** | Launch desktop → Ask AI is visible and decisions remain interactive. Open independent settings by keyboard → configure provider/model/key or Vertex ADC metadata → Escape restores focus. Switch provider/model while an answer is pending → discard stale results and retain each provider's own model/key. Custom IDs and all five interface languages remain supported. | Actual Electron and isolated shared-UI checks |
+| **AC-36** | Import notes and a text file, select each separately and together, and request the same comparison → AI input contains only selected matching source chunks plus explicitly included comparison context; calculated metrics/ranking equal the ordinary endpoint. No unselected document changes scores. Show the boundary to users. Model suggestions require no credential discovery or silent fallback. | API evidence capture, model catalog unit tests and desktop checks |
 
 ## 8. Work packages and ownership
 

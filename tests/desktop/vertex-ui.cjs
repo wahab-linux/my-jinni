@@ -51,11 +51,27 @@ const { chromium } = require('playwright');
     const page=await context.newPage(); page.on('pageerror',e=>errors.push(e.message));
     const url=`http://127.0.0.1:${server.address().port}`;
     await page.goto(url); await page.locator('#desktop-ai-provider:not([disabled])').waitFor({state:'attached'});
-    await page.locator('#desktop-ai-open').click();
+    const openSettings=async()=>{if(!await page.locator('#desktop-ai-settings').isVisible())await page.locator('#desktop-ai-settings-open').click();};
+    const closeSettings=async()=>{if(await page.locator('#desktop-ai-settings').isVisible())await page.locator('#desktop-ai-settings-close').click();};
+    await check('Ask is inline, settings are independent, and comparison controls remain interactive',async()=>{
+      assert.equal(await page.locator('#desktop-ai-dialog').evaluate(node=>node.tagName),'SECTION');
+      assert.equal(await page.locator('#desktop-ai-question').isVisible(),true);
+      assert.equal(await page.locator('#desktop-ai-settings').isVisible(),false);
+      await page.locator('#desktop-ai-open').click();
+      assert.equal(await page.evaluate(()=>document.activeElement.id),'desktop-ai-question');
+      await page.locator('#decision-submit').click();await page.locator('.decision-card').waitFor();
+      assert.equal(await page.locator('dialog[open]').count(),0);
+      await page.locator('#desktop-ai-settings-open').focus();await page.keyboard.press('Enter');
+      assert.equal(await page.locator('#desktop-ai-settings').evaluate(node=>node.tagName),'DIALOG');
+      await page.keyboard.press('Escape');
+      assert.equal(await page.evaluate(()=>document.activeElement.id),'desktop-ai-settings-open');
+    });
+    await openSettings();
     await check('ADC form hides API-key entry and explains Google sign-in without credential upload',async()=>{
       await page.locator('#desktop-ai-provider').selectOption('vertex');
       assert.equal(await page.locator('#desktop-vertex-settings').isVisible(),true);
       assert.equal(await page.locator('#desktop-ai-key-form').isVisible(),false);
+      assert.equal(await page.locator('#desktop-ai-model-select').inputValue(),'__custom__');
       assert.equal(await page.locator('#desktop-ai-model').isVisible(),true);
       assert.equal(await page.locator('#desktop-ai-model').inputValue(),'');
       assert.match(await page.locator('#desktop-vertex-commands').textContent(),/gcloud auth application-default login/);
@@ -64,6 +80,7 @@ const { chromium } = require('playwright');
     await check('sign-in check sends project metadata only and does not ask a model',async()=>{
       await page.locator('#desktop-vertex-project').fill('my-trial-project');
       await page.locator('#desktop-vertex-location').fill('europe-west2');
+      await page.locator('#desktop-ai-model-select').selectOption('__custom__');
       await page.locator('#desktop-ai-model').fill('gemini-test-model');
       await page.locator('#desktop-vertex-check').click();
       await page.waitForFunction(()=>document.querySelector('#desktop-vertex-status').textContent.includes('Google sign-in works'));
@@ -71,6 +88,7 @@ const { chromium } = require('playwright');
       assert.deepEqual(await page.evaluate(()=>window.vertexTest.questions),[]);
     });
     await check('question explicitly includes the current comparison and ADC metadata with no key',async()=>{
+      await closeSettings();
       await page.locator('#desktop-ai-include-decision').check();
       await page.locator('#desktop-ai-question').fill('Explain the price and time.');
       await page.locator('#desktop-ai-ask').click();
@@ -85,16 +103,17 @@ const { chromium } = require('playwright');
       await page.locator('#desktop-ai-context-close').click();
     });
     await check('changing project clears stale answers, and API-key providers retain their own keys',async()=>{
+      await openSettings();
       await page.locator('#desktop-vertex-project').fill('another-trial-project');
       assert.equal(await page.locator('#desktop-ai-result').isVisible(),false);
       await page.locator('#desktop-ai-provider').selectOption('openai');
-      await page.locator('#desktop-ai-settings > summary').click();
       await page.locator('#desktop-ai-key').fill('fake-openai-session-key');
       await page.locator('#desktop-ai-key-save').click();
       await page.waitForFunction(()=>window.vertexTest.keys.openai==='fake-openai-session-key');
       await page.locator('#desktop-ai-provider').selectOption('vertex');
       assert.equal(await page.locator('#desktop-vertex-project').inputValue(),'another-trial-project');
       assert.equal(await page.locator('#desktop-ai-model').inputValue(),'gemini-test-model');
+      assert.equal(await page.locator('#desktop-ai-model-select').inputValue(),'__custom__');
       assert.deepEqual(await page.evaluate(()=>window.vertexTest.keys),{openai:'fake-openai-session-key'});
       assert.doesNotMatch(await page.evaluate(()=>JSON.stringify(localStorage)),/fake-openai|token|credential/i);
     });
@@ -108,29 +127,33 @@ const { chromium } = require('playwright');
       await page.locator('#desktop-vertex-project').fill('my-trial-project');
     });
     await check('ADC labels follow all five locales while project IDs and entered models remain original',async()=>{
-      await page.locator('#desktop-ai-close').click();
+      await closeSettings();
       for(const locale of ['fr','ja','zh-CN','ru','en']) {
         await page.locator('#language-select').selectOption(locale);
-        await page.locator('#desktop-ai-open').click();
+        await openSettings();
         assert.equal(await page.locator('#desktop-vertex-project').inputValue(),'my-trial-project');
         assert.equal(await page.locator('#desktop-ai-model').inputValue(),'gemini-test-model');
         if(locale!=='en') assert.notEqual(await page.locator('#desktop-vertex-check').innerText(),'Check Google sign-in');
-        await page.locator('#desktop-ai-close').click();
+        assert.equal(await page.locator('#desktop-ai-model-select').inputValue(),'__custom__');
+        await closeSettings();
       }
     });
     await check('nonsecret Google settings survive reload and the form fits light, dark and narrow layouts',async()=>{
       await page.reload(); await page.locator('#desktop-ai-provider:not([disabled])').waitFor({state:'attached'});
-      await page.locator('#desktop-ai-open').click(); await page.locator('#desktop-ai-provider').selectOption('vertex');
+      await openSettings(); await page.locator('#desktop-ai-provider').selectOption('vertex');
       assert.equal(await page.locator('#desktop-vertex-project').inputValue(),'my-trial-project');
       assert.equal(await page.locator('#desktop-vertex-location').inputValue(),'europe-west2');
       await fs.mkdir('tmp/desktop',{recursive:true});
       for(const theme of ['light','dark']) {
         await page.evaluate(value=>{document.documentElement.dataset.theme=value;},theme);
-        await page.locator('#desktop-ai-dialog').screenshot({path:`tmp/desktop/vertex-${theme}.png`});
+        await page.locator('#desktop-ai-settings').screenshot({path:`tmp/desktop/vertex-settings-${theme}.png`});
       }
       await page.setViewportSize({width:390,height:844});
       assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));
-      await page.locator('#desktop-ai-dialog').screenshot({path:'tmp/desktop/vertex-phone.png'});
+      assert.ok(await page.locator('#desktop-ai-settings').evaluate(node=>node.scrollWidth<=node.clientWidth));
+      await page.locator('#desktop-ai-settings').screenshot({path:'tmp/desktop/vertex-settings-phone.png'});
+      await closeSettings();
+      assert.equal(await page.locator('#desktop-ai-question').isVisible(),true);
       assert.deepEqual(errors,[]);
     });
     console.log(`ADC UI PASSED: ${checks} checks. Native bridge and Google are mocked; this is not an Electron window test.`);

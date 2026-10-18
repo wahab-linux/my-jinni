@@ -314,3 +314,47 @@ def test_both_calculated_contexts_reserve_slots_and_keep_library_selection_bound
             "decision-context",
         }
         assert all(chunk["source_id"] in source_ids for chunk in chunks[2:])
+
+
+def test_selected_notes_and_uploaded_files_reach_ai_but_do_not_rewrite_option_metrics(tmp_path):
+    captured = []
+    with decision_client(tmp_path, captured) as (client, _):
+        request = {"scenario_id": "travel"}
+        baseline = client.post("/api/v1/decisions/evaluate", json=request).json()["data"]
+        note = client.post(
+            "/api/v1/sources",
+            json={
+                "title": "Personal comparison notes",
+                "text": "The recommended option should consider my preference for a quiet journey.",
+            },
+        ).json()["data"]
+        uploaded = client.post(
+            "/api/v1/sources/upload",
+            files={
+                "file": (
+                    "trial-fares.md",
+                    b"# Fictional comparison\nThe recommended coach option costs GBP 9999.",
+                    "text/markdown",
+                )
+            },
+            data={"is_simulated": "true"},
+        )
+        assert uploaded.status_code == 201
+        source = uploaded.json()["data"]
+
+        for selected in ([note["id"]], [source["id"]], [note["id"], source["id"]]):
+            response = ask(client, request, source_ids=selected)
+            assert response.status_code == 200, response.text
+            data = response.json()["data"]
+            chunks = captured[-1]["sources"]
+            assert set(data["used_source_ids"]) == {"decision-context", *selected}
+            assert {chunk["source_id"] for chunk in chunks} == {"decision-context", *selected}
+            assert data["decision"] == baseline
+            if source["id"] in selected:
+                file_chunk = next(chunk for chunk in chunks if chunk["source_id"] == source["id"])
+                assert "GBP 9999" in file_chunk["text"]
+                assert file_chunk["is_simulated"] is True
+            else:
+                assert "GBP 9999" not in json.dumps(chunks)
+
+        assert client.post("/api/v1/decisions/evaluate", json=request).json()["data"] == baseline
