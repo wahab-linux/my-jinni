@@ -104,11 +104,124 @@ def test_chat_includes_exact_actual_decision_and_ephemeral_checked_citation(tmp_
         assert summary["recommended"]["score"] == expected["recommended"]["score"]
         assert summary["recommended"]["metrics"] == expected["recommended"]["metrics"]
         assert summary["sources"] == expected["sources"]
+        assert summary["criteria"] == [
+            {
+                **{key: criterion[key] for key in ("id", "label", "unit", "direction")},
+                "weight": criterion["default_weight"],
+            }
+            for criterion in expected["criteria"]
+        ]
+        assert summary["recommended"]["contributions"] == expected["recommended"]["contributions"]
+        assert summary["limitations"] == expected["limitations"]
+        assert summary["excluded"] == expected["excluded"][:5]
         assert "relative" in summary["note"]
         assert len(chunk["text"]) <= 12000
         assert store.list_sources() == []
         assert KEY not in response.text
         assert KEY not in json.dumps(captured)
+
+
+@pytest.mark.parametrize("budget, winner", [(800, "coach"), (799, None)])
+def test_ai_sees_real_units_overridden_priorities_limits_and_penny_boundaries(
+    tmp_path, budget, winner
+):
+    captured = []
+    request = {
+        "scenario_id": "travel",
+        "weights": {"cost-pence": 100, "duration-minutes": 0, "emissions-grams": 0},
+        "constraints": [
+            {"criterion_id": "cost-pence", "operator": "lte", "value": budget},
+            {"criterion_id": "duration-minutes", "operator": "lte", "value": 180},
+        ],
+    }
+    with decision_client(tmp_path, captured) as (client, _):
+        direct = client.post("/api/v1/decisions/evaluate", json=request).json()["data"]
+        response = ask(client, request)
+        assert response.status_code == 200
+        assert response.json()["data"]["decision"] == direct
+        summary = json.loads(captured[0]["sources"][0]["text"])
+        criteria = {item["id"]: item for item in summary["criteria"]}
+        assert criteria["cost-pence"]["unit"] == "pence"
+        assert criteria["duration-minutes"]["unit"] == "minutes"
+        assert criteria["emissions-grams"]["unit"] == "g CO2e"
+        assert {key: item["weight"] for key, item in criteria.items()} == request["weights"]
+        assert summary["limits"] == request["constraints"]
+        assert summary["excluded"] == direct["excluded"]
+        if winner:
+            assert summary["recommended"]["id"] == winner
+            assert summary["recommended"]["metrics"]["cost-pence"] == 800
+            assert summary["recommended"]["metrics"]["duration-minutes"] == 120
+        else:
+            assert summary["recommended"] is None
+            assert summary["ranked_count"] == 0
+
+
+def test_large_custom_analysis_keeps_valid_bounded_json_with_units_and_explicit_omissions(tmp_path):
+    captured = []
+    ids = [f"criterion-{index}-" + "x" * 87 for index in range(10)]
+    criteria = [
+        {
+            "id": key,
+            "label": "A" * 100,
+            "unit": "custom-measure-" + "u" * 25,
+            "direction": "minimize",
+            "default_weight": 100,
+        }
+        for key in ids
+    ]
+    options = [
+        {
+            "id": f"option-{index}",
+            "name": f"Example {index} " + "n" * 180,
+            "description": "Fictional.",
+            "category": "example",
+        }
+        for index in range(50)
+    ]
+    source = {
+        "id": "options",
+        "label": "Example source",
+        "is_simulated": True,
+        "updated_at": "2026-10-18T10:00:00+01:00",
+    }
+    request = {
+        "scenario_id": "custom",
+        "constraints": [
+            {"criterion_id": key, "operator": op, "value": value}
+            for key in ids
+            for op, value in [("gte", -1), ("lte", 1)]
+        ],
+        "custom": {
+            "title": "Large comparison",
+            "criteria": criteria,
+            "dataset": {
+                "option_source": source,
+                "metric_source": {**source, "id": "measurements"},
+                "options": options,
+                "observations": [
+                    {
+                        "option_id": option["id"],
+                        "available": True,
+                        "metrics": {key: index for key in ids},
+                    }
+                    for index, option in enumerate(options)
+                ],
+            },
+        },
+    }
+    with decision_client(tmp_path, captured) as (client, _):
+        response = ask(client, request)
+        assert response.status_code == 200, response.text
+        text = captured[0]["sources"][0]["text"]
+        summary = json.loads(text)
+        assert len(text) <= 12000
+        assert summary["ranked_count"] == 2
+        assert summary["excluded_count"] == 48
+        assert summary["omitted"]["excluded"] > 0
+        assert len(summary["criteria"]) == 10
+        assert all(item["unit"] == criteria[0]["unit"] for item in summary["criteria"])
+        assert summary["limits"] == request["constraints"]
+        assert summary["recommended"]["id"] == "option-0"
 
 
 @pytest.mark.parametrize(

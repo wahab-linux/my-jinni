@@ -89,6 +89,8 @@ Dependencies are locked in `uv.lock`. After initial setup, comparisons, activity
 
 ## Local library and cited AI questions
 
+For desktop OpenAI setup, analysis prompts and a live-check command, read [the OpenAI guide](docs/OPENAI_DESKTOP_GUIDE.md). The [PowerPoint deck](docs/presentation/Jinni_Code_Walkthrough.pptx) and [slide writing/speaking guide](docs/PRESENTATION_GUIDE.md) explain the code and data flow.
+
 The user confirmed this extension while retaining activity planning, then requested multiple providers including DeepSeek. [AI_EXTENSION.md](docs/AI_EXTENSION.md) and [AI_PROVIDERS.md](docs/AI_PROVIDERS.md) specify additive v0.4, preserving the planner and library/citation fields.
 
 The prior v0.4 baseline passed 474 Python tests, 46 desktop unit tests and 20 actual Electron end-to-end checks, alongside lint/format. These regressions remain in the current checks below. Every cloud provider transport is mocked. A successful request with a real provider account/model remains unverified.

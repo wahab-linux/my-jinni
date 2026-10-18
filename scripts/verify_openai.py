@@ -9,14 +9,20 @@ import argparse
 import asyncio
 import getpass
 import os
+import re
 import sys
 import warnings
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import httpx
+from fastapi.testclient import TestClient
 
 from app.knowledge.openai_client import AIServiceError, generate_answer
-from app.knowledge.router import checked_citations
+from app.knowledge.router import checked_citations, get_ai_client, get_store
 from app.knowledge.schemas import DEFAULT_MODEL, SourceChunk
+from app.knowledge.storage import KnowledgeStore
+from app.main import create_app
 
 
 async def verify(key: str, model: str) -> bool:
@@ -57,9 +63,83 @@ async def verify(key: str, model: str) -> bool:
     return True
 
 
+def verify_decision(key: str, model: str, *, ai_transport=None) -> bool:
+    """Exercise actual source adapters, comparison and chat with isolated temporary storage."""
+    application = create_app()
+    request = {
+        "scenario_id": "travel",
+        "weights": {"cost-pence": 100, "duration-minutes": 0, "emissions-grams": 0},
+        "constraints": [
+            {"criterion_id": "cost-pence", "operator": "lte", "value": 800},
+            {"criterion_id": "duration-minutes", "operator": "lte", "value": 180},
+        ],
+    }
+    try:
+        with TemporaryDirectory(prefix="jinni-openai-check-") as directory:
+            store = KnowledgeStore(Path(directory) / "check.sqlite3")
+            application.dependency_overrides[get_store] = lambda: store
+            if ai_transport is not None:
+
+                async def injected_client():
+                    async with httpx.AsyncClient(transport=ai_transport) as client:
+                        yield client
+
+                application.dependency_overrides[get_ai_client] = injected_client
+            with TestClient(application) as client:
+                direct = client.post("/api/v1/decisions/evaluate", json=request)
+                if direct.status_code != 200:
+                    print("ANALYSIS CHECK FAILED: the comparison could not be calculated.")
+                    return False
+                expected = direct.json()["data"]
+                response = client.post(
+                    "/api/v1/chat",
+                    headers={"X-AI-API-Key": key},
+                    json={
+                        "provider": "openai",
+                        "model": model,
+                        "source_ids": [],
+                        "decision_request": request,
+                        "question": (
+                            "Name the recommended option and explain why it fits my settings. "
+                            "Report its actual price with £ and two decimal places, and its "
+                            "actual travel time in minutes. Cite the calculated comparison."
+                        ),
+                    },
+                )
+        if response.status_code != 200:
+            print(f"ANALYSIS CHECK FAILED: {response.json()['error']['code']}.")
+            return False
+        data = response.json()["data"]
+        answer = data["answer"]
+        if (
+            data["status"] != "answered"
+            or data["decision"] != expected
+            or expected["recommended"]["id"] != "coach"
+            or not any(
+                citation["source_id"] == "decision-context" for citation in data["citations"]
+            )
+            or "coach" not in answer.lower()
+            or re.search(r"£\s*8\.00\b", answer) is None
+            or re.search(r"\b120\s+minutes\b", answer, re.IGNORECASE) is None
+        ):
+            print("ANALYSIS CHECK FAILED: the answer did not pass the expected cited fact checks.")
+            return False
+    except Exception:
+        print("ANALYSIS CHECK FAILED: an unexpected local verification error occurred.")
+        return False
+    print("ANALYSIS CHECK PASSED: actual comparison, checked citation, £8.00 and 120 minutes.")
+    print("One example does not establish desktop acceptance or accuracy for every question.")
+    return True
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", default=DEFAULT_MODEL)
+    parser.add_argument(
+        "--decision",
+        action="store_true",
+        help="Check actual comparison analysis through the chat API.",
+    )
     args = parser.parse_args()
     key = os.environ.get("OPENAI_API_KEY", "")
     if not key:
@@ -81,7 +161,10 @@ def main() -> int:
     if not key:
         print("Live check skipped: no key supplied.")
         return 2
-    return 0 if asyncio.run(verify(key, args.model)) else 1
+    passed = (
+        verify_decision(key, args.model) if args.decision else asyncio.run(verify(key, args.model))
+    )
+    return 0 if passed else 1
 
 
 if __name__ == "__main__":

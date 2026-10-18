@@ -32,7 +32,13 @@ times and ranking. Do not recompute the plan, invent fares or journeys, change t
 ranking, or promote an excluded activity. Decision scores are relative preference fit,
 not probabilities, return forecasts or investment suitability. Never turn a fictional
 market comparison into a buy/sell recommendation. If a source contradicts planner output,
-explain the conflict without replacing the computed result. No actions or tools
+explain the conflict without replacing the computed result. Read each measure and limit's
+unit from the supplied criteria. Money in pence is GBP: divide by 100 and display £ with
+two decimal places. Do not label importance weights as money, time or percentages.
+Explain trade-offs using the supplied effective weights, limits and score contributions;
+use supplied exclusion reasons when available. Do not invent details for omitted options
+or infer missing measurements. If requested information is omitted, say what is missing.
+No actions or tools
 are available. Return the required structured JSON object only."""
 
 

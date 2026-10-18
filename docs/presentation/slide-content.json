@@ -1,0 +1,389 @@
+{
+  "title": "Jinni — code walkthrough and OpenAI analysis",
+  "slides": [
+    {
+      "title": "Jinni",
+      "subtitle": "Compare data. Explain decisions.",
+      "kicker": "CODE WALKTHROUGH · DESKTOP + OPENAI",
+      "layout": "cover",
+      "bullets": [
+        "One shared interface",
+        "Deterministic comparisons",
+        "Evidence-based AI explanations"
+      ],
+      "notes": "Introduce Jinni as a decision-support prototype. It helps people compare supplied options using their budget, time and priorities, then ask an optional AI to explain the evidence. The built-in examples are fictional. Add your name, teammate names and course or event details before presenting. Do not describe the demo as a live travel or investment service.",
+      "references": [
+        "README.md",
+        "docs/GENERAL_DECISIONS.md"
+      ]
+    },
+    {
+      "title": "A choice has more than one measure",
+      "kicker": "01 · THE PROBLEM",
+      "layout": "cards",
+      "cards": [
+        {
+          "title": "Money",
+          "body": "What fits my budget?\nPrices display in £."
+        },
+        {
+          "title": "Time",
+          "body": "How long will it take?\nMinutes, hours and days stay distinct."
+        },
+        {
+          "title": "Priorities",
+          "body": "What matters most?\nImportance is measured in points."
+        }
+      ],
+      "subtitle": "Travel, student life, greener choices, financial examples and custom decisions.",
+      "notes": "Explain the user problem before describing the technology. A cheaper journey may take longer, so a single price sort is not always enough. A hard limit rules out an option; an importance setting affects how the remaining options rank. Financial examples use synthetic information and do not provide investment advice.",
+      "references": [
+        "app/comparison/catalog.py",
+        "web/presentation.mjs"
+      ]
+    },
+    {
+      "title": "The user journey",
+      "kicker": "02 · THE EXPERIENCE",
+      "layout": "process",
+      "steps": [
+        {
+          "title": "Choose",
+          "body": "Pick a topic and options."
+        },
+        {
+          "title": "Adjust",
+          "body": "Set limits and importance."
+        },
+        {
+          "title": "Compare",
+          "body": "Read measures and trade-offs."
+        },
+        {
+          "title": "Ask + check",
+          "body": "Use OpenAI, then open a citation."
+        }
+      ],
+      "subtitle": "Comparison works without an API key. AI is an optional desktop tool.",
+      "notes": "Show the common interface in the desktop app. Explain that typing a value or moving a slider changes the same underlying setting. The app keeps money, time and importance units separate. Ask AI opens a separate dialog; the user explicitly chooses whether to include the current comparison or activity preferences. An answer is not sent automatically just because a comparison was calculated.",
+      "references": [
+        "web/decision-app.mjs",
+        "web/desktop-ai.mjs",
+        "web/ui-context.mjs"
+      ]
+    },
+    {
+      "title": "One interface, two runtimes",
+      "kicker": "03 · ARCHITECTURE",
+      "layout": "split",
+      "left": {
+        "title": "Desktop app",
+        "bullets": [
+          "Shared web/ interface in Electron",
+          "Restricted preload → main-process IPC",
+          "Local FastAPI calculations + SQLite",
+          "Optional OpenAI through the backend"
+        ]
+      },
+      "right": {
+        "title": "GitHub Pages",
+        "bullets": [
+          "The same page, styles and controls",
+          "JavaScript calculates from exported data",
+          "IndexedDB stores local notes",
+          "Original-text search; no cloud AI server"
+        ]
+      },
+      "subtitle": "web/platform.mjs selects the runtime. The UI is not duplicated.",
+      "notes": "An API is a defined way for one part of the app to request work from another. Electron runs the same page as the website, but its platform adapter calls named bridge methods. The trusted main process calls the local Python service. GitHub Pages is static, so its comparisons run in JavaScript. This presentation focuses on the desktop OpenAI path the user selected.",
+      "references": [
+        "web/platform.mjs",
+        "desktop/preload.cjs",
+        "desktop/main.cjs",
+        "desktop/assets.cjs"
+      ]
+    },
+    {
+      "title": "Where the code lives",
+      "kicker": "04 · CODE MAP",
+      "layout": "map",
+      "rows": [
+        [
+          "web/decision-app.mjs",
+          "Controls, validation and comparison results"
+        ],
+        [
+          "web/desktop-ai.mjs",
+          "AI dialog, provider choice and explicit context"
+        ],
+        [
+          "desktop/main.cjs + preload.cjs",
+          "Trusted window, named IPC and key operations"
+        ],
+        [
+          "app/comparison/",
+          "Scenario data, source adapters and pure ranking"
+        ],
+        [
+          "app/knowledge/",
+          "Document search, AI requests and citation checks"
+        ],
+        [
+          "tests/ + scripts/",
+          "Regression checks, parity and optional live verification"
+        ]
+      ],
+      "notes": "Walk through these files in the same order as a request. Keep the explanation at responsibility level first. The renderer presents information; the main process owns trusted desktop operations; the backend coordinates data and calculations. The pure comparison engine does not import FastAPI or frontend code. A pure function calculates from its inputs without calling the network or changing external state.",
+      "references": [
+        "docs/ARCHITECTURE.md",
+        "docs/DESKTOP_BRIDGE.md"
+      ]
+    },
+    {
+      "title": "From two sources to a comparison",
+      "kicker": "05 · DATA FLOW",
+      "layout": "process",
+      "steps": [
+        {
+          "title": "Fetch",
+          "body": "Option catalog + separate measurements"
+        },
+        {
+          "title": "Validate",
+          "body": "IDs, types, units and source metadata"
+        },
+        {
+          "title": "Filter",
+          "body": "Availability, required values and limits"
+        },
+        {
+          "title": "Rank",
+          "body": "Score only the feasible options"
+        }
+      ],
+      "subtitle": "Missing values never become zero. A failed required source returns an error.",
+      "notes": "The option feed says what the choices are; the measurement feed provides values such as cost, time and emissions. The adapters fetch the two differently shaped fictional feeds concurrently with bounded deadlines. The engine joins options and observations by ID. Unknown availability, missing active measurements or failed limits exclude a choice. In this prototype the mock feeds are routes in the same backend, not independent live organisations.",
+      "references": [
+        "app/comparison/adapters.py",
+        "app/comparison/router.py",
+        "app/comparison/engine.py",
+        "data/decisions/"
+      ]
+    },
+    {
+      "title": "How ranking works",
+      "kicker": "06 · THE ALGORITHM",
+      "layout": "formula",
+      "formula": "score = 100 × Σ(weight × normalised value) / Σ(weight)",
+      "bullets": [
+        "Apply hard limits first.",
+        "Normalise each active measure over feasible options.",
+        "Reverse the scale when a lower value is better.",
+        "Rank by score; use the option ID to break ties."
+      ],
+      "subtitle": "A score is relative preference fit, not a probability or forecast.",
+      "notes": "For a lower-is-better measure, use (maximum minus value) divided by (maximum minus minimum). For a higher-is-better measure, use (value minus minimum) divided by the range. A constant measure receives 1 because every feasible choice is equal on it. A weight of zero removes that measure from scoring, but a separate limit can still apply. Scores and contribution points round to six decimal places. Importance weights do not have to sum to 100.",
+      "references": [
+        "app/comparison/engine.py",
+        "web/decisions.mjs",
+        "tests/test_comparison_engine.py"
+      ]
+    },
+    {
+      "title": "Worked example: travel",
+      "kicker": "07 · ACTUAL CALCULATED EXAMPLE",
+      "layout": "example",
+      "headers": [
+        "Fictional option",
+        "Price",
+        "Travel time",
+        "Carbon",
+        "Relative fit"
+      ],
+      "rows": [
+        [
+          "Train",
+          "£18.00",
+          "70 minutes",
+          "2.2 kg CO₂e",
+          "55 / 100"
+        ],
+        [
+          "Coach",
+          "£8.00",
+          "120 minutes",
+          "5 kg CO₂e",
+          "45 / 100"
+        ]
+      ],
+      "bullets": [
+        "Limits: spend up to £25 and travel for at most 180 minutes.",
+        "Importance: price 45, time 35, carbon 20.",
+        "Change to price-only importance with an £8 limit: coach wins."
+      ],
+      "subtitle": "At £7.99 with the 180-minute limit, no choice fits. At £8.00, the coach fits.",
+      "notes": "These numbers come from the actual comparison endpoint using the configured travel fixtures. Train receives 35 points for time and 20 for emissions, giving 55; coach receives 45 for cost. Flight and taxi exceed the default budget and cycling exceeds the time limit. Changing the settings changes the calculation; this is not a canned response. The presentation builder checks this example against the Python application before creating the deck.",
+      "references": [
+        "data/decisions/travel-options.json",
+        "data/decisions/travel-metrics.json",
+        "app/comparison/catalog.py"
+      ]
+    },
+    {
+      "title": "How OpenAI supports the decision",
+      "kicker": "08 · THE AI PATH",
+      "layout": "process",
+      "steps": [
+        {
+          "title": "Calculate",
+          "body": "Run the actual comparison again."
+        },
+        {
+          "title": "Assemble",
+          "body": "Add explicit settings and selected evidence."
+        },
+        {
+          "title": "Explain",
+          "body": "OpenAI returns a structured answer."
+        },
+        {
+          "title": "Check",
+          "body": "Validate citations; return the actual result."
+        }
+      ],
+      "subtitle": "Python ranks the options. OpenAI explains the supplied results and evidence.",
+      "notes": "Tick Include my current comparison before asking. The backend calls the same comparison endpoint used by the normal workflow and inserts its result into temporary decision-context evidence. OpenAI receives the question and bounded evidence through the Responses API. The request uses a strict JSON schema, store false and a 30-second deadline. The final response includes the authoritative calculated decision separately from the AI prose. No API key or chat history is written to the source library.",
+      "references": [
+        "web/desktop-ai.mjs",
+        "app/knowledge/router.py",
+        "app/knowledge/openai_client.py"
+      ]
+    },
+    {
+      "title": "Give the model the meaning of the numbers",
+      "kicker": "09 · GROUNDED DATA ANALYSIS",
+      "layout": "split",
+      "left": {
+        "title": "Supplied context",
+        "bullets": [
+          "Criteria: label, unit, direction and effective weight",
+          "The exact limits the user selected",
+          "Winner, up to two alternatives and contributions",
+          "Sample exclusions, source metadata and limitations"
+        ]
+      },
+      "right": {
+        "title": "Interpretation rules",
+        "bullets": [
+          "800 pence means £8.00",
+          "120 minutes stays a time measurement",
+          "Importance points are not money or percentages",
+          "Omitted details are flagged, never invented"
+        ]
+      },
+      "subtitle": "Selected document passages can provide additional evidence. Exact quotes remain original.",
+      "notes": "This is the main OpenAI improvement in this change. A number such as 800 is ambiguous without a unit. The updated context includes criteria definitions and chosen weights and limits, so the explanation can discuss trade-offs and exclusion reasons. Large contexts drop optional details as whole structured items and report omissions; they do not cut JSON in the middle. Selected documents use bounded lexical retrieval. This is comparison analysis and evidence explanation, not arbitrary spreadsheet execution, forecasting or a whole-document statistical audit.",
+      "references": [
+        "app/knowledge/router.py: decision_evidence",
+        "app/knowledge/openai_client.py: INSTRUCTIONS",
+        "tests/test_decision_chat.py"
+      ]
+    },
+    {
+      "title": "Connect OpenAI in the desktop app",
+      "kicker": "10 · SETUP + FIRST QUESTION",
+      "layout": "checklist",
+      "bullets": [
+        "Launch the app and open Ask AI.",
+        "Choose OpenAI; expand AI session settings.",
+        "Enter your API key and select Use for this session.",
+        "Keep a compatible accessible model, such as gpt-4.1-mini.",
+        "Tick Include my current comparison, ask a question, then open its citation."
+      ],
+      "callout": "Try: “Why did this option rank first? Explain the price, time and trade-offs.”",
+      "notes": "After initial uv sync and npm ci, run npm run desktop or the Windows launcher. API access, model availability and quota must be enabled for the user's OpenAI account; a ChatGPT subscription does not itself prove API access. Saving a key only stores it for the session; access is checked on the first actual question. The notice names OpenAI as the recipient of the question and selected evidence. Never put a genuine key on a slide, in source code, in Git or in chat.",
+      "references": [
+        "web/desktop-ai.mjs",
+        "desktop/api-client.cjs",
+        "docs/OPENAI_DESKTOP_GUIDE.md"
+      ]
+    },
+    {
+      "title": "Reliability, privacy and honest limits",
+      "kicker": "11 · TRUST BOUNDARIES",
+      "layout": "cards",
+      "cards": [
+        {
+          "title": "Credentials",
+          "body": "Keys stay in main-process session memory. Only the selected provider receives its key."
+        },
+        {
+          "title": "Evidence",
+          "body": "Every accepted quote must match selected evidence. Quote checks do not prove every claim."
+        },
+        {
+          "title": "Failures",
+          "body": "Missing evidence, invalid keys, quota limits and timeouts have explicit outcomes."
+        }
+      ],
+      "subtitle": "Source documents are untrusted data. The AI has no tools or authority to change the ranking.",
+      "notes": "The renderer has no Node access and uses a narrow preload bridge. The main process attaches a key only to the selected provider's chat request. The backend validates structured output and exact quotation membership. Instructions inside documents are treated as data, but this and quotation checks are safeguards rather than proof of truth. No matching source passages avoids a provider call. Ordinary comparisons remain available without any AI provider. Text/PDF import is bounded, with no OCR, web scraping or automatic provider fallback.",
+      "references": [
+        "desktop/preload.cjs",
+        "desktop/validation.cjs",
+        "app/knowledge/openai_client.py",
+        "app/knowledge/storage.py"
+      ]
+    },
+    {
+      "title": "What the checks establish",
+      "kicker": "12 · VERIFICATION",
+      "layout": "split",
+      "left": {
+        "title": "Automated verification",
+        "bullets": [
+          "Budget and time boundaries; missing-data handling",
+          "All five topics and custom criteria",
+          "Python/JavaScript response parity",
+          "Mocked provider requests, citations and safe errors"
+        ]
+      },
+      "right": {
+        "title": "Separate live acceptance",
+        "bullets": [
+          "Run the live check with your own API account",
+          "Confirm the actual model responds",
+          "Check the cited answer in the desktop window",
+          "Review answer quality on your own selected data"
+        ]
+      },
+      "subtitle": "A mocked API test does not establish live account access or answer quality.",
+      "notes": "Describe which checks used actual calculations and which used injected cloud responses. The new tests inspect the exact data sent to OpenAI, including units, changed priorities, limits and bounded custom context. A conservative live checker also checks that an example answer says £8.00 and 120 minutes and includes a valid citation. No genuine OpenAI key was configured during this work, so live access remains unverified. Update this slide only after recording a real run; do not claim human review or live success just because automated tests pass.",
+      "references": [
+        "tests/test_decision_chat.py",
+        "tests/test_openai_client.py",
+        "tests/test_verify_openai.py",
+        "scripts/verify_openai.py"
+      ]
+    },
+    {
+      "title": "Demo it, explain it, check it",
+      "kicker": "13 · DEMO + DISCUSSION",
+      "layout": "checklist",
+      "bullets": [
+        "Compare the travel defaults: train, £18.00 and 70 minutes.",
+        "Choose price-only importance and an £8 / 180-minute limit: coach.",
+        "Ask OpenAI to explain the result; inspect the returned quote.",
+        "Reduce the budget to £7.99: show no match.",
+        "Explain one code path from the UI to the engine and back."
+      ],
+      "callout": "Optional live check: uv run python -m scripts.verify_openai --decision",
+      "notes": "The demo should show a changing calculated result, not just a polished screen. Start keyless, then add optional OpenAI explanation with explicit context. If the provider fails, show the real error and continue using the comparison. Do not improvise a fake AI success. End by explaining one important design choice: exact pence protects money boundaries; pure ranking makes results reproducible; citations let users inspect evidence. Future live-data adapters and hosted browser AI are possible extensions, not current completed features.",
+      "references": [
+        "docs/OPENAI_DESKTOP_GUIDE.md",
+        "scripts/verify_openai.py",
+        "docs/AI_USAGE.md"
+      ]
+    }
+  ]
+}

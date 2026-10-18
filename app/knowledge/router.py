@@ -8,10 +8,10 @@ from fastapi.responses import JSONResponse
 from pydantic import SecretStr
 from starlette.concurrency import run_in_threadpool
 
-from app.comparison.schemas import DecisionResult
+from app.comparison.schemas import DecisionRequest, DecisionResult
 from app.errors import error_response
 from app.knowledge.ingestion import IngestionError, extract_upload
-from app.knowledge.openai_client import AIServiceError
+from app.knowledge.openai_client import MAX_CHUNK_CHARACTERS, AIServiceError
 from app.knowledge.providers import generate_answer
 from app.knowledge.schemas import (
     MAX_RETRIEVED_CHUNKS,
@@ -166,7 +166,7 @@ async def calculated_decision(
     return result.data, result.warnings, None
 
 
-def decision_evidence(decision: DecisionResult) -> str:
+def decision_evidence(decision: DecisionResult, request: DecisionRequest) -> str:
     def brief(option):
         if option is None:
             return None
@@ -175,6 +175,7 @@ def decision_evidence(decision: DecisionResult) -> str:
             "name": option.name,
             "score": option.score,
             "metrics": option.metrics,
+            "contributions": [part.model_dump(mode="json") for part in option.contributions],
         }
 
     summary = {
@@ -182,16 +183,59 @@ def decision_evidence(decision: DecisionResult) -> str:
         "title": decision.title,
         "method": decision.method,
         "is_simulated": decision.is_simulated,
+        "criteria": [
+            {
+                "id": criterion.id,
+                "label": criterion.label,
+                "unit": criterion.unit,
+                "direction": criterion.direction,
+                "weight": request.weights.get(criterion.id, criterion.default_weight),
+            }
+            for criterion in decision.criteria
+        ],
+        "limits": [constraint.model_dump(mode="json") for constraint in request.constraints],
         "recommended": brief(decision.recommended),
         "alternatives": [brief(option) for option in decision.ranked[1:3]],
+        "ranked_count": len(decision.ranked),
         "excluded_count": len(decision.excluded),
+        "excluded": [option.model_dump(mode="json") for option in decision.excluded[:5]],
         "sources": [source.model_dump(mode="json") for source in decision.sources],
-        "note": "Computed preference-fit scores are relative, not probabilities or predictions.",
+        "limitations": decision.limitations,
+        "omitted": {},
+        "note": (
+            "Computed preference-fit scores are relative, not probabilities or predictions. "
+            "Read metric and limit units from criteria. Money in pence is GBP: 100 pence = £1.00. "
+            "Importance weights are points, not money, time or percentages. "
+            "Only the displayed option details are supplied; do not invent omitted details."
+        ),
     }
-    text = json.dumps(summary, ensure_ascii=False)
-    if len(text) > 12000:
-        summary["alternatives"] = []
-        text = json.dumps(summary, ensure_ascii=False)
+
+    def encode():
+        summary["omitted"] = {
+            "alternatives": max(0, len(decision.ranked) - 1 - len(summary["alternatives"])),
+            "excluded": len(decision.excluded) - len(summary["excluded"]),
+            "contributions": bool(
+                decision.recommended
+                and decision.recommended.contributions
+                and not summary["recommended"]["contributions"]
+            ),
+        }
+        return json.dumps(summary, ensure_ascii=False, separators=(",", ":"))
+
+    text = encode()
+    for key in ("excluded", "alternatives"):
+        while len(text) > MAX_CHUNK_CHARACTERS and summary[key]:
+            summary[key].pop()
+            text = encode()
+    if len(text) > MAX_CHUNK_CHARACTERS and summary["recommended"]:
+        summary["recommended"]["contributions"] = []
+        text = encode()
+    if len(text) > MAX_CHUNK_CHARACTERS:
+        # Keep IDs, units, priorities, limits and actual measures; never cut JSON/quotes.
+        for criterion in summary["criteria"]:
+            criterion.pop("label")
+        summary["limitations"] = ["See the returned comparison for full domain limitations."]
+        text = encode()
     return text
 
 
@@ -281,7 +325,7 @@ async def chat(
                 source_title="Calculated option comparison",
                 page=None,
                 index=0,
-                text=decision_evidence(decision),
+                text=decision_evidence(decision, body.decision_request),
                 is_simulated=decision.is_simulated,
             ),
         )
