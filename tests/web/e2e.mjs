@@ -37,7 +37,9 @@ const openLegacy = async (tab = page) => {
   if (!await tab.locator('#legacy-planner').evaluate((element) => element.open)) await tab.locator('#legacy-planner > summary').click();
 };
 const openTools = async (tab = page) => { if (!await tab.locator('#library-dialog').isVisible()) await tab.locator('#library-open').click(); };
-const plan = async (budget) => { await openLegacy(); await page.locator('#budget-preset').selectOption('custom'); await page.locator('#budget').fill(budget); await page.locator('#plan-submit').click(); };
+const plan = async (budget) => { await openLegacy(); await page.locator('#budget-preset').selectOption('custom'); await page.locator('#budget').fill(budget); await page.locator('#plan-submit').click(); await page.locator('#plan-submit:not([disabled])').waitFor(); };
+const compare = async (tab = page) => { await tab.locator('#decision-submit').click(); await tab.locator('#decision-submit:not([disabled])').waitFor(); };
+const applyCustom = async (tab = page) => { await tab.locator('#custom-apply').click(); await tab.locator('#custom-apply:not([disabled])').waitFor(); };
 const appearance = async (target, mode) => {
   if (!await target.locator('#appearance-picker').evaluate((element) => element.open)) await target.locator('#theme-toggle').click();
   await target.locator(`[name=appearance][value=${mode}]`).check();
@@ -76,12 +78,14 @@ function pdf(text) {
 try {
   await check('general decisions are primary while library, questions and itinerary start closed', async () => {
     await page.goto(base);
-    await waitText(page.locator('#decision-load-status'), 'Ready to explore');
-    assert.equal(await page.locator('.brand').innerText(), 'jinni');
-    assert.equal(await page.locator('.brand').getAttribute('aria-label'), 'jinni home');
-    assert.match(await page.title(), /^jinni ·/);
+    await page.locator('#decision-inputs:not([disabled])').waitFor();
+    assert.equal(await page.locator('.brand').innerText(), 'Jinni');
+    assert.equal(await page.locator('.brand').getAttribute('aria-label'), 'Jinni home');
+    assert.match(await page.title(), /^Jinni ·/);
     assert.equal(await page.locator('.brand .lamp-mark path').count(), 3);
-    assert.match(await page.locator('.footer').innerText(), /^jinni ·/);
+    assert.equal(await page.locator('.footer > span').first().innerText(), 'Jinni');
+    assert.equal(await page.locator('.intro, #how-it-works').count(), 0);
+    assert.ok(await page.locator('#title').evaluate((node) => node.getBoundingClientRect().top < 180));
     assert.equal(await page.locator('#scenario-tabs button').count(), 5);
     assert.equal(await page.locator('#library-dialog').isVisible(), false);
     assert.equal(await page.locator('#question').isVisible(), false);
@@ -90,13 +94,13 @@ try {
     assert.equal(await page.locator('#decision-workspace').getAttribute('data-scenario'), 'travel');
   });
   await check('first-time example produces a real comparison and an easy return to preserved choices', async () => {
-    await waitText(page.locator('#decision-results'), 'Your comparison will appear here');
+    await waitText(page.locator('#decision-results'), 'Set your priorities, then compare.');
     await page.locator('#try-example').click();
     await page.locator('.decision-card').waitFor();
     assert.equal(await page.locator('#comparison-title').evaluate((element) => element === document.activeElement), true);
-    await waitText(page.locator('.match-explanation'), 'Why this came first');
+    await waitText(page.locator('.match-explanation'), 'Top priorities:');
     assert.equal(await page.locator('.decision-card .decision-score').count(), 0);
-    assert.equal(await page.locator('.decision-card').getByText('It fits the limits you set.', { exact: true }).isVisible(), true);
+    assert.match(await page.locator('.match-explanation').innerText(), /Price.*Travel time/);
     await page.locator('#edit-choices').click();
     assert.equal(await page.locator('#scenario-title').evaluate((element) => element === document.activeElement), true);
     assert.equal(await page.locator('#limit-cost-pence').inputValue(), '25');
@@ -104,7 +108,7 @@ try {
     await page.locator('#priority-cost-pence').selectOption('100');
     assert.equal(await page.locator('.decision-card').count(), 0);
     assert.equal(await page.locator('#edit-choices').isVisible(), false);
-    await page.locator('#decision-submit').click();
+    await compare();
     await waitText(page.locator('.decision-card'), '£8.00');
     await page.locator('#edit-choices').click();
     assert.equal(await page.locator('#limit-cost-pence').inputValue(), '8');
@@ -120,14 +124,14 @@ try {
     await waitText(page.locator('#extra-limits > summary'), '1 set');
     await waitText(page.locator('#active-limit-preview'), 'Travel time: up to 0 min');
     await page.locator('#extra-limits > summary').click();
-    await page.locator('#decision-submit').click();
+    await compare();
     await waitText(page.locator('#decision-status'), 'Nothing fits your limits');
     await page.locator('#edit-choices').click();
     await moreLimits();
     assert.equal(await page.locator('#limit-duration-minutes').inputValue(), '0');
     await page.locator('#limit-duration-minutes').fill('');
     await page.locator('#extra-limits > summary').click();
-    await page.locator('#decision-submit').click();
+    await compare();
     assert.equal(await page.locator('#extra-limits').evaluate((element) => element.open), true);
     assert.equal(await page.locator('#limit-duration-minutes').evaluate((element) => element === document.activeElement), true);
     await page.locator('#decision-reset').click();
@@ -135,7 +139,7 @@ try {
   await check('all five scenarios calculate comparison, exclusions and two-source provenance locally', async () => {
     for (const id of ['market', 'travel', 'student', 'sustainability', 'custom']) {
       await chooseTopic(id);
-      await page.locator('#decision-submit').click();
+      await compare();
       await page.locator('#decision-results .decision-card').waitFor();
       assert.ok(await page.locator('#decision-results .comparison-table tbody tr').count() > 0);
       assert.equal(await page.locator('.decision-provenance > p').count(), 2);
@@ -143,9 +147,9 @@ try {
       await waitText(page.locator('.decision-provenance'), 'not probabilities');
     }
     await chooseTopic('market');
-    await waitText(page.locator('#scenario-notice'), 'No real prices');
+    await waitText(page.locator('#scenario-notice'), 'No investment recommendation');
     await chooseTopic('travel');
-    await page.locator('#decision-submit').click();
+    await compare();
     await page.screenshot({ path: 'tmp/web/workspace-light.png', fullPage: true });
     await appearance(page, 'dark');
     await page.screenshot({ path: 'tmp/web/workspace-dark.png', fullPage: true });
@@ -154,7 +158,7 @@ try {
   await check('phone comparisons bring the result into focus and keep scenario controls within the screen', async () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await chooseTopic('travel');
-    await page.locator('#decision-submit').click();
+    await compare();
     assert.equal(await page.locator('#comparison-title').evaluate((element) => element === document.activeElement), true);
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
     await page.screenshot({ path: 'tmp/web/workspace-phone.png', fullPage: true });
@@ -168,10 +172,10 @@ try {
     assert.doesNotMatch(await page.locator('#decision-form').innerText(), /\bweights\b|hard constraints|\bpence\b|\bGBP\b/i);
     await page.locator('#priority-cost-pence').selectOption('100');
     assert.equal(await page.locator('#weight-cost-pence').inputValue(), '100');
-    await page.locator('#decision-submit').click(); await page.locator('.decision-card').waitFor();
+    await compare(); await page.locator('.decision-card').waitFor();
     await page.locator('#priority-cost-pence').selectOption('custom');
     await page.locator('#weight-cost-pence').fill('42.5');
-    await page.locator('#decision-submit').click(); await page.locator('.decision-card').waitFor();
+    await compare(); await page.locator('.decision-card').waitFor();
     await page.locator('#decision-reset').click();
     assert.equal(await page.locator('#weight-cost-pence').inputValue(), '45');
     assert.equal(await page.locator('#exact-cost-pence').isVisible(), false);
@@ -186,7 +190,7 @@ try {
     await slider.focus(); await page.keyboard.press('ArrowRight');
     assert.equal(await value.inputValue(), '43.5');
     await waitText(page.locator('#exact-cost-pence .number-unit'), '/ 100');
-    await page.locator('#decision-submit').click(); await page.locator('.decision-card').waitFor();
+    await compare(); await page.locator('.decision-card').waitFor();
     await slider.focus(); await page.keyboard.press('ArrowLeft');
     assert.equal(await value.inputValue(), '42.5');
     assert.equal(await page.locator('.decision-card').count(), 0);
@@ -200,10 +204,10 @@ try {
     assert.equal(await budget.inputValue(), '24.99');
     await budget.fill('7.99');
     assert.equal(await money.inputValue(), '7.99');
-    await page.locator('#decision-submit').click(); await waitText(page.locator('#decision-status'), 'Nothing fits');
+    await compare(); await waitText(page.locator('#decision-status'), 'Nothing fits');
     await money.focus(); await page.keyboard.press('ArrowRight');
     assert.equal(await budget.inputValue(), '8.00');
-    await page.locator('#decision-submit').click(); await waitText(page.locator('.decision-card'), '£8.00');
+    await compare(); await waitText(page.locator('.decision-card'), '£8.00');
     await budget.fill('1234.56');
     assert.equal(await money.inputValue(), '1234.56');
     assert.ok(Number(await money.getAttribute('max')) >= 1234.56);
@@ -245,19 +249,19 @@ try {
     await chooseTopic('travel');
     assert.equal(await page.locator('#limit-cost-pence').inputValue(), '25');
     await page.getByLabel('Your budget (£)', { exact: true }).fill('7.99');
-    await page.locator('#decision-submit').click(); await waitText(page.locator('#decision-status'), 'Nothing fits');
+    await compare(); await waitText(page.locator('#decision-status'), 'Nothing fits');
     await page.locator('#limit-cost-pence').fill('8.00');
-    await page.locator('#decision-submit').click(); await waitText(page.locator('.decision-card'), '£8.00');
+    await compare(); await waitText(page.locator('.decision-card'), '£8.00');
     await waitText(page.locator('.comparison-table').first(), '£8.00');
     assert.doesNotMatch(await page.locator('.decision-card').innerText(), /\bpence\b|\bGBP\b/);
     await page.locator('#limit-cost-pence').fill('8.001');
-    await page.locator('#decision-submit').click(); await page.locator('#decision-status.error').waitFor();
+    await compare(); await page.locator('#decision-status.error').waitFor();
     assert.equal(await page.locator('.decision-card').count(), 0);
     await page.locator('#decision-reset').click();
   });
   await check('ignoring every priority gives a plain correction rather than a fake match', async () => {
     for (const input of await page.locator('.priority-choice').all()) await input.selectOption('0');
-    await page.locator('#decision-submit').click(); await waitText(page.locator('#decision-status.error'), 'Choose Important');
+    await compare(); await waitText(page.locator('#decision-status.error'), 'Choose Important');
     assert.equal(await page.locator('.decision-card').count(), 0);
     await page.locator('#decision-reset').click();
   });
@@ -269,13 +273,13 @@ try {
     await moreLimits();
     await page.locator('#bound-duration-minutes').selectOption('lte');
     await page.locator('#limit-duration-minutes').fill('0');
-    await page.locator('#decision-submit').click();
+    await compare();
     await waitText(page.locator('#decision-status'), 'Nothing fits your limits');
     assert.equal(await page.locator('.decision-card').count(), 0);
     await page.locator('#decision-exclusions summary').click();
     assert.ok(await page.locator('.decision-excluded').count() > 0);
     await page.locator('#decision-reset').click();
-    await page.locator('#decision-submit').click();
+    await compare();
     await page.locator('.decision-card').waitFor();
   });
   await check('custom editor validates and calculates a new domain with safe text rendering', async () => {
@@ -291,31 +295,49 @@ try {
       delete observation.metrics[oldId];
     }
     await page.locator('#custom-json').fill(JSON.stringify(custom));
-    await page.locator('#custom-apply').click();
-    await waitText(page.locator('#custom-status'), 'ready to use');
+    await applyCustom();
+    await waitText(page.locator('#custom-status'), 'Custom data applied.');
     assert.equal(await page.locator('#weight-constructor').inputValue(), String(criterion.default_weight));
-    await page.locator('#decision-submit').click();
+    await compare();
     await page.locator('.decision-card').waitFor();
     assert.equal(await page.locator('#decision-results img').count(), 0);
     criterion.default_weight = 0;
     for (const observation of custom.dataset.observations) delete observation.metrics.constructor;
     await page.locator('#custom-json').fill(JSON.stringify(custom));
-    await page.locator('#custom-apply').click();
+    await applyCustom();
     assert.equal(await page.locator('#weight-constructor').inputValue(), '0');
-    await page.locator('#decision-submit').click();
+    await compare();
     await page.locator('.decision-card').waitFor();
     await waitText(page.locator('#decision-results'), 'Unknown');
     assert.doesNotMatch(await page.locator('#decision-results').innerText(), /NaN|function Object/);
     await page.locator('#custom-json').fill('{broken');
-    await page.locator('#custom-apply').click();
+    await applyCustom();
     await waitText(page.locator('#custom-status.error'), 'not applied');
     await chooseTopic('travel');
   });
+  await check('unapplied custom JSON blocks comparison and explicit AI context until applied or reset', async () => {
+    await chooseTopic('custom'); await page.locator('#custom-editor summary').click();
+    const custom = JSON.parse(await page.locator('#custom-json').inputValue());
+    custom.title = 'Unsaved custom decision'; await page.locator('#custom-json').fill(JSON.stringify(custom));
+    await compare();
+    await waitText(page.locator('#decision-status.error'), 'Apply your custom data first.');
+    assert.equal(await page.locator('.decision-card').count(), 0);
+    const contextError = await page.evaluate(async () => {
+      const context = await import('./ui-context.mjs');
+      try { context.getDecisionRequest(); return null; } catch (error) { return error.message; }
+    });
+    assert.equal(contextError, 'Apply your custom data first.');
+    await applyCustom(); await waitText(page.locator('#custom-status'), 'Custom data applied.');
+    assert.equal(await page.evaluate(async () => (await import('./ui-context.mjs')).getDecisionRequest().custom.title), custom.title);
+    await page.locator('#custom-json').fill('{broken'); await page.locator('#decision-reset').click();
+    assert.equal(await page.evaluate(async () => (await import('./ui-context.mjs')).getDecisionRequest().custom ?? null), null);
+    await chooseTopic('travel');
+  });
   await check('library drawer opens on demand, Escape closes it, and reduced motion disables result entrance', async () => {
-    await openTools(); await waitText(page.locator('#library-status'), 'Library ready.');
+    await openTools(); await page.locator('#source-count:not(:empty)').waitFor();
     await page.keyboard.press('Escape'); assert.equal(await page.locator('#library-dialog').isVisible(), false);
     assert.equal(await page.locator('#library-open').evaluate((element) => element === document.activeElement), true);
-    await page.locator('#decision-submit').click();
+    await compare();
     assert.equal(await page.locator('.decision-card').evaluate((element) => getComputedStyle(element).animationName), 'none');
   });
   await check('sound starts off and only synthesises quiet feedback after explicit user opt-in', async () => {
@@ -328,25 +350,25 @@ try {
         createGain() { return { gain: { setValueAtTime() {}, linearRampToValueAtTime(value) { window.audioTest.gains.push(value); }, exponentialRampToValueAtTime() {} }, connect() {}, disconnect() {} }; }
       };
     });
-    await page.locator('#decision-submit').click();
+    await compare();
     assert.equal(await page.evaluate(() => window.audioTest.contexts), 0);
     await page.locator('#sound-toggle').click();
     await page.waitForFunction(() => window.audioTest.tones === 1);
-    await page.locator('#decision-submit').click();
+    await compare();
     await page.waitForFunction(() => window.audioTest.tones === 2);
     assert.ok(await page.evaluate(() => window.audioTest.gains.every((value) => value <= 0.025)));
     await page.locator('#sound-toggle').click();
-    await page.locator('#decision-submit').click();
+    await compare();
     assert.equal(await page.evaluate(() => window.audioTest.tones), 2);
     await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await page.locator('#decision-submit').click();
+    await compare();
     assert.equal(await page.locator('.decision-card').evaluate((element) => getComputedStyle(element).animationName), 'decision-enter');
     await page.emulateMedia({ reducedMotion: 'reduce' });
   });
   await check('subtle waves move, pause persistently, and stop automatically for reduced motion', async () => {
     const moving = await browser.newContext({ viewport: { width: 1280, height: 950 }, reducedMotion: 'no-preference', colorScheme: 'light' });
     const tab = await moving.newPage(); await tab.goto(base);
-    await waitText(tab.locator('#decision-load-status'), 'Ready to explore');
+    await tab.locator('#decision-inputs:not([disabled])').waitFor();
     assert.equal((await tab.request.get(`${base}waves.svg`)).status(), 200);
     assert.equal(await tab.locator('html').getAttribute('data-waves'), 'on');
     assert.equal(await tab.locator('.wave-layer').first().evaluate((element) => getComputedStyle(element).animationPlayState), 'running');
@@ -355,7 +377,7 @@ try {
     await tab.locator('#theme-toggle').click(); await tab.locator('#waves-toggle').uncheck();
     assert.equal(await tab.locator('html').getAttribute('data-waves'), 'off');
     assert.equal(await tab.locator('.wave-layer').first().evaluate((element) => getComputedStyle(element).animationPlayState), 'paused');
-    await tab.reload(); await waitText(tab.locator('#decision-load-status'), 'Ready to explore');
+    await tab.reload(); await tab.locator('#decision-inputs:not([disabled])').waitFor();
     assert.equal(await tab.locator('html').getAttribute('data-waves'), 'off');
     await tab.locator('#theme-toggle').click(); await tab.locator('#waves-toggle').check();
     await tab.locator('#appearance-done').click();
@@ -379,7 +401,7 @@ try {
     assert.equal(await broken.locator('#decision-submit').isDisabled(), true);
     assert.equal(await broken.locator('.decision-card').count(), 0);
     await broken.unroute('**/decisions.json'); await broken.locator('#decision-retry').click();
-    await waitText(broken.locator('#decision-load-status'), 'Ready to explore');
+    await broken.locator('#decision-inputs:not([disabled])').waitFor();
     await broken.locator('#decision-submit').click(); await broken.locator('.decision-card').waitFor();
     await broken.close();
   });
@@ -387,9 +409,9 @@ try {
     await page.evaluate(() => localStorage.removeItem('my-jinni-theme'));
     await page.goto(base);
     await openLegacy();
-    await waitText(page.locator('#setup-status'), 'Ready.');
+    await page.locator('#preferences:not([disabled])').waitFor();
     await openTools();
-    await waitText(page.locator('#library-status'), 'Library ready.');
+    await page.locator('#source-count:not(:empty)').waitFor();
     await page.locator('#library-close').click();
     assert.equal(await page.locator('#origin option').count(), 2);
     assert.match(await page.locator('.demo-banner').innerText(), /fictional|simulated/i);
@@ -402,18 +424,18 @@ try {
     assert.equal(await page.locator('html').getAttribute('data-appearance'), 'system');
     await appearance(page, 'light');
     assert.equal(await page.evaluate(() => localStorage.getItem('my-jinni-theme')), 'light');
-    await page.reload(); await openLegacy(); await waitText(page.locator('#setup-status'), 'Ready.');
+    await page.reload(); await openLegacy(); await page.locator('#preferences:not([disabled])').waitFor();
     assert.equal(await page.locator('html').getAttribute('data-theme'), 'light');
     await page.locator('#theme-toggle').focus(); await page.keyboard.press('Enter');
     await page.locator('[name=appearance][value=dark]').check(); await page.locator('#appearance-done').click();
     assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark');
-    await page.reload(); await openLegacy(); await waitText(page.locator('#setup-status'), 'Ready.');
+    await page.reload(); await openLegacy(); await page.locator('#preferences:not([disabled])').waitFor();
     assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark');
     await appearance(page, 'light');
   });
   await check('theme changes sync to another tab without resetting its planner', async () => {
     const other = await context.newPage(); await other.goto(base); await openLegacy(other);
-    await waitText(other.locator('#setup-status'), 'Ready.');
+    await other.locator('#preferences:not([disabled])').waitFor();
     await other.locator('#depart').fill('15:30');
     await appearance(page, 'dark');
     await other.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
@@ -427,7 +449,7 @@ try {
     await page.waitForFunction(() => document.documentElement.dataset.theme === 'light');
     await page.emulateMedia({ colorScheme: 'dark' });
     await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
-    await page.reload(); await openLegacy(); await waitText(page.locator('#setup-status'), 'Ready.');
+    await page.reload(); await openLegacy(); await page.locator('#preferences:not([disabled])').waitFor();
     assert.equal(await page.locator('html').getAttribute('data-appearance'), 'system');
     await appearance(page, 'light');
   });
@@ -595,13 +617,13 @@ try {
     assert.equal(await page.locator('.source-item').count(), count);
   });
   await check('IndexedDB survives reload; delete removes source and search results', async () => {
-    await page.reload(); await openTools(); await waitText(page.locator('#library-status'), 'Library ready.');
+    await page.reload(); await openTools(); await page.locator('#source-count:not(:empty)').waitFor();
     await row('guide.pdf').waitFor();
     await row('guide.pdf').locator('input').check(); await search('telescope'); await page.locator('.excerpt').waitFor();
     await row('guide.pdf').getByRole('button', { name: 'Delete guide.pdf', exact: true }).click();
     await page.locator('#delete-confirm').click();
-    await waitText(page.locator('#library-status'), 'Item removed'); assert.equal(await page.locator('.excerpt').count(), 0);
-    await page.reload(); await openTools(); await waitText(page.locator('#library-status'), 'Library ready.'); assert.equal(await row('guide.pdf').count(), 0);
+    await waitText(page.locator('#library-status'), 'Source removed'); assert.equal(await page.locator('.excerpt').count(), 0);
+    await page.reload(); await openTools(); await page.locator('#source-count:not(:empty)').waitFor(); assert.equal(await row('guide.pdf').count(), 0);
   });
   await check('source sort dropdown orders saved documents without losing selection', async () => {
     await row('notes.md').locator('input').check();
@@ -675,7 +697,7 @@ try {
     const restricted = await browser.newContext({ colorScheme: 'dark' });
     await restricted.addInitScript(() => Object.defineProperty(window, 'localStorage', { get() { throw new Error('Storage disabled'); } }));
     const tab = await restricted.newPage(); await tab.goto(base); await openLegacy(tab);
-    await waitText(tab.locator('#setup-status'), 'Ready.');
+    await tab.locator('#preferences:not([disabled])').waitFor();
     assert.equal(await tab.locator('html').getAttribute('data-theme'), 'dark');
     await appearance(tab, 'light');
     assert.equal(await tab.locator('html').getAttribute('data-theme'), 'light');
@@ -688,12 +710,12 @@ try {
     await waitText(broken.locator('#setup-status.error'), 'could not be loaded');
     assert.equal(await broken.locator('#plan-submit').isDisabled(), true);
     await broken.unroute('**/scenario.json'); await broken.locator('#reload').click();
-    await waitText(broken.locator('#setup-status'), 'Ready.'); await broken.close();
+    await broken.locator('#preferences:not([disabled])').waitFor(); await broken.close();
   });
   await check('blocked browser storage leaves planner fully usable and reports the library issue', async () => {
     const blocked = await context.newPage();
     await blocked.addInitScript(() => Object.defineProperty(window, 'indexedDB', { get() { throw new Error('Storage disabled'); } }));
-    await blocked.goto(base); await openLegacy(blocked); await waitText(blocked.locator('#setup-status'), 'Ready.');
+    await blocked.goto(base); await openLegacy(blocked); await blocked.locator('#preferences:not([disabled])').waitFor();
     await blocked.locator('#plan-submit').click(); await waitText(blocked.locator('.activity.featured'), 'Board Game Night');
     await openTools(blocked);
     await addSourceAction(blocked, 'demo-source'); await waitText(blocked.locator('#library-status.error'), 'Planning still works'); await blocked.close();
@@ -702,14 +724,14 @@ try {
     const localized = await browser.newContext({ viewport: { width: 1280, height: 1200 }, colorScheme: 'light', reducedMotion: 'reduce' });
     const tab = await localized.newPage();
     tab.on('pageerror', (error) => errors.push(error.message));
-    await tab.goto(base); await waitText(tab.locator('#decision-load-status'), 'Ready to explore');
+    await tab.goto(base); await tab.locator('#decision-inputs:not([disabled])').waitFor();
     assert.deepEqual(await tab.locator('#language-select option').evaluateAll((options) => options.map((option) => [option.value, option.textContent])), [
       ['en', 'English'], ['zh-CN', '简体中文'], ['fr', 'Français'], ['ja', '日本語'], ['ru', 'Русский'],
     ]);
     assert.equal(await tab.locator('#language-select').inputValue(), 'en');
     await tab.locator('#limit-cost-pence').fill('25.01');
     await tab.locator('#priority-emissions-grams').selectOption('100');
-    await tab.locator('#decision-submit').click(); await tab.locator('.decision-card').waitFor();
+    await compare(tab); await tab.locator('.decision-card').waitFor();
     const resultId = await tab.locator('.decision-card').getAttribute('data-option-id');
     const values = () => tab.locator('#decision-form input, #decision-form select, #custom-json').evaluateAll((items) => items.map((item) => [item.id, item.value]));
     const before = await values();
@@ -721,7 +743,7 @@ try {
       assert.equal(await tab.locator('.decision-card').getAttribute('data-option-id'), resultId);
       const expected = await tab.evaluate(() => window.jinniI18n.t('Find my best match'));
       assert.equal((await tab.locator('#decision-submit').innerText()).replace('→', '').trim(), expected);
-      assert.equal(await tab.locator('#title').innerText(), await tab.evaluate(() => `${window.jinniI18n.t('Compare your options.')}\n${window.jinniI18n.t('Find what suits you.')}`));
+      assert.equal(await tab.locator('#title').innerText(), await tab.evaluate(() => window.jinniI18n.t('Compare options')));
       assert.equal(await tab.locator('#sound-toggle > span').innerText(), await tab.evaluate(() => window.jinniI18n.t('Sound off')));
       assert.equal(await tab.locator('#sound-toggle').getAttribute('title'), await tab.evaluate(() => window.jinniI18n.t('Turn sound effects on')));
       assert.match(await tab.locator('.decision-card').innerText(), /£/);
@@ -744,7 +766,7 @@ try {
   });
   await check('language changes retain exact note text, source titles, selection and open original passages', async () => {
     const local = await browser.newContext(); const tab = await local.newPage(); await tab.goto(base);
-    await waitText(tab.locator('#decision-load-status'), 'Ready to explore');
+    await tab.locator('#decision-inputs:not([disabled])').waitFor();
     await openTools(tab); await addSourceAction(tab, 'paste-toggle');
     const title = 'Your best match'; const text = 'Price hours exactcontext <img src=x onerror=alert(1)> 日本語 Français 中文 Русский';
     await tab.locator('#source-title').fill(title); await tab.locator('#source-text').fill(text);
@@ -765,19 +787,28 @@ try {
       assert.equal(await tab.locator('#viewer-content .passage p').textContent(), text);
       assert.equal(await tab.locator('#viewer-close').innerText(), await tab.evaluate(() => window.jinniI18n.t('Close')));
       assert.equal(await tab.locator('#viewer-content .passage strong').innerText(), await tab.evaluate(() => window.jinniI18n.t('Passage {index}', { index: 1 })));
+      await tab.locator('#viewer-close').click();
+      const quote = 'Price hours exactcontext <img src=x onerror=alert(1)>';
+      await tab.evaluate(async (quote) => {
+        const context = await import('./ui-context.mjs');
+        await context.openSource(context.getSourceIds()[0], { quote });
+      }, quote);
+      assert.equal(await tab.locator('#viewer-content mark').textContent(), quote);
+      assert.equal(await tab.locator('#viewer-content .passage p').textContent(), text);
+      assert.equal(await tab.locator('#viewer-content img').count(), 0);
       await tab.locator('#viewer-close').click(); await tab.locator('#library-close').click();
     }
     await local.close();
   });
   await check('custom labels and units stay literal and actual theme mode survives every language', async () => {
     const local = await browser.newContext(); const tab = await local.newPage(); await tab.goto(base);
-    await waitText(tab.locator('#decision-load-status'), 'Ready to explore');
+    await tab.locator('#decision-inputs:not([disabled])').waitFor();
     await tab.locator('.scenario-tab[data-id=custom]').click(); await tab.locator('#custom-editor summary').click();
     const custom = JSON.parse(await tab.locator('#custom-json').inputValue());
     custom.title = 'Your best match'; custom.criteria[0].label = 'Price';
     custom.criteria[1].label = 'Your choices'; custom.criteria[1].unit = 'hours';
-    await tab.locator('#custom-json').fill(JSON.stringify(custom)); await tab.locator('#custom-apply').click();
-    await tab.locator('#decision-submit').click(); await tab.locator('.decision-card').waitFor();
+    await tab.locator('#custom-json').fill(JSON.stringify(custom)); await applyCustom(tab);
+    await compare(tab); await tab.locator('.decision-card').waitFor();
     const original = await tab.locator('#custom-json').inputValue();
     await appearance(tab, 'dark');
     for (const language of ['fr', 'ru', 'ja', 'zh-CN', 'en']) {
@@ -794,14 +825,14 @@ try {
   await check('translated errors and language choices work when preference storage is blocked', async () => {
     const local = await browser.newContext();
     await local.addInitScript(() => Object.defineProperty(window, 'localStorage', { get() { throw new Error('Storage disabled'); } }));
-    const tab = await local.newPage(); await tab.goto(base); await waitText(tab.locator('#decision-load-status'), 'Ready to explore');
+    const tab = await local.newPage(); await tab.goto(base); await tab.locator('#decision-inputs:not([disabled])').waitFor();
     await tab.locator('#language-select').selectOption('fr');
     for (const input of await tab.locator('.priority-choice').all()) await input.selectOption('0');
-    await tab.locator('#decision-submit').click();
+    await compare(tab);
     assert.equal(await tab.locator('#decision-status.error').innerText(), await tab.evaluate(() => window.jinniI18n.t('Choose Important or Very important for at least one thing.')));
     await tab.locator('#language-select').selectOption('ru');
     assert.equal(await tab.locator('#decision-status.error').innerText(), await tab.evaluate(() => window.jinniI18n.t('Choose Important or Very important for at least one thing.')));
-    await tab.locator('#decision-reset').click(); await tab.locator('#decision-submit').click(); await tab.locator('.decision-card').waitFor();
+    await tab.locator('#decision-reset').click(); await compare(tab); await tab.locator('.decision-card').waitFor();
     assert.equal(await tab.locator('html').getAttribute('lang'), 'ru');
     await tab.reload(); await tab.locator('#decision-inputs:not([disabled])').waitFor();
     assert.equal(await tab.locator('#language-select').inputValue(), 'en');

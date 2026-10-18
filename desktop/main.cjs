@@ -3,24 +3,28 @@
 const path = require('node:path');
 const fs = require('node:fs');
 const { open } = require('node:fs/promises');
-const { pathToFileURL } = require('node:url');
-const { app, BrowserWindow, dialog, ipcMain, Menu } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, Menu, protocol } = require('electron');
 const { ApiClient } = require('./api-client.cjs');
 const { BackendManager } = require('./backend.cjs');
 const { ValidationError, validateBackendUrl, validateIpcInput } = require('./validation.cjs');
+const { DOCUMENT_URL, createAssetHandler, isTrustedDocument, preferenceReadScript, preferenceSeedScript } = require('./assets.cjs');
 
 const ROOT_DIR = path.resolve(__dirname, '..');
-const RENDERER_PATH = path.join(__dirname, 'renderer', 'index.html');
-const RENDERER_URL = pathToFileURL(RENDERER_PATH).href;
+const LEGACY_PATH = path.join(__dirname, 'renderer', 'index.html');
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 let mainWindow = null;
 let backend = null;
 let api = null;
 let configurationError = null;
 let quitting = false;
+let migration = false;
 
-const existingUserData = app.getPath('userData');
-app.setName('jinni');
+protocol.registerSchemesAsPrivileged([{ scheme: 'jinni', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }]);
+
+const currentUserData = app.getPath('userData');
+const existingUserData = path.basename(currentUserData) === 'Jinni'
+  ? path.join(path.dirname(currentUserData), 'jinni') : currentUserData;
+app.setName('Jinni');
 app.setPath('userData', existingUserData);
 if (process.env.MY_JINNI_DATA_DIR) {
   const userData = path.join(path.resolve(process.env.MY_JINNI_DATA_DIR), 'desktop');
@@ -129,7 +133,7 @@ function registerBridge() {
     ipcMain.handle(`my-jinni:${method}`, async (event, ...values) => {
       if (!mainWindow || event.sender !== mainWindow.webContents
           || !event.senderFrame || event.senderFrame !== mainWindow.webContents.mainFrame
-          || event.senderFrame.url !== RENDERER_URL) {
+          || !isTrustedDocument(event.senderFrame.url)) {
         throw new Error('This desktop operation is not available from this page.');
       }
       try {
@@ -147,7 +151,7 @@ function registerBridge() {
 
 async function createWindow() {
   mainWindow = new BrowserWindow({
-    title: 'jinni', width: 1440, height: 980, minWidth: 860, minHeight: 650,
+    title: 'Jinni', width: 1440, height: 980, minWidth: 860, minHeight: 650,
     backgroundColor: '#f4f5f7', show: false, autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true,
@@ -155,14 +159,28 @@ async function createWindow() {
     },
   });
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
-  mainWindow.webContents.on('will-navigate', (event) => event.preventDefault());
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (!isTrustedDocument(url || event.url)) event.preventDefault();
+  });
   mainWindow.webContents.on('will-redirect', (event) => event.preventDefault());
   mainWindow.webContents.on('will-attach-webview', (event) => event.preventDefault());
   mainWindow.webContents.session.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
   mainWindow.webContents.session.setPermissionCheckHandler(() => false);
-  mainWindow.once('ready-to-show', () => mainWindow?.show());
   mainWindow.on('closed', () => { mainWindow = null; });
-  await mainWindow.loadFile(RENDERER_PATH);
+  // The inert old document exposes no scripts and only trusted main reads whitelisted preferences.
+  let preferences = {};
+  if (fs.existsSync(LEGACY_PATH)) {
+    try {
+      await mainWindow.loadFile(LEGACY_PATH);
+      preferences = await mainWindow.webContents.executeJavaScript(preferenceReadScript());
+    } catch { /* Unavailable preference storage must not prevent startup. */ }
+  }
+  migration = true;
+  await mainWindow.loadURL(DOCUMENT_URL);
+  await mainWindow.webContents.executeJavaScript(preferenceSeedScript(preferences)).catch(() => {});
+  migration = false;
+  await mainWindow.loadURL(DOCUMENT_URL);
+  mainWindow.show();
 }
 
 if (!app.requestSingleInstanceLock()) {
@@ -176,6 +194,7 @@ if (!app.requestSingleInstanceLock()) {
   });
   app.whenReady().then(async () => {
     Menu.setApplicationMenu(null);
+    protocol.handle('jinni', createAssetHandler(ROOT_DIR, { migration: () => migration }));
     let baseUrl = 'http://127.0.0.1:8000';
     try {
       baseUrl = validateBackendUrl(process.env.MY_JINNI_BACKEND_URL || baseUrl);
@@ -189,7 +208,7 @@ if (!app.requestSingleInstanceLock()) {
     if (!configurationError) void backend.start();
     await createWindow();
   }).catch(() => {
-    dialog.showErrorBox('jinni could not start', 'The desktop interface could not be loaded. Check the project setup and try again.');
+    dialog.showErrorBox('Jinni could not start', 'The desktop interface could not be loaded. Check the project setup and try again.');
     app.quit();
   });
   app.on('window-all-closed', () => app.quit());

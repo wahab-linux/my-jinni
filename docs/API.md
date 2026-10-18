@@ -1,8 +1,10 @@
 # API contract v0.5
 
+The shared frontend adds no API fields or schema migration. Desktop operations use the same named IPC routes and authoritative Python responses; browser calculations retain existing parity. Library-source creation/upload returns a `LibrarySource` directly in `data`, while source detail returns `{source,chunks}`. The platform adapter preserves those existing envelopes and canonical IDs.
+
 Interface localization adds no HTTP fields or API migration. Existing canonical responses, source quotes, IDs, GBP/pence values and timezone-aware timestamps are unchanged. Locale preferences remain local to each experience; changing the display language never sends a translation or generation request. Generated provider answers and original evidence retain their returned/source language.
 
-The user-facing product name is `jinni`. The technical OpenAPI title `my-jinni API`, routes, source IDs and response field names remain unchanged for existing clients and backend identity checks. Branding introduces no API migration.
+The user-facing product name is `Jinni`. The technical OpenAPI title `my-jinni API`, routes, source IDs and response field names remain unchanged for existing clients and backend identity checks. Branding introduces no API migration.
 
 v0.5 adds configurable option comparisons, five initial scenarios and optional calculated comparison evidence in chat. Read [GENERAL_DECISIONS.md](GENERAL_DECISIONS.md) for complete models, ranking, limits, source routes, failure handling and browser export. Existing activity, library and provider operations below are retained unchanged.
 
@@ -32,7 +34,7 @@ Here **v0.2 is the contract revision**, not a package release. Application packa
 
 ## Boundaries
 
-jinni compares supplied options using configurable criteria and separate source data. `app/comparison/` owns the reusable general comparison. The activity example still helps anyone choose an activity using budget, time, interests and return travel. `app/scenario.py` configures that example's two origins, source-data day, timezone and budget cap. See `docs/ARCHITECTURE.md`.
+Jinni compares supplied options using configurable criteria and separate source data. `app/comparison/` owns the reusable general comparison. The activity example still helps anyone choose an activity using budget, time, interests and return travel. `app/scenario.py` configures that example's two origins, source-data day, timezone and budget cap. See `docs/ARCHITECTURE.md`.
 
 GBP, five activity categories, return to the same origin, fixed travel durations and fictional feeds remain limits of the detailed activity endpoint. They do not constrain the general comparison endpoint, whose criteria and datasets can describe other domains. No preset establishes live service coverage.
 

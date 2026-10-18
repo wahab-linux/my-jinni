@@ -4,702 +4,442 @@ const fs = require('node:fs');
 const path = require('node:path');
 const http = require('node:http');
 const { _electron: electron } = require('playwright');
-const {
-  SCREENSHOTS, TEST_KEY, tempDirectory, freePort, waitUntil, startMockBackend, launchDesktop, screenshot,
-} = require('./helpers.cjs');
+const { ROOT, SCREENSHOTS, TEST_KEY, tempDirectory, freePort, waitUntil, startMockBackend, launchDesktop } = require('./helpers.cjs');
 
 let checks = 0;
 async function check(name, action) {
-  await action();
+  try { await action(); } catch (error) { error.message = `${name}: ${error.message}`; throw error; }
   checks++;
   console.log(`PASS ${name}`);
 }
-
 async function contains(locator, text) {
-  await waitUntil(async () => (await locator.innerText()).toLowerCase().includes(text.toLowerCase()),
-    { message: `Expected visible text: ${text}` });
+  await waitUntil(async () => (await locator.innerText()).toLowerCase().includes(text.toLowerCase()), { message: `Expected text: ${text}` });
 }
-
-async function viewportScreenshot(page, name) {
-  await page.evaluate(() => Promise.all(document.getAnimations()
-    .filter((animation) => animation.effect?.getComputedTiming().iterations !== Infinity)
-    .map((animation) => animation.finished.catch(() => {}))));
+async function screenshot(page, name) {
+  fs.mkdirSync(SCREENSHOTS, { recursive: true });
   await page.screenshot({ path: path.join(SCREENSHOTS, name), scale: 'css' });
 }
-
-async function sources(baseUrl) {
-  const response = await fetch(`${baseUrl}/api/v1/sources`);
+async function json(base, route) {
+  const response = await fetch(`${base}${route}`);
   assert.equal(response.status, 200);
-  return (await response.json()).data.sources;
+  return response.json();
 }
-
-function pdfFixture(text) {
-  const stream = `BT /F1 12 Tf 10 100 Td (${text}) Tj ET`;
-  const objects = [
-    '<< /Type /Catalog /Pages 2 0 R >>',
-    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
-    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 300] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>',
-    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
-    `<< /Length ${Buffer.byteLength(stream)} >>\nstream\n${stream}\nendstream`,
-  ];
-  let content = '%PDF-1.4\n';
-  const offsets = [0];
-  objects.forEach((object, index) => {
-    offsets.push(Buffer.byteLength(content));
-    content += `${index + 1} 0 obj\n${object}\nendobj\n`;
+const sources = async (base) => (await json(base, '/api/v1/sources')).data.sources;
+const status = (base) => json(base, '/__test__/provider-status');
+async function submit(page, base, kind, button) {
+  const previous = (await json(base, '/__test__/captured'))[kind]?.sequence || 0;
+  await page.locator(button).click();
+  return waitUntil(async () => {
+    const current = (await json(base, '/__test__/captured'))[kind];
+    return current?.sequence > previous && current;
+  }, { message: `No actual backend ${kind} request was observed.` });
+}
+async function post(base, route, value) {
+  const response = await fetch(`${base}${route}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value) });
+  return { status: response.status, body: await response.json() };
+}
+async function context(page) {
+  return page.evaluate(async () => {
+    const ui = await import('jinni://app/ui-context.mjs');
+    return { sources: ui.getSourceIds(), planner: ui.getPlannerPreferences(), decision: ui.getDecisionRequest() };
   });
-  const xref = Buffer.byteLength(content);
-  content += `xref\n0 6\n0000000000 65535 f \n${offsets.slice(1).map((offset) => `${String(offset).padStart(10, '0')} 00000 n \n`).join('')}`;
-  content += `trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
-  return Buffer.from(content);
 }
-
 async function closeTools(page) {
-  for (const id of ['source-dialog', 'settings-dialog', 'chat-drawer', 'library-drawer']) {
-    if (await page.getByTestId(id).isVisible()) await page.keyboard.press('Escape');
-  }
+  for (let index = 0; index < 5 && await page.locator('dialog[open]').count(); index++) await page.keyboard.press('Escape');
 }
-
-async function openTool(page, name) {
-  if (await page.getByTestId(`${name}-drawer`).isVisible()) return;
+async function library(page) {
+  if (await page.locator('#library-dialog').isVisible()) return;
+  await closeTools(page); await page.locator('#library-open').click();
+}
+async function ai(page) {
+  if (await page.locator('#desktop-ai-dialog').isVisible()) return;
+  await closeTools(page); await page.locator('#desktop-ai-open').click();
+}
+async function legacy(page) {
   await closeTools(page);
-  await page.getByTestId(`${name}-open`).click();
+  if (!await page.locator('#legacy-planner').evaluate((node) => node.open)) await page.locator('#legacy-planner > summary').click();
 }
-
-async function openLegacy(page) {
-  await closeTools(page);
-  if (!await page.getByTestId('legacy-planner').evaluate((node) => node.open)) await page.getByTestId('legacy-toggle').click();
+async function scenario(page, id) {
+  await closeTools(page); await page.locator(`#scenario-tabs button[data-id="${id}"]`).click();
+  await waitUntil(() => page.locator('#decision-submit').isEnabled());
 }
-
-async function openSettings(page) {
-  const button = await page.getByTestId('chat-drawer').isVisible() ? 'chat-settings-button' : 'settings-button';
-  await page.getByTestId(button).click();
-}
-
-async function addText(page, baseUrl, title, text) {
-  await openTool(page, 'library');
-  if (!await page.getByTestId('source-title').isVisible()) await page.getByTestId('add-text-toggle').click();
-  await page.getByTestId('source-title').fill(title);
-  await page.getByTestId('source-text').fill(text);
-  await page.getByTestId('text-source-simulated').check();
-  await page.getByTestId('add-source-submit').click();
-  return waitUntil(async () => (await sources(baseUrl)).find((source) => source.title === title));
-}
-
-async function selectOnly(page, selectedIds) {
-  await openTool(page, 'library');
-  for (const checkbox of await page.getByTestId('source-checkbox').all()) {
-    await checkbox.setChecked(selectedIds.includes(await checkbox.inputValue()));
+async function compare(page, base) {
+  const response = await submit(page, base, 'decision', '#decision-submit');
+  if (response.status === 200) {
+    if (response.body.data.recommended) await page.locator('.decision-card').waitFor();
+    else await contains(page.locator('#decision-status'), 'Nothing fits');
   }
+  return response;
 }
-
-async function saveKey(page, key, provider = 'openai') {
-  await openSettings(page);
-  await page.getByTestId('settings-provider').selectOption(provider);
-  await page.getByTestId('api-key').fill(key);
-  await page.getByTestId('save-key').click();
-  await waitUntil(async () => await page.getByTestId('api-key').inputValue() === '');
-  if (await page.getByTestId('settings-dialog').isVisible()) {
-    await page.getByTestId('settings-dialog').getByRole('button', { name: 'Close', exact: true }).click();
-  }
+async function definition(page, value) {
+  if (!await page.locator('#custom-editor').evaluate((node) => node.open)) await page.locator('#custom-editor > summary').click();
+  await page.locator('#custom-json').fill(JSON.stringify(value, null, 2)); await page.locator('#custom-apply').click();
+  await contains(page.locator('#custom-status'), 'applied');
 }
-
-async function ask(page, question, model = 'gpt-4.1-mini') {
-  await openTool(page, 'chat');
-  await page.getByTestId('include-decision').uncheck();
-  await page.getByTestId('include-plan').uncheck();
-  if (!await page.getByTestId('model').isVisible()) await page.getByText('Model settings', { exact: true }).click();
-  await page.getByTestId('model').fill(model);
-  await page.getByTestId('question').fill(question);
-  await page.getByTestId('ask-submit').click();
+async function plan(page, base, budget) {
+  await legacy(page); await page.locator('#budget-preset').selectOption('custom'); await page.locator('#budget').fill(budget);
+  const response = await submit(page, base, 'planner', '#plan-submit');
+  if (response.body.data?.recommended) await page.locator('.activity.featured').waitFor();
+  return response;
 }
-
-function customComparison() {
-  const source = (id, label) => ({ id, label, is_simulated: true, updated_at: '2026-10-17T10:00:00+01:00' });
-  return {
-    title: 'Fictional workspace equipment choice',
-    criteria: [
-      { id: 'cost-pence', label: 'Total cost', unit: 'pence', direction: 'minimize', default_weight: 100 },
-      { id: 'quality-score', label: 'Quality estimate', unit: 'score', direction: 'maximize', default_weight: 0 },
-    ],
-    dataset: {
-      option_source: source('equipment-catalog', 'Fictional equipment catalog'),
-      metric_source: source('equipment-measures', 'Fictional equipment measurements'),
-      options: [
-        { id: 'budget', name: 'Budget equipment', category: 'equipment', description: 'Fictional lower-cost option.' },
-        { id: 'premium', name: 'Premium equipment', category: 'equipment', description: 'Fictional higher-quality option.' },
-      ],
-      observations: [
-        { option_id: 'budget', available: true, metrics: { 'cost-pence': 100, 'quality-score': 20 } },
-        { option_id: 'premium', available: true, metrics: { 'cost-pence': 900, 'quality-score': 100 } },
-      ],
-    },
-  };
+async function menu(page, id) {
+  await library(page);
+  if (!await page.locator('#add-source-picker').evaluate((node) => node.open)) await page.locator('#add-source-picker > summary').click();
+  await page.locator(`#${id}`).click();
 }
-
-async function chooseScenario(page, id) {
+async function paste(page, base, title, text) {
+  await library(page);
+  if (!await page.locator('#paste-form').isVisible()) await menu(page, 'paste-toggle');
+  await page.locator('#source-title').fill(title); await page.locator('#source-text').fill(text);
+  await page.locator('#source-simulated').check(); await page.locator('#paste-form button[type=submit]').click();
+  const result = await waitUntil(async () => (await sources(base)).find((item) => item.title === title));
+  await page.locator(`.source-item[data-source-id="${result.id}"]`).waitFor(); return result;
+}
+async function select(page, ids) {
+  await library(page);
+  for (const row of await page.locator('.source-item').all()) await row.locator('input[type=checkbox]').setChecked(ids.includes(await row.getAttribute('data-source-id')));
+}
+async function importFile(page, app, base, directory, filename, bytes) {
+  const file = path.join(directory, filename); fs.writeFileSync(file, bytes);
+  await app.evaluate(({ dialog }, selected) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [selected] }); }, file);
+  await library(page); await page.locator('#import-simulated').check(); await menu(page, 'import-button');
+  return waitUntil(async () => (await sources(base)).find((item) => item.filename === filename));
+}
+async function key(page, value, provider = 'openai') {
+  await ai(page); await page.locator('#desktop-ai-provider').selectOption(provider);
+  if (!await page.locator('#desktop-ai-key').isVisible()) await page.locator('#desktop-ai-settings > summary').click();
+  await page.locator('#desktop-ai-key').fill(value);
+  await page.locator('#desktop-ai-key-save').click();
+  await waitUntil(async () => (await page.evaluate((id) => window.myJinni.getSessionSettings(id), provider)).configured);
+  assert.equal(await page.locator('#desktop-ai-key').inputValue(), '');
+  assert.equal((await page.evaluate(() => JSON.stringify(window.localStorage))).includes(value), false);
+}
+async function ask(page, base, question, model = 'gpt-4.1-mini') {
+  await ai(page); await page.locator('#desktop-ai-include-plan').uncheck(); await page.locator('#desktop-ai-include-decision').uncheck();
+  if (!await page.locator('#desktop-ai-model').isVisible()) await page.locator('#desktop-ai-model').locator('xpath=ancestor::details[1]/summary').click();
+  await page.locator('#desktop-ai-model').fill(model); await page.locator('#desktop-ai-question').fill(question);
+  return submit(page, base, 'chat', '#desktop-ai-ask');
+}
+async function appearance(page, mode) {
   await closeTools(page);
-  await page.getByTestId('decision-scenario').selectOption(id);
-  await waitUntil(() => page.getByTestId('decision-submit').isEnabled());
+  if (!await page.locator('#appearance-picker').evaluate((node) => node.open)) await page.locator('#theme-toggle').click();
+  await page.locator(`[name=appearance][value="${mode}"]`).check(); await page.locator('#appearance-done').click();
+}
+function equipment() {
+  const source = (id) => ({ id, label: `Fictional ${id}`, is_simulated: true, updated_at: '2026-10-17T10:00:00+01:00' });
+  return { title: 'Fictional equipment choice', criteria: [
+    { id: 'cost-pence', label: 'Price', unit: 'pence', direction: 'minimize', default_weight: 100 },
+    { id: 'quality-score', label: 'Your choices', unit: 'hours', direction: 'maximize', default_weight: 0 },
+  ], dataset: { option_source: source('catalog'), metric_source: source('measurements'), options: [
+    { id: 'budget', name: 'Budget equipment', category: 'equipment', description: 'Fictional lower-cost option.' },
+    { id: 'premium', name: 'Premium equipment', category: 'equipment', description: 'Fictional higher-quality option.' },
+  ], observations: [
+    { option_id: 'budget', available: true, metrics: { 'cost-pence': 100, 'quality-score': 20 } },
+    { option_id: 'premium', available: true, metrics: { 'cost-pence': 900, 'quality-score': 100 } },
+  ] } };
+}
+function pdf(text) {
+  const stream = `BT /F1 12 Tf 10 100 Td (${text}) Tj ET`;
+  const objects = ['<< /Type /Catalog /Pages 2 0 R >>', '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 300] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>',
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>', `<< /Length ${Buffer.byteLength(stream)} >>\nstream\n${stream}\nendstream`];
+  let result = '%PDF-1.4\n'; const offsets = [0];
+  for (const [index, object] of objects.entries()) { offsets.push(Buffer.byteLength(result)); result += `${index + 1} 0 obj\n${object}\nendobj\n`; }
+  const start = Buffer.byteLength(result);
+  result += `xref\n0 6\n0000000000 65535 f \n${offsets.slice(1).map((offset) => `${String(offset).padStart(10, '0')} 00000 n \n`).join('')}trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${start}\n%%EOF\n`;
+  return Buffer.from(result);
 }
 
-async function compare(page) {
-  await page.getByTestId('decision-submit').click();
-  await contains(page.getByTestId('decision-feedback'), 'Comparison complete');
-}
-
-async function applyDefinition(page, definition) {
-  const editor = page.getByTestId('custom-editor');
-  if (!await editor.evaluate((node) => node.open)) await editor.locator('summary').click();
-  await page.getByTestId('custom-json').fill(JSON.stringify(definition, null, 2));
-  await page.getByTestId('custom-apply').click();
-  await contains(page.getByTestId('decision-feedback'), 'definition applied');
-}
-
-async function exerciseGeneralDecisions(page, baseUrl) {
-  await waitUntil(() => page.getByTestId('decision-submit').isEnabled());
-  await check('decision workspace is primary and optional tools start collapsed', async () => {
-    assert.equal(await page.title(), 'jinni');
-    assert.equal(await page.locator('.brand').innerText(), 'jinni');
-    assert.equal(await page.getByTestId('jinni-lamp').getAttribute('viewBox'), '0 0 64 64');
-    assert.equal(await page.getByTestId('jinni-lamp').locator('path').count(), 3);
-    assert.equal(await page.getByTestId('library-drawer').isVisible(), false);
-    assert.equal(await page.getByTestId('chat-drawer').isVisible(), false);
-    assert.equal(await page.getByTestId('legacy-planner').evaluate((node) => node.open), false);
-    assert.equal(await page.getByTestId('sound-toggle').getAttribute('aria-pressed'), 'false');
-    assert.equal(await page.getByTestId('sound-toggle').innerText(), 'Sound off');
-    await contains(page.getByTestId('decision-empty'), 'comparison will appear');
-    await screenshot(page, '08-decision-workspace.png');
+async function decisions(page, base) {
+  for (const id of ['market', 'travel', 'student', 'sustainability', 'custom']) await check(`shared ${id} controls call the actual two-source Python comparison`, async () => {
+    await scenario(page, id); const result = await compare(page, base); assert.equal(result.status, 200);
+    assert.equal(result.request.scenario_id, id); assert.deepEqual(result.body, (await post(base, '/api/v1/decisions/evaluate', result.request)).body);
+    assert.equal(result.body.data.sources.length, 2); assert.notEqual(result.body.data.sources[0].id, result.body.data.sources[1].id);
+    assert.equal(await page.locator('.decision-card').getAttribute('data-option-id'), result.body.data.recommended.id);
+    assert.equal(await page.locator('#decision-results .comparison-table').first().locator('tbody tr').count(), result.body.data.ranked.length);
+    await page.locator('.decision-about > summary').click();
+    for (const source of result.body.data.sources) await contains(page.locator('.decision-provenance'), source.label);
+    if (id === 'market') assert.match(await page.locator('#scenario-notice').innerText(), /No.*(?:investment|suitability)/i);
   });
-  for (const id of ['market', 'travel', 'student', 'sustainability', 'custom']) {
-    await check(`actual two-source ${id} comparison matches the API's calculated result`, async () => {
-      await chooseScenario(page, id);
-      const request = await page.evaluate(() => window.currentDecisionRequest());
-      const response = await fetch(`${baseUrl}/api/v1/decisions/evaluate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(request) });
-      assert.equal(response.status, 200);
-      const expected = (await response.json()).data;
-      assert.equal(expected.sources.length, 2);
-      assert.notEqual(expected.sources[0].id, expected.sources[1].id);
-      await compare(page);
-      await contains(page.getByTestId('decision-results'), expected.recommended.name);
-      await contains(page.getByTestId('decision-results'), 'not a probability');
-      await page.getByTestId('decision-results').locator('.decision-provenance summary').click();
-      await contains(page.getByTestId('decision-results'), expected.sources[0].label);
-      assert.equal(await page.getByTestId('decision-table').locator('tbody tr').count(), expected.ranked.length);
-      if (id === 'market') await contains(page.locator('#scenario-notice'), 'no live prices');
-      if (id === 'travel') {
-        await screenshot(page, '09-travel-comparison.png');
-        await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
-        await viewportScreenshot(page, 'jinni-desktop-light.png');
-      }
+  await check('custom domains support weight flips, hard exclusions, missing data and constructor IDs', async () => {
+    const custom = equipment(); await definition(page, custom);
+    assert.equal((await compare(page, base)).body.data.recommended.id, 'budget');
+    await page.locator('#priority-cost-pence').selectOption('custom'); await page.locator('#weight-cost-pence').fill('0');
+    await page.locator('#priority-quality-score').selectOption('custom'); await page.locator('#weight-quality-score').fill('100');
+    assert.equal(await page.locator('.decision-card').count(), 0);
+    assert.equal((await compare(page, base)).body.data.recommended.id, 'premium');
+    await page.locator('#bound-cost-pence').selectOption('lte'); await page.locator('#limit-cost-pence').fill('0.00');
+    assert.equal((await compare(page, base)).body.data.recommended, null); assert.equal(await page.locator('.decision-card').count(), 0);
+    custom.dataset.observations = []; await definition(page, custom);
+    const missing = (await compare(page, base)).body.data; assert.equal(missing.recommended, null); assert.match(missing.excluded[0].reasons.join(), /measurements/);
+    custom.criteria = [{ id: 'constructor', label: 'Price', unit: 'hours', direction: 'maximize', default_weight: 100 }];
+    custom.dataset.observations = [{ option_id: 'budget', available: true, metrics: { constructor: 1 } }, { option_id: 'premium', available: true, metrics: { constructor: 100 } }];
+    await definition(page, custom); assert.equal(await page.locator('#weight-constructor').inputValue(), '100');
+    assert.equal((await compare(page, base)).body.data.recommended.id, 'premium');
+    assert.equal((await page.locator('#decision-results').innerText()).includes('NaN'), false);
+  });
+  await check('failed real feeds clear prior success and an explicit retry recovers without fallback', async () => {
+    await scenario(page, 'travel'); await compare(page, base); await fetch(`${base}/__test__/source-mode?failed=true`, { method: 'POST' });
+    try { assert.equal((await compare(page, base)).status, 503); await contains(page.locator('#decision-status'), 'source'); assert.equal(await page.locator('.decision-card').count(), 0); }
+    finally { await fetch(`${base}/__test__/source-mode?failed=false`, { method: 'POST' }); }
+    assert.equal((await compare(page, base)).status, 200);
+  });
+}
+
+async function planner(page, base) {
+  await check('shared planner preserves GBP 10 / 4 / 0 and distinct city-origin journeys', async () => {
+    await legacy(page); await page.locator('#origin').selectOption('glasgow-main-campus');
+    let result = (await plan(page, base, '10.00')).body.data; assert.equal(result.recommended.title, 'Board Game Night'); assert.equal(result.recommended.total_cost_pence, 500);
+    await contains(page.locator('.activity.featured'), '£5.00');
+    assert.equal((await plan(page, base, '4.00')).body.data.recommended.title, 'Acoustic Hour');
+    assert.equal((await plan(page, base, '0.00')).body.data.recommended, null); assert.equal(await page.locator('.activity.featured').count(), 0);
+    await page.locator('#origin').selectOption('glasgow-city-centre'); result = (await plan(page, base, '10.00')).body.data;
+    assert.equal(result.recommended.title, 'Short Film Club'); assert.equal(result.recommended.total_cost_pence, 600); assert.equal(JSON.stringify(result).includes('Board Game Night'), false);
+  });
+  await check('budget, outbound and return equality pass; each just-over boundary excludes the activity', async () => {
+    await page.locator('#origin').selectOption('glasgow-main-campus'); await page.locator('#depart').fill('16:15'); await page.locator('#return').fill('18:15');
+    assert.equal((await plan(page, base, '5.00')).body.data.recommended.title, 'Board Game Night');
+    for (const [budget, depart, back] of [['4.99', '16:15', '18:15'], ['5.00', '16:16', '18:15'], ['5.00', '16:15', '18:14']]) {
+      await page.locator('#depart').fill(depart); await page.locator('#return').fill(back); const result = (await plan(page, base, budget)).body.data;
+      assert.equal([result.recommended, ...result.alternatives].filter(Boolean).some((item) => item.title === 'Board Game Night'), false);
+    }
+    await page.locator('#origin').selectOption('glasgow-city-centre'); await page.locator('#depart').fill('16:00'); await page.locator('#return').fill('19:00'); await plan(page, base, '10.00');
+  });
+}
+
+async function sourceLibrary(page, app, base, directory) {
+  const text = 'The fictional museum opens at 11:00. The entrance has a ramp.';
+  let guide; let excluded; let imported;
+  await check('shared library saves literal notes and native TXT, Markdown and page-aware PDF to SQLite', async () => {
+    guide = await paste(page, base, 'Price <img src=x>', 'Board Game Night starts at 16:30. Exact evidence <script>not executable</script>.');
+    excluded = await paste(page, base, 'Excluded Observatory Guide', 'The observatory code is OMITTED-8672 and closing time is 22:00.');
+    await importFile(page, app, base, directory, 'fictional-note.txt', 'A fictional text note about museum access.');
+    await importFile(page, app, base, directory, 'fictional-note.md', '# Fictional guide\nMuseum access is fictional.');
+    imported = await importFile(page, app, base, directory, 'fictional-museum.pdf', pdf(text));
+    assert.equal(imported.kind, 'pdf'); assert.equal(imported.is_simulated, true);
+    const detail = (await json(base, `/api/v1/sources/${imported.id}`)).data; assert.equal(detail.chunks[0].page, 1); assert.equal(detail.chunks[0].text, text);
+    assert.equal(await page.locator('.source-item img, .source-item script').count(), 0); await select(page, [imported.id]);
+  });
+  await check('cancelled native picker and unsupported files leave the library unchanged', async () => {
+    const before = await sources(base); await app.evaluate(({ dialog }) => { globalThis.testPickerFinished = false; dialog.showOpenDialog = async () => { globalThis.testPickerFinished = true; return { canceled: true, filePaths: [] }; }; });
+    await menu(page, 'import-button'); await waitUntil(() => app.evaluate(() => globalThis.testPickerFinished));
+    await waitUntil(() => page.locator('#import-button').isEnabled()); assert.deepEqual(await sources(base), before);
+    const fixture = path.join(directory, 'unsupported.exe'); fs.writeFileSync(fixture, 'Harmless plain-text fixture.');
+    await app.evaluate(({ dialog }, selected) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [selected] }); }, fixture);
+    await menu(page, 'import-button'); await contains(page.locator('#library-status'), 'UTF-8 text'); assert.deepEqual(await sources(base), before);
+  });
+  await check('selected-source search opens original literal evidence without an AI request', async () => {
+    const before = (await status(base)).calls; await page.locator('#question').fill('museum opens'); await page.locator('#search-form button').click();
+    await contains(page.locator('#search-results blockquote').first(), '11:00'); assert.equal((await page.locator('#search-results').innerText()).includes('OMITTED-8672'), false);
+    await page.locator('#search-results button').first().click(); await contains(page.locator('#viewer-content'), text);
+    assert.equal(await page.locator('#viewer-title').innerText(), imported.title); assert.deepEqual((await status(base)).calls, before); await closeTools(page);
+  });
+  return { guide, excluded, imported, text };
+}
+
+async function providers(page, base, saved) {
+  const question = 'When does the fictional museum open?';
+  await check('missing-key feedback stays explicit while deterministic planning remains enabled', async () => {
+    assert.equal((await ask(page, base, question)).status, 401); await contains(page.locator('#desktop-ai-feedback'), 'key');
+    assert.deepEqual(await page.evaluate(() => window.myJinni.getSessionSettings()), { configured: false }); assert.equal(await page.locator('#plan-submit').isEnabled(), true);
+  });
+  await check('session settings return only configured state and saving clears the key input', async () => {
+    await key(page, TEST_KEY); assert.deepEqual(await page.evaluate(() => window.myJinni.getSessionSettings()), { configured: true });
+    assert.equal((await page.evaluate(() => JSON.stringify(window.localStorage))).includes(TEST_KEY), false);
+  });
+  await check('MOCKED OpenAI uses only selected evidence and its citation opens exact original PDF text/page', async () => {
+    const result = await ask(page, base, question); assert.equal(result.status, 200); assert.equal(result.body.data.status, 'answered');
+    await contains(page.locator('#desktop-ai-answer'), '11:00'); const telemetry = await status(base);
+    assert.deepEqual(telemetry.last_source_ids, [saved.imported.id]); assert.equal(telemetry.header_used, true); assert.equal(telemetry.body_key_free, true); assert.equal(telemetry.store_disabled, true);
+    assert.equal(JSON.stringify(result.body).includes('OMITTED-8672'), false); await screenshot(page, 'shared-desktop-ai-mocked.png');
+    await page.locator('#desktop-ai-citations button').first().click(); await contains(page.locator('#viewer-content'), saved.text);
+    assert.equal(await page.locator('#viewer-content mark').innerText(), result.body.data.citations[0].quote); await contains(page.locator('#viewer-content'), 'Page 1');
+    await screenshot(page, 'shared-desktop-citation-mocked.png'); await closeTools(page);
+  });
+  await check('AI context returns exactly the real city-origin planner and comparison JSON', async () => {
+    await scenario(page, 'travel'); await compare(page, base); const current = await context(page);
+    const expectedPlan = (await post(base, '/api/v1/recommendations', current.planner)).body.data;
+    const expectedDecision = (await post(base, '/api/v1/decisions/evaluate', current.decision)).body.data;
+    await ai(page); await page.locator('#desktop-ai-include-plan').check(); await page.locator('#desktop-ai-include-decision').check();
+    await page.locator('#desktop-ai-question').fill('Explain my comparison and activity plan with the museum guide.');
+    const result = await submit(page, base, 'chat', '#desktop-ai-ask'); assert.equal(result.status, 200);
+    assert.deepEqual(result.request.preferences, current.planner); assert.deepEqual(result.request.decision_request, current.decision);
+    assert.deepEqual(result.body.data.planner, expectedPlan); assert.deepEqual(result.body.data.decision, expectedDecision); assert.equal(result.body.data.planner.recommended.title, 'Short Film Club');
+    const telemetry = await status(base); assert.ok(telemetry.last_source_ids.includes('planner-context')); assert.ok(telemetry.last_source_ids.includes('decision-context')); assert.equal(telemetry.last_source_ids.includes(saved.excluded.id), false);
+    await select(page, []); await ai(page); await page.locator('#desktop-ai-include-plan').uncheck(); await page.locator('#desktop-ai-include-decision').check();
+    await page.locator('#desktop-ai-question').fill('Explain the calculated comparison.'); const only = await submit(page, base, 'chat', '#desktop-ai-ask');
+    assert.equal(only.body.data.citations[0].source_id, 'decision-context'); await page.locator('#desktop-ai-citations button').first().click();
+    await contains(page.locator('#desktop-ai-context-json'), expectedDecision.recommended.name); await closeTools(page); await select(page, [saved.imported.id]);
+  });
+  await check('insufficient evidence avoids provider calls and clears the previous answer', async () => {
+    const before = (await status(base)).calls; const result = await ask(page, base, 'Axolotl hyperdrive spectroscopy');
+    assert.equal(result.body.data.status, 'insufficient_evidence'); assert.deepEqual((await status(base)).calls, before); assert.equal((await page.locator('#desktop-ai-answer').innerText()).includes('11:00'), false);
+  });
+  await check('MOCKED auth, timeout, rate-limit, invalid quotation and retry retain honest error states', async () => {
+    for (const [model, text] of [['test-auth-error', 'key'], ['test-provider-timeout', 'timed out'], ['test-rate-limit', 'limit'], ['test-invalid-quote', 'valid']]) {
+      assert.ok((await ask(page, base, question, model)).status >= 400); await contains(page.locator('#desktop-ai-feedback'), text);
+      assert.equal((await page.locator('#desktop-ai-answer').innerText()).includes('11:00'), false);
+    }
+    assert.equal((await ask(page, base, question, 'test-provider-error')).status, 503); await contains(page.locator('#desktop-ai-feedback'), 'unavailable');
+    assert.equal((await submit(page, base, 'chat', '#desktop-ai-ask')).status, 200); await contains(page.locator('#desktop-ai-answer'), '11:00');
+  });
+  await check('editing a slow MOCKED question prevents stale success', async () => {
+    await page.locator('#desktop-ai-model').fill('test-slow'); await page.locator('#desktop-ai-question').fill(question); await page.locator('#desktop-ai-ask').click();
+    await page.locator('#desktop-ai-question').fill('A different question now'); await page.waitForTimeout(650);
+    assert.equal((await page.locator('#desktop-ai-answer').innerText()).includes('11:00'), false);
+  });
+  await check('DeepSeek, Gemini and Claude never borrow keys and return checked MOCKED citations', async () => {
+    for (const [provider, model, label] of [['deepseek', 'deepseek-flash', 'DeepSeek'], ['gemini', 'gemini-3.8-flash', 'Gemini'], ['anthropic', 'claude-sonnet-4-6', 'Claude']]) {
+      await page.locator('#desktop-ai-provider').selectOption(provider); assert.equal(await page.locator('#desktop-ai-model').inputValue(), model);
+      assert.deepEqual(await page.evaluate((id) => window.myJinni.getSessionSettings(id), provider), { configured: false }); assert.equal((await ask(page, base, question, model)).status, 401);
+      await key(page, `sk-${provider}-test-placeholder`, provider); const result = await ask(page, base, question, model); assert.equal(result.status, 200); assert.equal(result.body.data.provider, provider);
+      assert.equal(result.body.data.citations[0].quote, saved.text); await contains(page.locator('#desktop-ai-dialog'), label);
+      const telemetry = await status(base); assert.equal(telemetry.last_provider, provider); assert.equal(telemetry.header_used, true); assert.equal(telemetry.body_key_free, true);
+      assert.deepEqual(await page.evaluate(() => window.myJinni.getSessionSettings('openai')), { configured: true });
+    }
+  });
+  await check('clearing one provider preserves other keys; provider switching clears unsaved keys and stale answers', async () => {
+    await page.locator('#desktop-ai-provider').selectOption('deepseek');
+    assert.equal((await ask(page, base, question, 'test-provider-error')).status, 503);
+    assert.equal((await submit(page, base, 'chat', '#desktop-ai-ask')).status, 200);
+    await page.locator('#desktop-ai-key-clear').click();
+    await waitUntil(async () => !(await page.evaluate(() => window.myJinni.getSessionSettings('deepseek'))).configured);
+    for (const id of ['openai', 'gemini', 'anthropic']) assert.deepEqual(await page.evaluate((provider) => window.myJinni.getSessionSettings(provider), id), { configured: true });
+    assert.equal((await ask(page, base, question, 'deepseek-flash')).status, 401); await key(page, 'sk-deepseek-test-placeholder', 'deepseek');
+    await page.locator('#desktop-ai-model').fill('test-slow'); await page.locator('#desktop-ai-question').fill(question); await page.locator('#desktop-ai-ask').click();
+    await page.locator('#desktop-ai-key').fill('unsaved-placeholder'); await page.locator('#desktop-ai-provider').selectOption('openai'); assert.equal(await page.locator('#desktop-ai-key').inputValue(), '');
+    await page.waitForTimeout(650); assert.equal((await page.locator('#desktop-ai-answer').innerText()).includes('11:00'), false);
+    await page.locator('#desktop-ai-provider').selectOption('deepseek'); await screenshot(page, 'shared-desktop-deepseek-settings.png');
+    await page.locator('#desktop-ai-provider').selectOption('openai'); await ask(page, base, question);
+  });
+}
+
+async function languages(page, app, base, saved) {
+  await check('five locales retain raw content, custom labels/units, input state, keys and calculations without cloud calls', async () => {
+    await scenario(page, 'custom'); await definition(page, equipment()); await compare(page, base);
+    const current = await context(page); const raw = await page.locator('#custom-json').inputValue(); const calls = (await status(base)).calls;
+    await ask(page, base, 'When does the fictional museum open?');
+    await ai(page); const answer = await page.locator('#desktop-ai-answer').innerText(); assert.ok(answer.includes('11:00'));
+    await page.locator('#desktop-ai-key').fill('unsaved-locale-placeholder');
+    for (const id of ['zh-CN', 'fr', 'ja', 'ru', 'en']) {
+      await page.evaluate((value) => window.jinniI18n.setLocale(value), id); assert.equal(await page.locator('html').getAttribute('lang'), id);
+      assert.equal(await page.locator('#custom-json').inputValue(), raw); assert.deepEqual(await context(page), current);
+      assert.deepEqual(await page.locator('#decision-results .comparison-table').first().locator('thead th').allTextContents(), [await page.evaluate(() => window.jinniI18n.t('Your choices')), 'Price', 'Your choices']);
+      assert.ok((await page.locator('#decision-results .comparison-table').first().innerText()).includes('hours'));
+      await ai(page); assert.equal(await page.locator('#desktop-ai-answer').innerText(), answer); assert.equal(await page.locator('#desktop-ai-key').inputValue(), 'unsaved-locale-placeholder');
+      assert.deepEqual(await page.evaluate(() => window.myJinni.getSessionSettings('openai')), { configured: true }); assert.equal((await page.evaluate(() => JSON.stringify(window.localStorage))).includes(TEST_KEY), false);
+      await page.locator('#desktop-ai-citations button').first().click();
+      assert.equal(await page.locator('#viewer-content mark').innerText(), saved.text);
+      await page.locator('#viewer-close').click();
+    }
+    const afterCalls = (await status(base)).calls;
+    assert.equal(Object.values(afterCalls).reduce((sum, count) => sum + count, 0), Object.values(calls).reduce((sum, count) => sum + count, 0) + 1);
+    await page.locator('#desktop-ai-key').fill(''); await library(page);
+    for (const id of ['zh-CN', 'fr', 'ja', 'ru', 'en']) {
+      await page.evaluate((value) => window.jinniI18n.setLocale(value), id);
+      assert.equal(await page.locator(`.source-item[data-source-id="${saved.imported.id}"] input[type=checkbox]`).isChecked(), true);
+      await page.locator(`.source-item[data-source-id="${saved.guide.id}"] button`).first().click(); assert.equal(await page.locator('#viewer-title').innerText(), saved.guide.title);
+      await contains(page.locator('#viewer-content'), 'Exact evidence <script>not executable</script>.'); assert.equal(await page.locator('#viewer-content script, #viewer-content img').count(), 0);
+      await page.locator('#viewer-close').click();
+    }
+    await closeTools(page);
+  });
+  await check('shared light/dark themes, waves, reduced motion and opt-in sound preserve decisions', async () => {
+    await scenario(page, 'travel'); await compare(page, base); const current = await context(page);
+    await appearance(page, 'light'); await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' })); await screenshot(page, 'shared-desktop-light.png');
+    await appearance(page, 'dark'); assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark'); await screenshot(page, 'shared-desktop-dark.png');
+    await page.emulateMedia({ reducedMotion: 'reduce' }); await waitUntil(async () => await page.locator('html').getAttribute('data-waves') === 'off');
+    assert.equal(await page.locator('.wave-layer').first().evaluate((node) => getComputedStyle(node).animationName), 'none');
+    await page.locator('#theme-toggle').click(); assert.equal(await page.locator('#waves-toggle').isDisabled(), true); await page.locator('#appearance-done').click();
+    await page.evaluate(() => {
+      window.testOscillators = 0;
+      const original = window.AudioContext.prototype.createOscillator;
+      window.AudioContext.prototype.createOscillator = function (...args) { window.testOscillators++; return original.apply(this, args); };
     });
-  }
-  await check('custom criteria change domains and a weight flip changes the actual winner', async () => {
-    await applyDefinition(page, customComparison());
-    await compare(page);
-    await contains(page.getByTestId('decision-results').locator('.decision-recommendation h3'), 'Budget equipment');
-    await page.getByTestId('weight-cost-pence').fill('0');
-    await page.getByTestId('weight-quality-score').fill('100');
-    await contains(page.getByTestId('decision-empty'), 'comparison will appear');
-    await compare(page);
-    await contains(page.getByTestId('decision-results').locator('.decision-recommendation h3'), 'Premium equipment');
-    await screenshot(page, '10-custom-weighted-comparison.png');
+    assert.equal(await page.locator('#sound-toggle').getAttribute('aria-pressed'), 'false');
+    assert.equal(await page.evaluate(() => window.testOscillators), 0);
+    await page.locator('#sound-toggle').click(); assert.equal(await page.locator('#sound-toggle').getAttribute('aria-pressed'), 'true');
+    await compare(page, base); await waitUntil(() => page.evaluate(() => window.testOscillators >= 2));
+    await page.locator('#sound-toggle').click(); assert.equal(await page.locator('#sound-toggle').getAttribute('aria-pressed'), 'false');
+    const requests = await page.evaluate(() => window.testOscillators); await compare(page, base);
+    assert.equal(await page.evaluate(() => window.testOscillators), requests); assert.deepEqual(await context(page), current);
+    await page.emulateMedia({ reducedMotion: 'no-preference' }); await appearance(page, 'light');
   });
-  await check('hard limits and missing observations give honest exclusions and no fallback', async () => {
-    await page.getByTestId('limit-enabled-cost-pence').check();
-    await page.getByTestId('limit-cost-pence').fill('0.00');
-    await compare(page);
-    await contains(page.getByTestId('decision-results'), 'No option meets');
-    assert.equal(await page.getByTestId('decision-results').locator('table').count(), 0);
-    await contains(page.getByTestId('decision-exclusions'), 'Budget equipment');
-    const definition = customComparison();
-    definition.dataset.observations = [];
-    await applyDefinition(page, definition);
-    await compare(page);
-    await contains(page.getByTestId('decision-results'), 'No option meets');
-    await contains(page.getByTestId('decision-exclusions'), 'measurement');
-  });
-  await check('drawers open with keyboard, close with Escape and return focus', async () => {
-    await page.getByTestId('library-open').focus();
-    await page.keyboard.press('Enter');
-    assert.equal(await page.getByTestId('library-drawer').isVisible(), true);
-    await page.keyboard.press('Escape');
-    assert.equal(await page.getByTestId('library-drawer').isVisible(), false);
-    assert.equal(await page.evaluate(() => document.activeElement.id), 'library-open');
-    await page.getByTestId('chat-open').click();
-    assert.equal(await page.getByTestId('chat-drawer').isVisible(), true);
-    await page.keyboard.press('Escape');
-    assert.equal(await page.getByTestId('chat-drawer').isVisible(), false);
-  });
-  await check('valid constructor criterion IDs use configured numeric defaults', async () => {
-    const definition = customComparison();
-    definition.criteria = [{ id: 'constructor', label: 'Constructor measure', unit: 'score', direction: 'maximize', default_weight: 100 }];
-    definition.dataset.observations = [
-      { option_id: 'budget', available: true, metrics: { constructor: 1 } },
-      { option_id: 'premium', available: true, metrics: { constructor: 100 } },
-    ];
-    await applyDefinition(page, definition);
-    assert.equal(await page.getByTestId('weight-constructor').inputValue(), '100');
-    await compare(page);
-    await contains(page.getByTestId('decision-results').locator('.decision-recommendation h3'), 'Premium equipment');
-    definition.criteria[0].default_weight = 0;
-    definition.criteria.push({ id: 'quality-score', label: 'Quality estimate', unit: 'score', direction: 'maximize', default_weight: 100 });
-    definition.dataset.observations[0].metrics = { 'quality-score': 20 };
-    definition.dataset.observations[1].metrics = { 'quality-score': 100 };
-    await applyDefinition(page, definition);
-    await compare(page);
-    await contains(page.getByTestId('decision-table'), 'Unknown');
-    assert.equal((await page.getByTestId('decision-results').innerText()).includes('NaN'), false);
-  });
-  await check('reduced motion, theme and opt-in Web Audio requests preserve the decision flow', async () => {
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await chooseScenario(page, 'travel');
-    await compare(page);
-    assert.equal(await page.getByTestId('decision-results').evaluate((node) => getComputedStyle(node).animationName), 'none');
-    await page.evaluate(() => { window.testSoundRequests = 0; window.addEventListener('my-jinni:sound', () => { window.testSoundRequests++; }); });
-    assert.equal(await page.evaluate(() => window.testSoundRequests), 0);
-    await page.getByTestId('sound-toggle').click();
-    assert.equal(await page.getByTestId('sound-toggle').getAttribute('aria-pressed'), 'true');
-    await compare(page);
-    await waitUntil(() => page.evaluate(() => window.testSoundRequests >= 2));
-    await page.getByTestId('sound-toggle').click();
-    assert.equal(await page.getByTestId('sound-toggle').getAttribute('aria-pressed'), 'false');
-    await page.getByTestId('theme-toggle').click();
-    assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'dark');
-    await screenshot(page, '11-decision-dark-reduced-motion.png');
-    await viewportScreenshot(page, 'jinni-desktop-dark.png');
-    await page.getByTestId('theme-toggle').click();
-    await page.emulateMedia({ reducedMotion: 'no-preference' });
-  });
-}
-
-async function exerciseLanguages(page, desktop, baseUrl) {
-  await chooseScenario(page, 'travel');
-  await page.getByTestId('limit-cost-pence').fill('24.75');
-  await compare(page);
-  await check('five UI languages retain edited inputs, calculated comparison and provider-call count', async () => {
-    const request = await page.evaluate(() => window.currentDecisionRequest());
-    const calls = (await (await fetch(`${baseUrl}/__test__/provider-status`)).json()).calls;
-    const winner = await page.locator('.decision-recommendation h3').innerText();
-    const scores = await page.locator('.table-score').allTextContents();
-    for (const locale of ['zh-CN', 'fr', 'ja', 'ru', 'en']) {
-      await page.getByTestId('language-select').selectOption(locale);
-      assert.equal(await page.locator('html').getAttribute('lang'), locale);
-      assert.equal(await page.getByTestId('limit-cost-pence').inputValue(), '24.75');
-      assert.deepEqual(await page.evaluate(() => window.currentDecisionRequest()), request);
-      assert.equal(await page.locator('.decision-recommendation h3').innerText(), winner);
-      assert.deepEqual(await page.locator('.table-score').allTextContents(), scores);
-      assert.equal((await page.locator('#workspace-title').innerText()) === 'A clearer way to choose.', locale === 'en');
-      if (['zh-CN', 'fr', 'ru'].includes(locale)) {
-        await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
-        await viewportScreenshot(page, `jinni-desktop-${locale}.png`);
-      }
-    }
-    assert.deepEqual((await (await fetch(`${baseUrl}/__test__/provider-status`)).json()).calls, calls);
-  });
-  await check('custom labels and units that equal interface phrases remain literal', async () => {
-    await chooseScenario(page, 'custom');
-    const definition = customComparison();
-    definition.criteria[1].label = 'Source library';
-    definition.criteria[1].unit = 'hours';
-    await applyDefinition(page, definition);
-    await compare(page);
-    await page.getByTestId('language-select').selectOption('zh-CN');
-    await contains(page.locator('label[for="weight-quality-score"]'), 'Source library');
-    await contains(page.getByTestId('decision-table'), 'Source library');
-    await contains(page.getByTestId('decision-table'), 'hours');
-    await page.getByTestId('language-select').selectOption('en');
-    await chooseScenario(page, 'travel');
-    await compare(page);
-  });
-  await check('long translated labels fit a narrow desktop and blocked locale storage remains usable', async () => {
-    await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(900, 850));
-    for (const locale of ['fr', 'ru']) {
-      await page.getByTestId('language-select').selectOption(locale);
-      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 2), true);
-    }
+  await check('keyboard dialogs, resized translated layout and blocked locale storage remain usable', async () => {
+    await page.locator('#library-open').focus(); await page.keyboard.press('Enter'); assert.equal(await page.locator('#library-dialog').isVisible(), true);
+    await page.keyboard.press('Escape'); assert.equal(await page.locator('#library-dialog').isVisible(), false); assert.equal(await page.evaluate(() => document.activeElement.id), 'library-open');
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(900, 850));
+    for (const id of ['fr', 'ru']) { await page.locator('#language-select').selectOption(id); assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 2), true); }
     const fallback = await page.evaluate(() => {
       const original = Storage.prototype.setItem;
-      try {
-        Storage.prototype.setItem = () => { throw new Error('Storage disabled for this isolated test.'); };
-        window.jinniI18n.setLocale('ja');
-        return { locale: window.jinniI18n.getLocale(), missing: window.jinniI18n.t('An intentionally missing interface key') };
-      } finally { Storage.prototype.setItem = original; }
+      try { Storage.prototype.setItem = () => { throw new Error('Isolated blocked-storage test.'); }; window.jinniI18n.setLocale('ja'); return { locale: window.jinniI18n.getLocale(), missing: window.jinniI18n.t('An intentionally missing interface key') }; }
+      finally { Storage.prototype.setItem = original; }
     });
-    assert.deepEqual(fallback, { locale: 'ja', missing: 'An intentionally missing interface key' });
-    await page.getByTestId('language-select').selectOption('en');
-    await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1440, 1000));
+    assert.deepEqual(fallback, { locale: 'ja', missing: 'An intentionally missing interface key' }); await page.locator('#language-select').selectOption('fr'); await screenshot(page, 'shared-desktop-french-resized.png');
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1440, 1000)); await page.locator('#language-select').selectOption('en');
   });
 }
 
-async function exerciseMockedProviderDesktop() {
-  const directory = tempDirectory();
-  let backend = await startMockBackend({ directory });
-  let desktop;
-  let page;
+async function sharedDesktop() {
+  const directory = tempDirectory(); let backend = await startMockBackend({ directory }); let app; let page; const errors = [];
   try {
-    ({ application: desktop, page } = await launchDesktop(electron, backend.baseUrl, directory));
-    await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1440, 1000));
-    await contains(page.getByTestId('backend-status'), 'ready');
-    await waitUntil(() => page.getByTestId('plan-submit').isEnabled());
-
-    await exerciseGeneralDecisions(page, backend.baseUrl);
-    await exerciseLanguages(page, desktop, backend.baseUrl);
-
-    await check('actual Electron isolation and planner GBP 10 / 4 / 0', async () => {
-      await openLegacy(page);
-      const applicationInfo = await desktop.evaluate(({ app }) => ({ name: app.getName(), userData: app.getPath('userData') }));
-      assert.equal(applicationInfo.name, 'jinni');
-      assert.equal(applicationInfo.userData, path.join(directory, 'desktop'));
-      const isolation = await desktop.evaluate(({ BrowserWindow }) => {
-        const preferences = BrowserWindow.getAllWindows()[0].webContents.getLastWebPreferences();
-        return { contextIsolation: preferences.contextIsolation, nodeIntegration: preferences.nodeIntegration, sandbox: preferences.sandbox };
-      });
-      assert.deepEqual(isolation, { contextIsolation: true, nodeIntegration: false, sandbox: true });
-      assert.equal(await page.evaluate(() => typeof window.require), 'undefined');
-      await page.getByTestId('budget').fill('10.00');
-      await page.getByTestId('plan-submit').click();
-      await contains(page.getByTestId('planner-result'), 'Board Game Night');
-      assert.match(await page.getByTestId('planner-result').innerText(), /(?:GBP\s*|£)5\.00/);
-      await screenshot(page, '01-planner.png');
-      await page.getByTestId('budget').fill('4.00');
-      await page.getByTestId('plan-submit').click();
-      await contains(page.getByTestId('planner-result'), 'Acoustic Hour');
-      await page.getByTestId('budget').fill('0.00');
-      await page.getByTestId('plan-submit').click();
-      await contains(page.getByTestId('planner-result'), 'no activity');
-      assert.equal((await page.getByTestId('planner-result').innerText()).includes('Acoustic Hour'), false);
+    ({ application: app, page } = await launchDesktop(electron, backend.baseUrl, directory)); page.on('pageerror', (error) => errors.push(error.message));
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1440, 1000));
+    await waitUntil(async () => page.url() === 'jinni://app/index.html' && await page.locator('#decision-submit').isEnabled() && await page.locator('#desktop-backend-status').count() && await page.locator('#scenario-tabs button').count() === 5);
+    await waitUntil(async () => await page.locator('#origin option').count() === 2);
+    await check('Electron securely serves the exact shared page/core assets and preserves the existing data location', async () => {
+      const resources = await page.evaluate(async () => Object.fromEntries(await Promise.all(['index.html', 'styles.css', 'app.mjs', 'decision-app.mjs', 'platform.mjs', 'shared/i18n.js'].map(async (name) => { const response = await fetch(name); return [name, { status: response.status, text: await response.text() }]; }))));
+      for (const [name, resource] of Object.entries(resources)) { assert.equal(resource.status, 200); assert.equal(resource.text, fs.readFileSync(name.startsWith('shared/') ? path.join(ROOT, name) : path.join(ROOT, 'web', name), 'utf8')); }
+      const denied = await page.evaluate(async () => Promise.all(['.env', 'app/main.py', 'pyproject.toml', 'desktop/main.cjs', '%2e%2e/.env'].map(async (name) => (await fetch(name)).status)));
+      assert.ok(denied.every((code) => code === 403 || code === 404));
+      const info = await app.evaluate(({ app, BrowserWindow }) => { const settings = BrowserWindow.getAllWindows()[0].webContents.getLastWebPreferences(); return { name: app.getName(), userData: app.getPath('userData'), contextIsolation: settings.contextIsolation, nodeIntegration: settings.nodeIntegration, sandbox: settings.sandbox }; });
+      assert.deepEqual(info, { name: 'Jinni', userData: path.join(directory, 'desktop'), contextIsolation: true, nodeIntegration: false, sandbox: true }); assert.equal(await page.evaluate(() => typeof window.require), 'undefined');
+      assert.equal(await page.locator('.brand').innerText(), 'Jinni'); assert.equal(await page.locator('.brand .lamp-mark path').count(), 3);
+      assert.equal(await page.locator('#library-dialog').isVisible(), false); assert.equal(await page.locator('#desktop-ai-dialog').isVisible(), false); assert.equal(await page.locator('#legacy-planner').evaluate((node) => node.open), false);
     });
-
-    await check('city-centre travel changes the real calculated recommendation', async () => {
-      await openLegacy(page);
-      await page.getByTestId('origin').selectOption('glasgow-city-centre');
-      await page.getByTestId('budget').fill('10.00');
-      await page.getByTestId('plan-submit').click();
-      await contains(page.getByTestId('planner-result'), 'Short Film Club');
-      assert.equal((await page.getByTestId('planner-result').innerText()).includes('Board Game Night'), false);
+    await decisions(page, backend.baseUrl); await planner(page, backend.baseUrl);
+    const saved = await sourceLibrary(page, app, backend.baseUrl, directory); await providers(page, backend.baseUrl, saved); await languages(page, app, backend.baseUrl, saved);
+    await check('deletion updates SQLite and the external backend survives close without page errors', async () => {
+      await library(page); await page.locator(`.source-item[data-source-id="${saved.excluded.id}"] button`).last().click(); await page.locator('#delete-confirm').click();
+      await waitUntil(async () => !(await sources(backend.baseUrl)).some((source) => source.id === saved.excluded.id)); await closeTools(page); await page.locator('#language-select').selectOption('fr');
+      assert.deepEqual(errors, []); await app.close(); app = null; assert.equal((await fetch(`${backend.baseUrl}/health`)).status, 200);
     });
-
-    let guide;
-    let excluded;
-    let imported;
-    await check('real pasted-source create/list and native-picker PDF upload', async () => {
-      guide = await addText(page, backend.baseUrl, 'Fictional Venue Guide', 'Board Game Night starts at 16:30. The fictional venue has a ramp entrance.');
-      excluded = await addText(page, backend.baseUrl, 'Excluded Observatory Guide', 'The observatory code is OMITTED-8672 and closing time is 22:00.');
-      const fixture = path.join(directory, 'fictional-museum.pdf');
-      fs.writeFileSync(fixture, pdfFixture('The fictional museum opens at 11:00. The entrance has a ramp.'));
-      await desktop.evaluate(({ dialog }, filename) => {
-        dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [filename] });
-      }, fixture);
-      await page.getByTestId('source-simulated').check();
-      await page.getByTestId('import-source').click();
-      imported = await waitUntil(async () => (await sources(backend.baseUrl)).find((source) => source.filename === 'fictional-museum.pdf'));
-      assert.equal(imported.kind, 'pdf');
-      assert.equal(imported.is_simulated, true);
-      await contains(page.getByTestId('source-list'), imported.title);
-      await selectOnly(page, [imported.id]);
+    await check('SQLite sources and selected locale survive restart while all provider session keys disappear', async () => {
+      const port = Number(new URL(backend.baseUrl).port); await backend.stop(); backend = await startMockBackend({ directory, port });
+      ({ application: app, page } = await launchDesktop(electron, backend.baseUrl, directory)); await waitUntil(async () => await page.locator('#language-select').inputValue() === 'fr');
+      assert.equal(await page.locator('html').getAttribute('lang'), 'fr'); await page.locator('#language-select').selectOption('en'); await library(page); await contains(page.locator('#sources'), saved.imported.title);
+      const persisted = await sources(backend.baseUrl); assert.ok(persisted.some((source) => source.id === saved.guide.id)); assert.ok(persisted.some((source) => source.id === saved.imported.id));
+      for (const id of ['openai', 'deepseek', 'gemini', 'anthropic']) assert.deepEqual(await page.evaluate((provider) => window.myJinni.getSessionSettings(provider), id), { configured: false });
     });
+  } catch (error) { if (page && !page.isClosed()) await screenshot(page, 'shared-desktop-failure.png').catch(() => {}); throw error; }
+  finally { if (app) await app.close().catch(() => {}); await backend.stop(); }
+}
 
-    await check('cancelled native file picker changes no sources', async () => {
-      const before = await sources(backend.baseUrl);
-      await desktop.evaluate(({ dialog }) => {
-        dialog.showOpenDialog = async () => ({ canceled: true, filePaths: [] });
-      });
-      await page.getByTestId('import-source').click();
-      await contains(page.getByTestId('library-status'), 'cancel');
-      assert.deepEqual(await sources(backend.baseUrl), before);
-    });
-
-    await check('missing key stays an error while deterministic planning remains usable', async () => {
-      await ask(page, 'When does the fictional museum open?');
-      await contains(page.getByTestId('chat-feedback'), 'key');
-      const settings = await page.evaluate(() => window.myJinni.getSessionSettings());
-      assert.deepEqual(settings, { configured: false });
-      assert.equal(await page.getByTestId('plan-submit').isEnabled(), true);
-    });
-
-    await check('missing-key feedback translates without a request and keyless planning stays enabled', async () => {
-      await closeTools(page);
-      await page.getByTestId('language-select').selectOption('zh-CN');
-      await openTool(page, 'chat');
-      await contains(page.getByTestId('chat-feedback'), '密钥');
-      assert.equal(await page.getByTestId('plan-submit').isEnabled(), true);
-      assert.deepEqual(await page.evaluate(() => window.myJinni.getSessionSettings()), { configured: false });
-      await closeTools(page);
-      await page.getByTestId('language-select').selectOption('en');
-      await openTool(page, 'chat');
-    });
-
-    await check('session key is memory-only and the input clears after saving', async () => {
-      await saveKey(page, TEST_KEY);
-      assert.deepEqual(await page.evaluate(() => window.myJinni.getSessionSettings()), { configured: true });
-      assert.equal((await page.evaluate(() => JSON.stringify(window.localStorage))).includes(TEST_KEY), false);
-    });
-
-    await check('MOCKED provider citation opens the real original PDF text and page', async () => {
-      await ask(page, 'When does the fictional museum open?');
-      await contains(page.getByTestId('chat-answer'), '11:00');
-      const status = await (await fetch(`${backend.baseUrl}/__test__/provider-status`)).json();
-      assert.deepEqual(status.last_source_ids, [imported.id]);
-      assert.equal(status.header_used, true);
-      assert.equal(status.body_key_free, true);
-      assert.equal(status.store_disabled, true);
-      assert.equal((await page.getByTestId('chat-result').innerText()).includes('OMITTED-8672'), false);
-      await screenshot(page, '02-chat-mocked-provider.png');
-      await page.getByTestId('chat-result').scrollIntoViewIfNeeded();
-      await viewportScreenshot(page, 'jinni-desktop-ai-mocked.png');
-      await page.getByTestId('citation-reference').first().click();
-      await contains(page.getByTestId('source-dialog-content'), '11:00');
-      await contains(page.getByTestId('citation-quote'), '11:00');
-      assert.match(await page.getByTestId('source-dialog-content').innerText(), /page\s*1/i);
-      assert.match(await page.getByTestId('source-dialog-content').locator('mark').first().innerText(), /11:00/);
-      await screenshot(page, '03-original-citation.png');
-      await viewportScreenshot(page, 'jinni-desktop-citation-mocked.png');
-      await page.getByTestId('source-dialog').getByRole('button', { name: 'Close', exact: true }).click();
-    });
-
-    await check('five languages preserve original citations, source selection, answer and session key', async () => {
-      const answer = await page.getByTestId('chat-answer').innerText();
-      const calls = (await (await fetch(`${backend.baseUrl}/__test__/provider-status`)).json()).calls;
-      for (const locale of ['zh-CN', 'fr', 'ja', 'ru', 'en']) {
-        await closeTools(page);
-        await page.getByTestId('language-select').selectOption(locale);
-        await openTool(page, 'chat');
-        assert.equal(await page.getByTestId('chat-answer').innerText(), answer);
-        assert.equal(await page.getByTestId('cloud-recipient').innerText(), 'OpenAI');
-        await page.getByTestId('citation-reference').first().click();
-        await contains(page.getByTestId('source-dialog-content'), '11:00');
-        assert.equal(await page.locator('.original-quote').innerText(), '“The fictional museum opens at 11:00. The entrance has a ramp.”');
-        assert.equal(await page.getByTestId('source-dialog-content').locator('mark').innerText(), 'The fictional museum opens at 11:00. The entrance has a ramp.');
-        await page.getByTestId('source-close').click();
-        assert.deepEqual(await page.evaluate(() => window.myJinni.getSessionSettings()), { configured: true });
-        assert.equal((await page.evaluate(() => JSON.stringify(window.localStorage))).includes(TEST_KEY), false);
-      }
-      assert.deepEqual((await (await fetch(`${backend.baseUrl}/__test__/provider-status`)).json()).calls, calls);
-      await openTool(page, 'library');
-      assert.equal(await page.locator(`[data-testid="source-checkbox"][value="${imported.id}"]`).isChecked(), true);
-      await openTool(page, 'chat');
-    });
-
-    await check('MOCKED AI explanation includes the authoritative real city-origin plan', async () => {
-      await page.getByTestId('include-plan').check();
-      await page.getByTestId('question').fill('Which activity fits my plan and what does the museum guide say?');
-      await page.getByTestId('ask-submit').click();
-      await contains(page.getByTestId('chat-planner'), 'Short Film Club');
-      assert.match(await page.getByTestId('chat-planner').innerText(), /(?:GBP\s*|£)6\.00/);
-      const status = await (await fetch(`${backend.baseUrl}/__test__/provider-status`)).json();
-      assert.ok(status.last_source_ids.includes('planner-context'));
-      assert.ok(status.last_source_ids.includes(imported.id));
-      assert.equal(status.last_source_ids.includes(excluded.id), false);
-    });
-
-    await check('MOCKED AI cites an authoritative server-calculated general comparison', async () => {
-      await chooseScenario(page, 'travel');
-      await compare(page);
-      const winner = await page.getByTestId('decision-results').locator('.decision-recommendation h3').innerText();
-      await openTool(page, 'chat');
-      await page.getByTestId('include-plan').uncheck();
-      await page.getByTestId('include-decision').check();
-      await page.getByTestId('question').fill('Explain my current comparison using these sources.');
-      await page.getByTestId('ask-submit').click();
-      await contains(page.getByTestId('chat-decision'), winner);
-      const status = await (await fetch(`${backend.baseUrl}/__test__/provider-status`)).json();
-      assert.ok(status.last_source_ids.includes('decision-context'));
-      await page.locator('[data-testid="citation-reference"][data-source-id="decision-context"]').click();
-      await contains(page.getByTestId('source-dialog-content'), winner);
-      await page.getByTestId('source-close').click();
-      await page.getByTestId('include-decision').uncheck();
-    });
-
-    await check('no lexical match gives insufficient evidence without a provider call', async () => {
-      const before = await (await fetch(`${backend.baseUrl}/__test__/provider-status`)).json();
-      await ask(page, 'Axolotl hyperdrive spectroscopy');
-      await contains(page.getByTestId('chat-result'), 'evidence');
-      const after = await (await fetch(`${backend.baseUrl}/__test__/provider-status`)).json();
-      assert.deepEqual(after.calls, before.calls);
-      assert.equal((await page.getByTestId('chat-result').innerText()).includes('11:00'), false);
-    });
-
-    await check('MOCKED invalid key, provider failure and retry preserve honest states', async () => {
-      await ask(page, 'When does the fictional museum open?', 'test-auth-error');
-      await contains(page.getByTestId('chat-feedback'), 'key');
-      await ask(page, 'When does the fictional museum open?', 'test-provider-error');
-      await contains(page.getByTestId('chat-feedback'), 'unavailable');
-      assert.equal((await page.getByTestId('chat-result').innerText()).includes('11:00'), false);
-      await page.getByTestId('ask-submit').click();
-      await contains(page.getByTestId('chat-answer'), '11:00');
-      await ask(page, 'When does the fictional museum open?', 'test-provider-timeout');
-      await contains(page.getByTestId('chat-feedback'), 'timed out');
-    });
-
-    await check('editing during a slow MOCKED answer prevents stale success', async () => {
-      await ask(page, 'When does the fictional museum open?', 'test-slow');
-      assert.equal(await page.getByTestId('ask-submit').isEnabled(), false);
-      await page.getByTestId('question').fill('A different question now');
-      await page.waitForTimeout(650);
-      assert.equal((await page.getByTestId('chat-result').innerText()).includes('11:00'), false);
-    });
-
-    await check('DeepSeek selection uses its model and never borrows the OpenAI key', async () => {
-      await page.getByTestId('provider').selectOption('deepseek');
-      assert.equal(await page.getByTestId('model').inputValue(), 'deepseek-flash');
-      await contains(page.getByTestId('cloud-recipient'), 'DeepSeek');
-      assert.deepEqual(await page.evaluate(() => window.myJinni.getSessionSettings('deepseek')), { configured: false });
-      assert.deepEqual(await page.evaluate(() => window.myJinni.getSessionSettings('openai')), { configured: true });
-      await ask(page, 'When does the fictional museum open?', 'deepseek-flash');
-      await contains(page.getByTestId('chat-feedback'), 'key');
-      await saveKey(page, 'sk-deepseek-test-placeholder', 'deepseek');
-      await ask(page, 'When does the fictional museum open?', 'deepseek-flash');
-      await contains(page.getByTestId('chat-answer'), '11:00');
-      const status = await (await fetch(`${backend.baseUrl}/__test__/provider-status`)).json();
-      assert.equal(status.last_provider, 'deepseek');
-      assert.equal(status.header_used, true);
-      assert.equal(status.body_key_free, true);
-      await screenshot(page, '06-deepseek-mocked-provider.png');
-    });
-
-    await check('Gemini and Anthropic also use isolated keys and checked original citations', async () => {
-      for (const [provider, model] of [['gemini', 'gemini-3.8-flash'], ['anthropic', 'claude-sonnet-4-6']]) {
-        await page.getByTestId('provider').selectOption(provider);
-        assert.equal(await page.getByTestId('model').inputValue(), model);
-        await saveKey(page, `sk-${provider}-test-placeholder`, provider);
-        await ask(page, 'When does the fictional museum open?', model);
-        await contains(page.getByTestId('chat-answer'), '11:00');
-        const status = await (await fetch(`${backend.baseUrl}/__test__/provider-status`)).json();
-        assert.equal(status.last_provider, provider);
-        assert.equal(status.header_used, true);
-        assert.equal(status.body_key_free, true);
-      }
-    });
-
-    await check('DeepSeek failure/retry is explicit and clearing its key leaves OpenAI configured', async () => {
-      await page.getByTestId('provider').selectOption('deepseek');
-      await ask(page, 'When does the fictional museum open?', 'test-provider-error');
-      await contains(page.getByTestId('chat-feedback'), 'unavailable');
-      await page.getByTestId('ask-submit').click();
-      await contains(page.getByTestId('chat-answer'), '11:00');
-      await openSettings(page);
-      await page.getByTestId('settings-provider').selectOption('deepseek');
-      await page.getByTestId('clear-key').click();
-      await waitUntil(async () => !(await page.evaluate(() => window.myJinni.getSessionSettings('deepseek'))).configured);
-      assert.deepEqual(await page.evaluate(() => window.myJinni.getSessionSettings('openai')), { configured: true });
-      await page.getByTestId('settings-dialog').getByRole('button', { name: 'Close', exact: true }).click();
-      await ask(page, 'When does the fictional museum open?', 'deepseek-flash');
-      await contains(page.getByTestId('chat-feedback'), 'key');
-      await openLegacy(page);
-      await page.getByTestId('plan-submit').click();
-      await contains(page.getByTestId('planner-result'), 'Short Film Club');
-      await openTool(page, 'chat');
-    });
-
-    await check('switching provider invalidates a slow MOCKED answer and clears unsaved key entry', async () => {
-      await saveKey(page, 'sk-deepseek-test-placeholder', 'deepseek');
-      await ask(page, 'When does the fictional museum open?', 'test-slow');
-      await page.getByTestId('provider').selectOption('openai');
-      await page.waitForTimeout(650);
-      assert.equal((await page.getByTestId('chat-result').innerText()).includes('11:00'), false);
-      await openSettings(page);
-      await page.getByTestId('api-key').fill('unsaved-placeholder');
-      await page.getByTestId('settings-provider').selectOption('deepseek');
-      assert.equal(await page.getByTestId('api-key').inputValue(), '');
-      assert.equal(await page.getByTestId('provider').inputValue(), 'deepseek');
-      await screenshot(page, '07-deepseek-session-settings.png');
-      await page.getByTestId('settings-dialog').getByRole('button', { name: 'Close', exact: true }).click();
-      await page.getByTestId('provider').selectOption('openai');
-    });
-
-    await check('keyboard navigation and resized window remain usable', async () => {
-      await openLegacy(page);
-      await page.getByTestId('origin').focus();
-      await page.keyboard.press('Tab');
-      assert.notEqual(await page.evaluate(() => document.activeElement.id), 'origin');
-      await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1050, 760));
-      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 2), true);
-      await screenshot(page, '04-resized-window.png');
-    });
-
-    await check('source deletion updates real storage and an external backend survives app close', async () => {
-      await openTool(page, 'library');
-      await page.locator(`[data-testid="source-delete"][data-source-id="${excluded.id}"]`).click();
-      await waitUntil(async () => !(await sources(backend.baseUrl)).some((source) => source.id === excluded.id));
-      await closeTools(page);
-      await page.getByTestId('language-select').selectOption('fr');
-      await desktop.close();
-      desktop = null;
-      assert.equal((await fetch(`${backend.baseUrl}/health`)).status, 200);
-    });
-
-    await check('library survives backend restart while session key does not', async () => {
-      const port = Number(new URL(backend.baseUrl).port);
-      await backend.stop();
-      backend = await startMockBackend({ directory, port });
-      ({ application: desktop, page } = await launchDesktop(electron, backend.baseUrl, directory));
-      await waitUntil(async () => await page.getByTestId('language-select').locator('option').count() === 5);
-      assert.equal(await page.getByTestId('language-select').inputValue(), 'fr');
-      assert.equal(await page.locator('html').getAttribute('lang'), 'fr');
-      await page.getByTestId('language-select').selectOption('en');
-      await openTool(page, 'library');
-      await contains(page.getByTestId('source-list'), imported.title);
-      const saved = await sources(backend.baseUrl);
-      assert.ok(saved.some((source) => source.id === guide.id));
-      assert.ok(saved.some((source) => source.id === imported.id));
-      for (const provider of ['openai', 'deepseek', 'gemini', 'anthropic']) {
-        assert.deepEqual(await page.evaluate((id) => window.myJinni.getSessionSettings(id), provider), { configured: false });
-      }
+async function ownedBackend() {
+  const port = await freePort(); const base = `http://127.0.0.1:${port}`; const directory = tempDirectory(); let app; let page;
+  const occupied = http.createServer((_request, response) => { response.writeHead(200, { 'Content-Type': 'application/json' }); response.end(JSON.stringify({ data: { status: 'ok', recommendations_ready: true }, info: { title: 'Unrelated isolated test server' } })); });
+  await new Promise((resolve) => occupied.listen(port, '127.0.0.1', resolve));
+  try {
+    ({ application: app, page } = await launchDesktop(electron, base, directory));
+    await check('native startup failure is visible and the unrelated occupied service remains running', async () => { await contains(page.locator('#desktop-backend-status'), 'port'); assert.equal((await fetch(`${base}/health`)).status, 200); await screenshot(page, 'shared-desktop-startup-failure.png'); });
+    await new Promise((resolve) => occupied.close(resolve));
+    await check('native retry starts an owned real backend and app close stops only its own process', async () => {
+      await page.locator('#desktop-backend-retry').click(); await waitUntil(async () => (await page.evaluate(() => window.myJinni.getBackendStatus())).state === 'ready');
+      assert.equal((await page.evaluate(() => window.myJinni.getBackendStatus())).owned, true); await waitUntil(() => page.locator('#decision-submit').isEnabled());
+      assert.equal((await page.evaluate(() => window.myJinni.getDecisionScenarios())).status, 200); await app.close(); app = null;
+      await waitUntil(async () => { try { await fetch(`${base}/health`); return false; } catch { return true; } }, { message: 'The isolated owned backend remained running.' });
     });
   } catch (error) {
-    if (page && !page.isClosed()) await screenshot(page, 'failure.png').catch(() => {});
+    if (page && !page.isClosed()) {
+      await screenshot(page, 'shared-desktop-lifecycle-failure.png').catch(() => {});
+      console.error(JSON.stringify(await page.evaluate(() => ({ url: window.location.href, decision: document.getElementById('decision-load-status')?.textContent, planner: document.getElementById('setup-status')?.textContent, native: document.getElementById('desktop-backend-status')?.textContent }))));
+    }
     throw error;
-  } finally {
-    if (desktop) await desktop.close().catch(() => {});
-    await backend.stop();
-  }
+  } finally { if (app) await app.close().catch(() => {}); if (occupied.listening) await new Promise((resolve) => occupied.close(resolve)); }
 }
 
-async function exerciseOwnedBackendRecovery() {
-  const port = await freePort();
-  const baseUrl = `http://127.0.0.1:${port}`;
-  const directory = tempDirectory();
-  const occupied = http.createServer((_request, response) => {
-    response.writeHead(200, { 'Content-Type': 'application/json' });
-    response.end(JSON.stringify({ data: { status: 'ok', recommendations_ready: true }, info: { title: 'Unrelated test server' } }));
-  });
-  await new Promise((resolve) => occupied.listen(port, '127.0.0.1', resolve));
-  let desktop;
-  let page;
-  try {
-    ({ application: desktop, page } = await launchDesktop(electron, baseUrl, directory));
-    await check('occupied-port startup failure is visible and leaves the other service running', async () => {
-      await contains(page.getByTestId('backend-status'), 'port');
-      assert.equal((await fetch(`${baseUrl}/health`)).status, 200);
-      await screenshot(page, '05-startup-failure.png');
-    });
-    await new Promise((resolve) => occupied.close(resolve));
-    await check('retry starts an owned real backend and normal close stops it', async () => {
-      await page.getByTestId('backend-retry').click();
-      await contains(page.getByTestId('backend-status'), 'ready');
-      const status = await page.evaluate(() => window.myJinni.getBackendStatus());
-      assert.equal(status.owned, true);
-      await openLegacy(page);
-      await page.getByTestId('plan-submit').click();
-      await contains(page.getByTestId('planner-result'), 'Board Game Night');
-      await desktop.close();
-      desktop = null;
-      await waitUntil(async () => {
-        try { await fetch(`${baseUrl}/health`); return false; } catch { return true; }
-      }, { message: 'Owned backend remained running after desktop close.' });
-    });
-  } finally {
-    if (desktop) await desktop.close().catch(() => {});
-    if (occupied.listening) await new Promise((resolve) => occupied.close(resolve));
-  }
-}
-
-async function main() {
-  console.log('Actual Electron + IPC + HTTP + SQLite + planner verification; all AI providers are MOCKED.');
-  await exerciseMockedProviderDesktop();
-  await exerciseOwnedBackendRecovery();
-  console.log(`DESKTOP E2E PASSED: ${checks} checks. Live provider account access was not tested.`);
-}
-
-main().catch((error) => { console.error(error.stack || error.message); process.exitCode = 1; });
+(async () => {
+  console.log('Actual shared-front-end Electron + IPC + FastAPI + SQLite checks; provider transports are MOCKED.');
+  if (!process.argv.includes('--lifecycle-only')) await sharedDesktop();
+  await ownedBackend(); console.log(`DESKTOP E2E PASSED: ${checks} checks. Live provider account access was not tested.`);
+})().catch((error) => { console.error(error.stack || error.message); process.exitCode = 1; });

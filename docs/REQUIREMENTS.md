@@ -1,8 +1,10 @@
-# jinni requirements
+# Jinni requirements
+
+**Shared frontend and concise copy, 2026-10-18:** desktop must follow the browser frontend through the same source files, not manually mirrored markup. The visible brand is `Jinni`. Keep native API/SQLite/import/provider operations through the existing restricted bridge; browser behavior and data remain local. Remove copy that adds no understanding or action, while retaining units, simulation labels, meaningful explanations, errors and cloud-recipient disclosure. FR-22 and AC-33/34 cover this change.
 
 **Language-only request, 2026-10-18:** support English (`en`), Simplified Chinese (`zh-CN`), French (`fr`), Japanese (`ja`) and Russian (`ru`) in desktop and browser interfaces. Use explicit local translation resources, default English and a native language selector; remember only the locale preference. Switching must retain decisions/inputs/selections without network calls, changing source evidence or losing session keys. UI translation does not establish multilingual semantic retrieval or localized AI output. Documentation, identifiers and comments remain English.
 
-**Brand update, 2026-10-18:** the user selected the visible name `jinni` and a lamp motif. Preserve existing repository/storage/IPC/API identifiers for compatibility and existing source libraries. Multilingual UI is a separate scope choice; original source quotations, calculation IDs and money/time units must remain intact.
+**Brand update, 2026-10-18:** the user selected the visible name `Jinni` and a lamp motif. Preserve existing repository/storage/IPC/API identifiers for compatibility and existing source libraries. Multilingual UI is a separate scope choice; original source quotations, calculation IDs and money/time units must remain intact.
 
 **Latest user request, 2026-10-17:** generalize beyond after-class activities to the challenge's market, travel, student, sustainability and own-idea examples. Add configurable comparisons with criteria/weights/hard limits, decision-first desktop/browser presentation, collapsed source/question tools, reduced-motion-aware animation and optional sound. [GENERAL_DECISIONS.md](GENERAL_DECISIONS.md) defines additive v0.5. Existing FR-01-16/AC-01-25 still cover the preserved activity/library/provider features; FR-17-20 and AC-26-30 below cover the new workspace. All presets are visibly simulated; no live service coverage is implied.
 
@@ -12,7 +14,7 @@ This document is the product and acceptance baseline, not a claim of completed f
 
 ## 1. Decisions and implementation status
 
-- **Confirmed by the team:** build jinni as a desktop application; roXy owns the backend and Wahab owns the desktop interface. The user approved frontend-technology reuse; the selected client is Electron with HTML/CSS/JavaScript. Students are the MVP audience, not the architecture's identity requirement.
+- **Confirmed by the team:** build Jinni as a desktop application; roXy owns the backend and Wahab owns the desktop interface. The user approved frontend-technology reuse; the selected client is Electron with HTML/CSS/JavaScript. Students are the MVP audience, not the architecture's identity requirement.
 - **Selected MVP:** a person chooses one activity using budget, available time, and interests, combining event and travel feeds. Return to the same selected origin is the first-version journey model.
 - **Confirmed extension, 2026-10-17:** keep the activity planner and add one local source library with cited AI questions using OpenAI. The planner remains deterministic and requires no key. The optional AI feature uses selected source snippets and, when explicitly supplied, the current activity form preferences.
 - **Verified backend, 2026-10-17:** both-source HTTP adaptation, exact money conversion, feasibility/ranking, factual explanations and error handling replace the former 501 stub. All 175 tests and Ruff lint/format passed. An actual loopback server served normal/lower/zero-budget and second-origin requests, then shut down cleanly. The existing Starlette/httpx TestClient deprecation warning remains.
@@ -79,6 +81,7 @@ All requirements below are P0 unless marked P1. IDs are stable so code, tasks, a
 | **FR-19** | Make choices, priorities, hard limits and comparisons the central desktop/browser workspace. Library and question/search dialogs start closed; retain the detailed activity example in a collapsed section. Preserve themes, keyboard access, stale-result handling and existing source features. | AC-28 |
 | **FR-20** | Provide short reduced-motion-aware animations and quiet optional synthesized sounds, default off and gated by user interaction. Explicitly include the actual calculated decision in optional desktop questions, with ephemeral exact-quote citations and a separately returned authoritative result. | AC-28, AC-29 |
 | **FR-21** | Offer English, Simplified Chinese, French, Japanese and Russian through a native language selector in both experiences. Keep English as the default, remember the local preference and translate only explicit interface text. Preserve current inputs, selected evidence, keys, custom labels/units, calculated results and exact original quotations when switching. | AC-31, AC-32 |
+| **FR-22** | Load the same page, CSS, controls, translations and result presentation in browser and Electron. Keep platform-specific operations behind a small adapter and optional native tools. Display Jinni with an uppercase J. Remove text that can be deleted without changing understanding, actions or evidence/privacy boundaries. | AC-33, AC-34 |
 
 ## 5. Business and data rules
 
@@ -174,6 +177,8 @@ Interface language acceptance:
 | --- | --- | --- |
 | **AC-31** | First visit defaults to English. Select each supported language using its native name: visible labels, controlled states and accessibility text update without reloading or fetching; a new session restores the saved locale. Invalid/blocked preference storage safely falls back to English or the current in-memory choice. Translation placeholders remain complete. | Shared runtime/catalog tests + actual Electron/browser |
 | **AC-32** | Edit a form, calculate a decision, select a source and switch languages. Current inputs, selections and canonical ranked results remain unchanged; original evidence, exact quotes, provider answers and custom labels/units remain verbatim. Long French/Russian labels and CJK text fit supported desktop/phone layouts. | Actual Electron/browser + screenshots + presentation review |
+| **AC-33** | Electron loads `jinni://app/index.html` from the actual `web/index.html` and uses common CSS/modules. Desktop comparisons/planning/library operations call the named bridge and real local API; browser operations retain exported-data calculations and IndexedDB. No desktop fixture fallback, generic IPC, remote page or arbitrary file serving is introduced. Existing source/provider/lifecycle behavior remains covered. | Native asset/bridge tests + actual Electron/browser + API equality |
+| **AC-34** | The visible title and wordmark use Jinni in every supported locale. The main workspace starts with choices, controls and results; repeated slogans, marketing reassurance, layout narration and non-actionable ready text are absent. Simulation, units, limits, failure/retry and actual cloud-recipient notices remain understandable. Compare actual light/dark/narrow screenshots of both editions. | Copy review + actual Electron/browser + screenshots |
 
 ## 8. Work packages and ownership
 

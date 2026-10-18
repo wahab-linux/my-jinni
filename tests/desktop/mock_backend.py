@@ -7,6 +7,7 @@ from collections import Counter
 
 import httpx
 import uvicorn
+from starlette.responses import JSONResponse
 
 from app.knowledge.router import get_ai_client
 from app.main import create_app
@@ -18,6 +19,13 @@ last_header_used = False
 last_body_key_free = True
 last_store_disabled = False
 last_provider = None
+captured_responses = {}
+source_failure = False
+CAPTURE_PATHS = {
+    "/api/v1/chat": "chat",
+    "/api/v1/recommendations": "planner",
+    "/api/v1/decisions/evaluate": "decision",
+}
 FAKE_KEYS = {
     "openai": "sk-desktop-test-placeholder",
     "deepseek": "sk-deepseek-test-placeholder",
@@ -30,6 +38,64 @@ HOST_PROVIDERS = {
     "generativelanguage.googleapis.com": "gemini",
     "api.anthropic.com": "anthropic",
 }
+
+
+class CaptureResponses:
+    """Observe bounded fake-user JSON in memory without inspecting credentials."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+        if source_failure and scope["path"].startswith("/mock/"):
+            response = JSONResponse({"error": "Test-only simulated feed failure"}, 503)
+            return await response(scope, receive, send)
+        kind = CAPTURE_PATHS.get(scope["path"])
+        if kind is None:
+            return await self.app(scope, receive, send)
+        request_parts = []
+        response_parts = []
+        request_size = 0
+        response_size = 0
+        status_code = 0
+
+        async def observed_receive():
+            nonlocal request_size
+            message = await receive()
+            if message["type"] == "http.request":
+                chunk = message.get("body", b"")
+                request_size += len(chunk)
+                if request_size <= 300_000:
+                    request_parts.append(chunk)
+            return message
+
+        async def observed_send(message):
+            nonlocal response_size, status_code
+            if message["type"] == "http.response.start":
+                status_code = message["status"]
+            elif message["type"] == "http.response.body":
+                chunk = message.get("body", b"")
+                response_size += len(chunk)
+                if response_size <= 4 * 1024 * 1024:
+                    response_parts.append(chunk)
+                if not message.get("more_body", False):
+                    try:
+                        captured_responses[kind] = {
+                            "sequence": captured_responses.get(kind, {}).get("sequence", 0) + 1,
+                            "request": json.loads(b"".join(request_parts)),
+                            "status": status_code,
+                            "body": json.loads(b"".join(response_parts)),
+                        }
+                    except ValueError:
+                        captured_responses.pop(kind, None)
+            await send(message)
+
+        await self.app(scope, observed_receive, observed_send)
+
+
+app.add_middleware(CaptureResponses)
 
 
 def provider_response(draft, provider="openai"):
@@ -131,7 +197,11 @@ async def mocked_provider(request):
     selected = next(
         (chunk for chunk in chunks if chunk["source_id"] != "planner-context"), chunks[0]
     )
-    quote = selected["text"][:120]
+    quote = (
+        "A deliberately invalid quote that does not appear in the selected source."
+        if model == "test-invalid-quote"
+        else selected["text"][:120]
+    )
     return provider_response(
         {
             "answer": "The selected guide says: " + quote,
@@ -163,6 +233,18 @@ def provider_status():
         "store_disabled": last_store_disabled,
         "last_provider": last_provider,
     }
+
+
+@app.get("/__test__/captured", include_in_schema=False)
+def captured():
+    return captured_responses
+
+
+@app.post("/__test__/source-mode", include_in_schema=False)
+def source_mode(failed: bool = False):
+    global source_failure
+    source_failure = failed
+    return {"failed": source_failure}
 
 
 if __name__ == "__main__":

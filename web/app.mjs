@@ -1,9 +1,11 @@
-import { fromLocal, parseBudget, recommend, time } from './planner.mjs';
-import { createSource, LIMITS, openLibrary, searchSources } from './library.mjs';
+import { fromLocal, parseBudget, time } from './planner.mjs';
+import { createSource, LIMITS, searchSources } from './library.mjs';
 import { bind, t, option, attribute, currency as money, locale, number } from './i18n.mjs';
+import { isDesktop, loadPlanner, recommendPlan, openSources, importDesktopSource, initDesktopTools } from './platform.mjs';
+import { configureContext, notifyContextChange } from './ui-context.mjs';
 
 const $ = (id) => document.getElementById(id);
-const state = { scenario: null, library: null, sources: [], selected: new Set(), busy: false, viewer: null, pendingDelete: null, starters: new Map() };
+const state = { scenario: null, library: null, sources: [], selected: new Set(), busy: false, viewer: null, pendingDelete: null, starters: new Map(), planBusy: false, planVersion: 0, loadVersion: 0 };
 const node = (tag, text, className = '', raw = false) => {
   const item = document.createElement(tag);
   if (text !== undefined) bind(item, raw ? '{text}' : text, raw ? { text } : {});
@@ -38,13 +40,15 @@ function fieldError(kind, message) {
 }
 
 function preferencesChanged() {
+  state.planVersion++;
+  notifyContextChange();
   clearFieldErrors();
   $('plan-results').replaceChildren();
   $('plan-empty').hidden = false;
   bind($('plan-empty').querySelector('h3'), 'A little adventure starts here.');
   bind($('plan-empty').querySelector('p'), 'Tell us where, when and what you enjoy. We’ll match you with something that fits.');
   updateInterestSummary();
-  feedback('plan-status', 'Preferences changed. Find a plan to update your result.');
+  feedback('plan-status', '');
 }
 
 function resetPreferences() {
@@ -60,21 +64,20 @@ function resetPreferences() {
   $('starter').value = '';
   $('interest-picker').open = false;
   preferencesChanged();
-  feedback('plan-status', 'A fresh start. Your library and appearance are just as you left them.');
+  feedback('plan-status', '');
 }
 
 async function loadScenario() {
+  state.planVersion++; notifyContextChange();
   $('reload').hidden = true;
   $('preferences').disabled = true;
   state.scenario = null;
   $('plan-results').replaceChildren();
   feedback('setup-status', 'Loading planner…');
+  const loadVersion = ++state.loadVersion;
   try {
-    const response = await fetch('./scenario.json', { signal: AbortSignal.timeout(10000), cache: 'no-cache' });
-    if (!response.ok) throw new Error();
-    const scenario = await response.json();
-    // Exercise all configured bundles before enabling controls. A broken deployment must fail visibly.
-    for (const origin of scenario.options.origins) recommend({ ...scenario.options.default_request, origin_id: origin.id }, scenario);
+    const scenario = await loadPlanner();
+    if (loadVersion !== state.loadVersion) return;
     state.scenario = scenario;
     const { options } = scenario;
     const defaults = options.default_request;
@@ -109,8 +112,10 @@ async function loadScenario() {
     updateInterestSummary();
     bind($('coverage'), 'Fictional demo · {zone} · Budget up to {amount}', () => ({ zone: options.timezone, amount: money(options.max_budget_pence) }));
     $('preferences').disabled = false;
-    feedback('setup-status', 'Ready. No account or API key needed.');
+    feedback('setup-status', '');
+    notifyContextChange();
   } catch {
+    if (loadVersion !== state.loadVersion) return;
     feedback('setup-status', 'The demo data could not be loaded. Check your connection and retry.', true);
     $('reload').hidden = false;
   }
@@ -137,36 +142,49 @@ function activityCard(activity, featured, zone) {
   return card;
 }
 
-function submitPlan(event) {
+function readPlannerPreferences(showErrors = false) {
+  if (!state.scenario) return null;
+  const { options } = state.scenario;
+  let budget;
+  try { budget = parseBudget($('budget').value.trim()); }
+  catch (error) { if (showErrors) fieldError('budget', error.message); throw error; }
+  if (budget > options.max_budget_pence) {
+    const message = t('This demo supports budgets up to {amount}.', { amount: money(options.max_budget_pence) });
+    if (showErrors) fieldError('budget', message); throw new Error(message);
+  }
+  const interests = [...document.querySelectorAll('[name=interest]:checked')].map((input) => input.value);
+  if (!interests.length) {
+    const message = 'Choose at least one of your interests.';
+    if (showErrors) fieldError('interest', message); throw new Error(message);
+  }
+  if ($('return').value <= $('depart').value) {
+    const message = 'Choose a return time after you leave.';
+    if (showErrors) fieldError('time', message); throw new Error(message);
+  }
+  return { origin_id: $('origin').value, budget_pence: budget,
+    depart_at: fromLocal($('date').value, $('depart').value, options.timezone),
+    return_by: fromLocal($('date').value, $('return').value, options.timezone),
+    interests };
+
+}
+
+async function submitPlan(event) {
   event.preventDefault();
+  if (state.planBusy) return;
+  const version = ++state.planVersion;
+  state.planBusy = true; $('plan-submit').disabled = true;
   $('plan-results').replaceChildren();
-  if (!state.scenario) return;
+  if (!state.scenario) { state.planBusy = false; $('plan-submit').disabled = false; return; }
   $('interest-picker').open = false;
   $('plan-empty').hidden = true;
   clearFieldErrors();
   try {
     const { options } = state.scenario;
-    let budget;
-    try { budget = parseBudget($('budget').value.trim()); }
-    catch (error) { fieldError('budget', error.message); throw error; }
-    if (budget > options.max_budget_pence) {
-      const message = t('This demo supports budgets up to {amount}.', { amount: money(options.max_budget_pence) });
-      fieldError('budget', message); throw new Error(message);
-    }
-    const interests = [...document.querySelectorAll('[name=interest]:checked')].map((input) => input.value);
-    if (!interests.length) {
-      const message = 'Choose at least one of your interests.';
-      fieldError('interest', message); throw new Error(message);
-    }
-    if ($('return').value <= $('depart').value) {
-      const message = 'Choose a return time after you leave.';
-      fieldError('time', message); throw new Error(message);
-    }
-    const request = { origin_id: $('origin').value, budget_pence: budget,
-      depart_at: fromLocal($('date').value, $('depart').value, options.timezone),
-      return_by: fromLocal($('date').value, $('return').value, options.timezone),
-      interests };
-    const result = recommend(request, state.scenario);
+    const request = readPlannerPreferences(true);
+    feedback('plan-status', 'Calculating…');
+    const result = await recommendPlan(request, state.scenario);
+    if (version !== state.planVersion) return;
+    if (result.error) throw new Error(result.error.message);
     feedback('plan-status', result.data.message);
     if (!result.data.recommended) {
       $('plan-empty').hidden = false;
@@ -175,7 +193,8 @@ function submitPlan(event) {
     }
     if (result.data.recommended) $('plan-results').append(activityCard(result.data.recommended, true, options.timezone));
     for (const activity of result.data.alternatives) $('plan-results').append(activityCard(activity, false, options.timezone));
-    const provenance = node('div', undefined, 'provenance');
+    const provenance = node('details', undefined, 'provenance');
+    provenance.append(node('summary', 'Sources and limitations'));
     const origin = options.origins.find((item) => item.id === request.origin_id);
     provenance.append(bind(node('strong'), 'Start and return: {origin}', { origin: origin.label }), bind(node('p'), 'All times: {zone}. Calculated locally from the following fictional datasets:', { zone: options.timezone }));
     for (const source of result.data.sources) provenance.append(bind(node('p'), '{source} · Simulated snapshot {updated}{origin}', { source: source.label, updated: source.updated_at, origin: source.origin_id ? ` · ${origin.label}` : '' }));
@@ -189,8 +208,8 @@ function submitPlan(event) {
       $('results-title').scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' });
     }
   } catch (error) {
-    feedback('plan-status', error.message, true);
-  }
+    if (version === state.planVersion) feedback('plan-status', error.message, true);
+  } finally { state.planBusy = false; $('plan-submit').disabled = false; }
 }
 
 function clearSearch() {
@@ -210,7 +229,7 @@ function renderSources() {
   $('clear-selection').disabled = !state.selected.size;
   if (!state.sources.length) {
     const empty = node('div', undefined, 'library-empty');
-    empty.append(node('span', '+', 'library-empty-icon'), node('h3', 'Good things deserve a place.'), node('p', 'Use “Add a note or file” above. Just looking around? Try the fictional example.', 'muted'));
+    empty.append(node('p', 'No sources saved.', 'muted'));
     $('sources').append(empty);
   }
   const sources = [...state.sources].sort($('source-sort').value === 'title'
@@ -224,7 +243,7 @@ function renderSources() {
     input.type = 'checkbox'; input.checked = state.selected.has(source.id);
     input.addEventListener('change', () => {
       if (input.checked) state.selected.add(source.id); else state.selected.delete(source.id);
-      clearSearch();
+      clearSearch(); notifyContextChange();
       bind($('source-count'), '{count} / {limit} saved items · {selected} selected', { count: state.sources.length, limit: LIMITS.sources, selected: state.selected.size });
       $('select-all').disabled = state.selected.size === state.sources.length;
       $('clear-selection').disabled = !state.selected.size;
@@ -247,7 +266,7 @@ function renderSources() {
 
 async function withLibrary(action) {
   if (state.busy) return;
-  if (!state.library) { feedback('library-status', 'Browser storage is unavailable. Allow site storage and reload. Planning still works.', true); return; }
+  if (!state.library) { feedback('library-status', isDesktop ? 'Local library is unavailable. Retry loading it.' : 'Browser storage is unavailable. Allow site storage and reload. Planning still works.', true); return; }
   state.busy = true;
   for (const id of ['import-button', 'demo-source', 'paste-toggle']) $(id).disabled = true;
   try { await action(); } catch (error) { feedback('library-status', error.message, true); }
@@ -256,11 +275,13 @@ async function withLibrary(action) {
 
 async function saveSource(source) {
   if (state.sources.length >= LIMITS.sources) throw new Error('Your library is full. Remove an item before adding another (limit: 20).');
-  await state.library.add(source);
-  state.sources = await state.library.all(); state.selected.add(source.id);
+  const saved = await state.library.add(source);
+  const savedId = saved?.id ?? source.id;
+  state.sources = await state.library.all(); state.selected.add(savedId);
+  notifyContextChange();
   clearSearch(); renderSources();
-  [...$('sources').children].find((row) => row.dataset.sourceId === source.id)?.querySelector('input')?.focus();
-  feedback('library-status', 'Saved and selected. It stays in this browser until you remove it or clear site data.');
+  [...$('sources').children].find((row) => row.dataset.sourceId === savedId)?.querySelector('input')?.focus();
+  feedback('library-status', 'Saved.');
 }
 
 async function extractFile(file) {
@@ -307,13 +328,21 @@ async function extractFile(file) {
   } finally { clearTimeout(timer); await task.destroy(); }
 }
 
-function openSource(source, selectedIndex = -1) {
+function openSource(source, selectedIndex = -1, quote = '') {
   state.viewer = source;
   bind($('viewer-title'), '{text}', { text: source.title });
   bind($('viewer-meta'), '{kind} · Extracted text · {label}', () => ({ kind: source.kind.toUpperCase(), label: t(source.is_simulated ? 'Fictional / AI-generated source' : 'Accuracy not independently verified') }));
   $('viewer-content').replaceChildren(...source.chunks.map((chunk, index) => {
     const passage = node('section', undefined, `passage${index === selectedIndex ? ' selected' : ''}`);
-    passage.append(bind(node('strong'), chunk.page ? 'Page {page} · Passage {index}' : 'Passage {index}', { page: chunk.page, index: index + 1 }), node('p', chunk.text, '', true));
+    const paragraph = node('p', chunk.text, '', true);
+    if (quote && index === selectedIndex) {
+      const start = chunk.text.indexOf(quote);
+      if (start >= 0) {
+        const mark = node('mark', quote, '', true);
+        paragraph.replaceChildren(document.createTextNode(chunk.text.slice(0, start)), mark, document.createTextNode(chunk.text.slice(start + quote.length)));
+      }
+    }
+    passage.append(bind(node('strong'), chunk.page ? 'Page {page} · Passage {index}' : 'Passage {index}', { page: chunk.page, index: index + 1 }), paragraph);
     return passage;
   }));
   if (!$('viewer').open) $('viewer').showModal();
@@ -332,7 +361,7 @@ $('starter').addEventListener('change', () => {
   setBudget(starter.budget);
   for (const input of document.querySelectorAll('#interests input')) input.checked = starter.interests.includes(input.value);
   preferencesChanged();
-  feedback('plan-status', '{label}: interests and budget set. Your time and starting point are unchanged.', false, () => ({ label: t(starter.label) }));
+  feedback('plan-status', '');
 });
 $('reset-planner').addEventListener('click', resetPreferences);
 $('budget-preset').addEventListener('change', () => {
@@ -372,8 +401,22 @@ $('paste-form').addEventListener('submit', (event) => {
     $('paste-form').reset(); $('paste-form').hidden = true; $('paste-toggle').setAttribute('aria-expanded', 'false');
   });
 });
-$('import-button').addEventListener('click', () => { $('add-source-picker').open = false; $('file').click(); });
+$('import-button').addEventListener('click', () => {
+  $('add-source-picker').open = false;
+  if (!isDesktop) { $('file').click(); return; }
+  void withLibrary(async () => {
+    const result = await importDesktopSource({ is_simulated: $('import-simulated').checked });
+    if (result?.cancelled) { feedback('library-status', 'Import cancelled.'); return; }
+    if (result?.body?.error) throw new Error(result.body.error.message);
+    const imported = result?.body?.data?.source ?? result?.body?.data;
+    state.sources = await state.library.all();
+    if (imported?.id) state.selected.add(imported.id);
+    clearSearch(); renderSources(); notifyContextChange();
+    feedback('library-status', 'Saved.');
+  });
+});
 $('file').addEventListener('change', () => {
+  if (isDesktop) return;
   const file = $('file').files[0]; $('file').value = '';
   if (!file) return;
   void withLibrary(async () => {
@@ -387,8 +430,8 @@ $('demo-source').addEventListener('click', () => withLibrary(async () => {
   if (!response.ok) throw new Error('Could not load the fictional guide. Check your connection and retry.');
   await saveSource(createSource({ title: 'Fictional venue guide', kind: 'markdown', pages: [{ text: await response.text(), page: null }], is_simulated: true }));
 }));
-$('select-all').addEventListener('click', () => { state.selected = new Set(state.sources.map((source) => source.id)); clearSearch(); renderSources(); $('select-all').disabled = true; $('clear-selection').focus(); });
-$('clear-selection').addEventListener('click', () => { state.selected.clear(); clearSearch(); renderSources(); $('select-all').focus(); });
+$('select-all').addEventListener('click', () => { state.selected = new Set(state.sources.map((source) => source.id)); clearSearch(); renderSources(); notifyContextChange(); $('select-all').disabled = true; $('clear-selection').focus(); });
+$('clear-selection').addEventListener('click', () => { state.selected.clear(); clearSearch(); renderSources(); notifyContextChange(); $('select-all').focus(); });
 $('delete-cancel').addEventListener('click', () => $('delete-dialog').close());
 $('delete-dialog').addEventListener('close', () => { state.pendingDelete = null; });
 $('delete-confirm').addEventListener('click', () => withLibrary(async () => {
@@ -401,7 +444,7 @@ $('delete-confirm').addEventListener('click', () => withLibrary(async () => {
     state.sources = await state.library.all();
     if (state.viewer?.id === source.id) $('viewer').close();
     $('delete-dialog').close();
-    clearSearch(); renderSources(); feedback('library-status', 'Item removed from this browser.');
+    clearSearch(); renderSources(); notifyContextChange(); feedback('library-status', 'Source removed.');
     $('add-source-picker').querySelector('summary').focus();
   } catch (error) { $('delete-dialog').close(); throw error; }
   finally { $('delete-confirm').disabled = false; }
@@ -451,10 +494,39 @@ function plannerReason(reason) {
 
 globalThis.jinniI18n?.onChange(updateInterestSummary);
 
+
+configureContext({
+  sourceIds: () => [...state.selected],
+  plannerPreferences: () => readPlannerPreferences(),
+  sourceViewer: async (id, { quote, page } = {}) => {
+    if (isDesktop && state.library) state.sources = await state.library.all();
+    let source = state.sources.find((item) => item.id === id);
+    if (!source && state.library) source = (await state.library.all()).find((item) => item.id === id);
+    if (!source) throw new Error(t('The source is no longer available.'));
+    const index = source.chunks.findIndex((chunk) => (!quote || chunk.text.includes(quote)) && (page == null || chunk.page === page));
+    if (quote && index < 0) throw new Error(t('The quoted passage is no longer available.'));
+    openSource(source, index, quote);
+    return true;
+  },
+});
+document.documentElement.dataset.platform = isDesktop ? 'desktop' : 'browser';
+bind($('storage-notice'), isDesktop ? 'Sources are saved locally on this computer.' : 'Sources are saved in this browser. Clearing site data removes them.');
+bind($('library-limits'), isDesktop ? '20 sources · TXT, Markdown or text PDF · 5 MiB · 150,000 characters · 40 pages. Only extracted text is saved. AI questions send selected snippets to the chosen provider.' : '20 sources · TXT, Markdown or text PDF · 5 MiB · 150,000 characters · 40 pages. Nothing is sent to an AI provider. Download important sources before clearing site data.');
+bind($('delete-scope'), isDesktop ? 'Removes this source from the local library. Your original file is unchanged.' : 'Removes this source from this browser. Your original file is unchanged.');
+void initDesktopTools().catch((error) => feedback('library-status', error.message, true));
+
 void loadScenario();
-void (async () => {
+async function loadLibrary() {
+  $('library-retry').hidden = true;
+  feedback('library-status', 'Loading sources…');
   try {
-    state.library = await openLibrary(); state.sources = await state.library.all(); renderSources();
-    feedback('library-status', 'Library ready. Sources are saved only in this browser on this device.');
-  } catch { feedback('library-status', 'Browser storage is unavailable. Allow site storage to save a library. Planning still works.', true); }
-})();
+    state.library = await openSources(); state.sources = await state.library.all(); renderSources();
+    feedback('library-status', '');
+    notifyContextChange();
+  } catch (error) {
+    feedback('library-status', isDesktop ? error.message : 'Browser storage is unavailable. Allow site storage to save a library. Planning still works.', true);
+    $('library-retry').hidden = false;
+  }
+}
+$('library-retry').addEventListener('click', loadLibrary);
+void loadLibrary();

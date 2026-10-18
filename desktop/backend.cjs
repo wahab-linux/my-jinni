@@ -116,7 +116,7 @@ class BackendManager {
     if (this._stopping) return this.getStatus();
     if (existing === 'ready') {
       this.state = 'ready';
-      this.message = 'Connected to the local jinni backend.';
+      this.message = 'Connected to the local Jinni backend.';
       return this.getStatus();
     }
     if (existing === 'occupied') {
@@ -155,7 +155,7 @@ class BackendManager {
       const state = await this._probe();
       if (state === 'ready') {
         this.state = 'ready';
-        this.message = 'The local jinni backend is ready.';
+        this.message = 'The local Jinni backend is ready.';
         return this.getStatus();
       }
       if (state === 'occupied') break;

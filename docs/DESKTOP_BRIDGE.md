@@ -1,5 +1,7 @@
 # Electron bridge contract
 
+The common frontend is `web/index.html` in both browser and Electron. Desktop loads it at the local secure `jinni://app/index.html` document and selects the native platform adapter. IPC accepts only this window's main frame at that exact document, ignoring only its fragment; other origins, paths and query strings are rejected. Assets are allowlisted local files, never a hosted page or general repository server. Native AI tools extend the common interface and read source selection/current form context explicitly. Existing operation names and envelopes below remain unchanged.
+
 Additive v0.5 uses the same trusted main-only HTTP boundary:
 
 | Named operation | Input | Backend result |

@@ -1,0 +1,22 @@
+.desktop-ai-dialog { width: min(620px, calc(100% - 32px)); max-height: 90vh; }
+.desktop-ai-dialog h2 { margin-top: 0; }
+.desktop-ai-dialog form { display: grid; gap: 10px; }
+.desktop-ai-dialog label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 0; }
+.desktop-ai-dialog textarea, .desktop-ai-dialog input:not([type="checkbox"]), .desktop-ai-dialog select { width: 100%; border: 1px solid var(--control-line); background: var(--input); color: var(--ink); padding: 10px; border-radius: 8px; margin-bottom: 0; }
+.desktop-ai-dialog textarea { resize: vertical; }
+.desktop-ai-dialog .desktop-ai-check { display: flex; align-items: center; gap: 10px; }
+.desktop-ai-dialog .desktop-ai-check input { width: 17px; height: 17px; accent-color: var(--accent); }
+.desktop-ai-dialog .muted, .desktop-ai-footnote { font-size: 11px; }
+.desktop-ai-notice { border: 1px solid var(--line); background: var(--accent-soft); padding: 12px; border-radius: 10px; font-size: 12px; }
+.desktop-ai-settings { padding-block: 12px; margin-block: 10px; border-top: 1px solid var(--line); font-size: 12px; }
+.desktop-ai-settings summary { margin-bottom: 10px; color: var(--accent-ink); }
+.desktop-ai-key-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
+.desktop-ai-result { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 14px; }
+.desktop-ai-answer { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; }
+.desktop-ai-citations { display: grid; gap: 8px; margin-block: 15px; }
+.desktop-ai-citation { display: grid; gap: 4px; text-align: left; padding: 12px; background: var(--mint-bg); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; font-size: 12px; }
+.desktop-ai-citation span { color: var(--accent-ink); font-size: 11px; }
+.desktop-ai-calculated { font-size: 12px; }
+.desktop-ai-calculated pre, #desktop-ai-context-json { max-height: 280px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; }
+#desktop-ai-context-quote { white-space: pre-wrap; margin-inline: 0; padding: 14px; background: var(--mint-bg); border-left: 3px solid var(--mint-ink); }
+.desktop-backend-panel { position: fixed; inset: auto 16px 16px; z-index: 12; background: var(--surface); color: var(--ink); padding: 10px 16px; border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); display: flex; align-items: center; justify-content: space-between; gap: 18px; font-size: 12px; }

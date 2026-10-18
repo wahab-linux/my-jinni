@@ -1,8 +1,8 @@
 # Development tasks and integration checkpoints
 
-Current authorized work is language support only: English, Simplified Chinese, French, Japanese and Russian in both interfaces. Shared runtime/catalog tests cover fallback, local preference failures and explicit-only translation; actual browser/Electron checks cover five-language switching, persistence, long text/layout and unchanged inputs/decisions/source quotations. Keep code/docs English and use dedicated native UI resources. No backend, retrieval, provider, currency or decision-policy expansion belongs to this increment.
+Current authorized work is frontend consolidation and concise copy: desktop follows the same `web/` interface as the browser, with the visible name Jinni. Native operations move behind the platform adapter while retaining existing API/storage/provider boundaries. Preserve the five languages and locale invariants. Remove redundant text while keeping essential units, simulation, trade-offs, errors and cloud disclosure. No new backend domain, retrieval, provider, currency or decision policy is requested.
 
-Current brand is `jinni` (user decision, 2026-10-18). Verify the original lamp mark and product title in both experiences, keep the actual decision flow central, and inspect fresh light/dark/mobile screenshots. Preserve existing data paths and technical contracts. Distinguish mocked-provider checks from any separately observed real-key test. The user approved a narrow English-content exception for native UI catalogs and localization fixtures; other tracked content remains English.
+Current brand is `Jinni` (user decision, 2026-10-18). Verify the original lamp mark and product title in both experiences, keep the actual decision flow central, and inspect fresh light/dark/mobile screenshots. Preserve existing data paths and technical contracts. Distinguish mocked-provider checks from any separately observed real-key test. The user approved a narrow English-content exception for native UI catalogs and localization fixtures; other tracked content remains English.
 
 The latest scope is additive v0.5: a general comparison workspace across market, travel, student, sustainability and custom criteria/data. [GENERAL_DECISIONS.md](GENERAL_DECISIONS.md) owns its frozen contract. Preserve all previous activity/library/provider/browser work, and treat the detailed activity flow below as a retained example rather than the product boundary.
 
@@ -22,7 +22,7 @@ This executes `docs/REQUIREMENTS.md`. The activity and confirmed library/AI back
 
 The user subsequently approved multiple mainstream providers, specifically DeepSeek. `docs/AI_PROVIDERS.md` defines additive v0.4, preserving planner/library/citation contracts. All four adapters, defaults, isolated keys, header compatibility, recipient disclosure and stale-answer clearing are implemented. Verification passed 474 Python tests, 46 JavaScript unit tests and 20 actual Electron checks plus lint/format, with all cloud transports mocked. Live account/model access remains separate. Existing baseline counts below describe earlier verified increments.
 
-jinni compares options from separate catalog and measurement sources using configurable priorities and hard limits. Domain assumptions remain in scenario configuration. The precise activity example still checks budget, time, interests and return to the selected origin. Electron with HTML/CSS/JavaScript remains the desktop stack, with a separately supported static browser edition.
+Jinni compares options from separate catalog and measurement sources using configurable priorities and hard limits. Domain assumptions remain in scenario configuration. The precise activity example still checks budget, time, interests and return to the selected origin. Electron with HTML/CSS/JavaScript remains the desktop stack, with a separately supported static browser edition.
 
 The user also confirmed keeping the planner while adding one local source library and cited AI questions using OpenAI. The deterministic planner remains keyless. `docs/AI_EXTENSION.md` defines additive contract v0.3; every v0.2 activity field is preserved. Local SQLite, lexical retrieval and optional AI are now approved scope, with no cloud notebooks/sync, OCR, URL ingestion or embeddings.
 
@@ -37,7 +37,7 @@ The user also confirmed keeping the planner while adding one local source librar
 | Owner | Owns | Coordinates first |
 | --- | --- | --- |
 | roXy | Planner and library/AI backend: `app/`, `data/`, backend `tests/`, `scripts/` | Schemas, ingestion/retrieval limits, citation and planner-context contracts |
-| Wahab | `desktop/main.cjs`, `desktop/preload.cjs`, `desktop/renderer/`, client tests; planner/library/chat/session-key experience | `package.json`, Node lockfile, shared examples and restricted IPC/native picker boundary |
+| Wahab | Shared `web/` interface, native `desktop/` integration and client tests; planner/library/chat/session-key experience | `package.json`, Node lockfile, shared examples and restricted IPC/native picker boundary |
 | Together | Scope, contract, integration, explanations, demo and factual AI log | `docs/`, dependencies, schemas, `contracts/fixtures/`, OpenAPI |
 
 Assign AI agents bounded tasks with exclusive files. One coordinator integrates each checkpoint. Do not assign Wahab's files to another agent while he is editing them. All tracked content remains English.

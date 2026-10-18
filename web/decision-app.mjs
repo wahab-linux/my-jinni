@@ -1,11 +1,12 @@
-import { evaluateDecision } from './decisions.mjs';
+import { loadDecisions as loadDecisionCatalog, compareDecision } from './platform.mjs';
+import { configureContext, notifyContextChange } from './ui-context.mjs';
 import { parseBudget } from './planner.mjs';
 import { criterionLabel, displayMeasure, topicCopy, unitLabel } from './presentation.mjs';
 import { setupSound } from './effects.mjs';
 import { bind, t, option, attribute, number } from './i18n.mjs';
 
 const $ = (id) => document.getElementById(id);
-const state = { entries: [], current: null, custom: null, result: null, controlRefresh: [] };
+const state = { entries: [], current: null, custom: null, result: null, controlRefresh: [], version: 0, busy: false, loadVersion: 0, customDirty: false };
 const effects = setupSound($('sound-toggle'));
 const node = (tag, content, className = '', raw = false) => {
   const element = document.createElement(tag);
@@ -44,12 +45,10 @@ function scenarioIcon(id) {
   return icon;
 }
 
-function clearComparison(message = 'Your choices changed. Tap Find my best match to update the result.') {
-  state.result = null;
+function clearComparison(message = '') {
+  state.result = null; state.version++; notifyContextChange();
   const empty = node('div', undefined, 'decision-placeholder');
-  empty.append(node('span', '↗'), node('h3', 'Your comparison will appear here.'),
-    node('p', 'Use the suggested settings or make a few changes, then choose Find my best match.'));
-  empty.firstChild.setAttribute('aria-hidden', 'true');
+  empty.append(node('p', 'Set your priorities, then compare.'));
   $('decision-results').replaceChildren(empty);
   bind($('decision-count'), state.current ? '{count} example choices' : 'Getting ready', { count: state.current?.dataset.options.length });
   $('edit-choices').hidden = true;
@@ -193,7 +192,7 @@ function control(criterion, defaults) {
     const display = valid ? measure(value * divisor, criterion.unit) : 'Enter an amount';
     amountSlider.setAttribute('aria-valuetext', display);
     amountSlider.style.setProperty('--range-fill', `${(Number(amountSlider.value) - Number(amountSlider.min)) / (Number(amountSlider.max) - Number(amountSlider.min)) * 100}%`);
-    bind(amountHint, valid ? 'Your limit: {value}. Drag the slider or type an exact amount.' : 'Drag the slider or type an exact amount.', { value: display });
+    bind(amountHint, valid ? '{value}' : '', { value: display });
   };
   amountSlider.addEventListener('input', () => {
     limit.value = criterion.unit === 'pence' ? Number(amountSlider.value).toFixed(2) : String(Number(Number(amountSlider.value).toFixed(3)));
@@ -240,15 +239,23 @@ function control(criterion, defaults) {
   return row;
 }
 
+
+function updateScenarioNotice() {
+  const message = state.current?.scenario.id === 'market' ? 'No investment recommendation or suitability assessment.'
+    : state.custom ? 'User-supplied data is not independently verified.' : '';
+  bind($('scenario-notice'), message);
+  $('scenario-notice').hidden = !message;
+}
+
 function selectScenario(id) {
   const entry = state.entries.find((candidate) => candidate.scenario.id === id);
   if (!entry) return;
-  state.current = entry; state.custom = null;
+  state.current = entry; state.custom = null; state.customDirty = false;
   const { scenario } = entry;
   bind($('scenario-title'), topicCopy[id].name);
   $('decision-workspace').dataset.scenario = id;
-  bind($('scenario-description'), topicCopy[id].description);
-  bind($('scenario-notice'), topicCopy[id].notice);
+
+  updateScenarioNotice();
   renderControls(scenario.criteria, scenario.default_request);
   $('custom-editor').hidden = id !== 'custom';
   $('custom-editor').open = false;
@@ -256,24 +263,21 @@ function selectScenario(id) {
   if (id === 'custom') $('custom-json').value = JSON.stringify({ title: scenario.title, criteria: scenario.criteria, dataset: entry.dataset }, null, 2);
   for (const tab of $('scenario-tabs').children) tab.setAttribute('aria-pressed', String(tab.dataset.id === id));
   bind($('decision-count'), '{count} choices to explore', { count: entry.dataset.options.length });
-  clearComparison('Tell us what matters, then find your best match.');
+  clearComparison();
 }
 
 async function loadDecisions() {
   $('decision-inputs').disabled = true;
   $('try-example').disabled = true;
   $('decision-retry').hidden = true;
-  clearComparison('Getting your choices ready…');
+  clearComparison();
+  status('decision-load-status', 'Getting your choices ready…');
+  const loadVersion = ++state.loadVersion;
   try {
-    const response = await fetch('./decisions.json', { signal: AbortSignal.timeout(10000), cache: 'no-cache' });
-    if (!response.ok) throw new Error();
-    const catalog = await response.json();
+    const catalog = await loadDecisionCatalog();
+    if (loadVersion !== state.loadVersion) return;
     if (!Array.isArray(catalog.scenarios) || catalog.scenarios.length !== 5) throw new Error();
-    const ids = new Set();
-    for (const entry of catalog.scenarios) {
-      if (ids.has(entry.scenario.id) || evaluateDecision(entry.scenario.default_request, entry).error) throw new Error();
-      ids.add(entry.scenario.id);
-    }
+    const ids = new Set(catalog.scenarios.map((entry) => entry.scenario.id));
     if (!['market', 'travel', 'student', 'sustainability', 'custom'].every((id) => ids.has(id))) throw new Error();
     state.entries = catalog.scenarios;
     $('scenario-tabs').replaceChildren(...state.entries.map(({ scenario }) => {
@@ -290,12 +294,13 @@ async function loadDecisions() {
     selectScenario('travel');
     $('decision-inputs').disabled = false;
     $('try-example').disabled = false;
-    status('decision-load-status', 'Ready to explore. All examples use made-up information.');
+    status('decision-load-status', '');
   } catch {
+    if (loadVersion !== state.loadVersion) return;
     state.entries = []; state.current = null;
     status('decision-load-status', 'Your choices could not be loaded. Check your connection and try again.', true);
     $('decision-retry').hidden = false;
-    clearComparison('We need the example information before we can find a match.');
+    clearComparison();
   }
 }
 
@@ -315,14 +320,14 @@ function table(headers, rows, caption) {
 function renderResult(result) {
   state.result = result;
   const target = $('decision-results'); target.replaceChildren();
-  status('decision-status', result.recommended ? (result.ranked.length === 1 ? 'We found {count} choice that fit what you asked for.' : 'We found {count} choices that fit what you asked for.') : 'Nothing fits your limits yet. Try changing a limit.', false, { count: result.ranked.length });
+  status('decision-status', result.recommended ? '' : 'Nothing fits your limits yet. Try changing a limit.');
   bind($('decision-count'), '{fit} fit · {excluded} don’t fit', { fit: result.ranked.length, excluded: result.excluded.length });
   $('edit-choices').hidden = false;
   if (result.recommended) {
     const choice = result.recommended;
     const card = node('article', undefined, 'decision-card'); card.dataset.optionId = choice.id;
     const header = node('header'); const heading = node('div');
-    heading.append(node('p', 'CLOSEST MATCH TO YOUR CHOICES', 'eyebrow'), node('h3', optionName(choice), '', true));
+    heading.append(node('p', 'Best match', 'eyebrow'), node('h3', optionName(choice), '', true));
     header.append(heading); card.append(header);
     if (choice.description !== 'A fictional example for transparent preference comparison.') card.append(node('p', choice.description, 'muted', true));
     const measures = node('dl', undefined, 'decision-metrics');
@@ -330,19 +335,12 @@ function renderResult(result) {
       const group = node('div'); group.append(node('dt', labelFor(criterion), '', true), node('dd', measure(choice.metrics[criterion.id], criterion.unit))); measures.append(group);
     }
     card.append(measures);
-    const explanation = node('section', undefined, 'match-explanation');
-    explanation.append(node('h4', 'Why this came first'));
-    const reasons = node('ul');
-    reasons.append(node('li', [...document.querySelectorAll('#decision-form [data-operator]')].some((select) => select.value) ? 'It fits the limits you set.' : 'We compared the available choices using your preferences.'));
-    for (const part of [...choice.contributions].filter((part) => part.weight > 0).sort((a, b) => b.weight - a.weight).slice(0, 2)) {
-      const criterion = result.criteria.find((item) => item.id === part.criterion_id);
-      reasons.append(node('li', t(criterion.direction === 'minimize' ? '{label} matters to you. This option has {value}; you prefer less.' : '{label} matters to you. This option has {value}; you prefer more.', { label: labelFor(criterion), value: measure(part.value, part.unit) })));
-    }
-    explanation.append(reasons);
-    card.append(explanation, node('p', 'This is the closest fit overall for your settings. Another option may be better on one thing, such as price.', 'hint')); target.append(card);
-    target.append(node('p', 'Compare the other choices below. The closest match is listed first.', 'hint'));
+    const priorities = [...choice.contributions].filter((part) => part.weight > 0).sort((a, b) => b.weight - a.weight).slice(0, 2)
+      .map((part) => labelFor(result.criteria.find((criterion) => criterion.id === part.criterion_id)));
+    card.append(bind(node('p', undefined, 'match-explanation'), 'Top priorities: {labels}', { labels: priorities.join(', ') }));
+    target.append(card);
     target.append(table(['Your choices', ...result.criteria.map((criterion) => ({ text: labelFor(criterion) }))], result.ranked.map((option) => [optionName(option), ...result.criteria.map((criterion) => measure(option.metrics[criterion.id], criterion.unit))]), 'Compare the choices that fit'));
-    const breakdown = node('details', undefined, 'decision-disclosure'); breakdown.append(node('summary', 'More details: how we worked it out'));
+    const breakdown = node('details', undefined, 'decision-disclosure'); breakdown.append(node('summary', 'Why this match?'));
     breakdown.append(node('p', 'Scores compare these options using your settings. They are not a chance of success, a guarantee or a prediction.', 'hint'));
     for (const option of result.ranked) {
       breakdown.append(node('h4', optionName(option), '', true), node('p', t('{score} / 100 relative match score', { score: number(option.score, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }), 'decision-score'), table(['What matters', 'Value', 'Importance', 'Preference match', 'Score points'], option.contributions.map((part) => [labelFor(result.criteria.find((criterion) => criterion.id === part.criterion_id)), measure(part.value, part.unit), String(part.weight), `${(part.normalised * 100).toFixed(2)}%`, part.points.toFixed(6)]), t('Score breakdown for {name}', { name: optionName(option) })));
@@ -350,7 +348,7 @@ function renderResult(result) {
     target.append(breakdown);
   } else {
     const empty = node('div', undefined, 'decision-placeholder');
-    empty.append(node('h3', 'Nothing quite fits. Let’s try again.'), node('p', 'Try raising your budget or changing a limit. We leave out choices when important information is missing.'));
+    empty.append(node('h3', 'No matching choices'), node('p', 'Change a limit. Choices with missing required data are excluded.'));
     target.append(empty);
   }
   if (result.excluded.length) {
@@ -370,7 +368,7 @@ function renderResult(result) {
   const limits = node('ul', undefined, 'decision-limitations'); limits.append(...result.limitations.map((limit) => node('li', state.custom && limit === result.limitations[0] ? limit : t(limit), '', true)));
   provenance.append(limits);
   const about = node('details', undefined, 'decision-about decision-disclosure');
-  about.append(node('summary', 'About these examples'), provenance); target.append(about);
+  about.append(node('summary', 'Sources and limitations'), provenance); target.append(about);
 }
 
 $('decision-form').addEventListener('input', () => clearComparison());
@@ -383,57 +381,77 @@ $('try-example').addEventListener('click', () => {
   showSection('comparison-title');
 });
 $('edit-choices').addEventListener('click', () => showSection('scenario-title'));
-$('decision-form').addEventListener('submit', (event) => {
-  event.preventDefault();
-  if (!state.current) return;
-  clearComparison();
-  try {
-    const criteria = state.custom?.criteria ?? state.current.scenario.criteria;
-    const weights = {}; const constraints = [];
-    for (const criterion of criteria) {
-      const rawWeight = $(`weight-${criterion.id}`).value.trim();
-      if (!rawWeight) throw new Error('Choose how much each thing matters. Use Not important to leave it out.');
-      weights[criterion.id] = Number(rawWeight);
-      const operator = $(`bound-${criterion.id}`).value;
-      if (operator) {
-        const raw = $(`limit-${criterion.id}`).value.trim();
-        if (!raw) throw new Error('Enter an amount for each limit you have chosen.');
-        const value = criterion.unit === 'pence'
-          ? parseBudget(raw.replace(/^-/, '')) * (raw.startsWith('-') ? -1 : 1) : Number(raw);
-        if (!Number.isFinite(value)) {
-          const error = new Error('Enter a number for {label}.');
-          error.params = () => ({ label: labelFor(criterion) });
-          throw error;
-        }
-        constraints.push({ criterion_id: criterion.id, operator, value });
+function readDecisionRequest() {
+  if (!state.current) return null;
+  if (state.customDirty) throw new Error('Apply your custom data first.');
+  const criteria = state.custom?.criteria ?? state.current.scenario.criteria;
+  const weights = {}; const constraints = [];
+  for (const criterion of criteria) {
+    const rawWeight = $(`weight-${criterion.id}`).value.trim();
+    if (!rawWeight) throw new Error('Choose how much each thing matters. Use Not important to leave it out.');
+    weights[criterion.id] = Number(rawWeight);
+    const operator = $(`bound-${criterion.id}`).value;
+    if (operator) {
+      const raw = $(`limit-${criterion.id}`).value.trim();
+      if (!raw) throw new Error('Enter an amount for each limit you have chosen.');
+      const value = criterion.unit === 'pence'
+        ? parseBudget(raw.replace(/^-/, '')) * (raw.startsWith('-') ? -1 : 1) : Number(raw);
+      if (!Number.isFinite(value)) {
+        const error = new Error('Enter a number for {label}.');
+        error.params = () => ({ label: labelFor(criterion) });
+        throw error;
       }
+      constraints.push({ criterion_id: criterion.id, operator, value });
     }
-    if (!Object.values(weights).some((weight) => weight > 0)) throw new Error('Choose Important or Very important for at least one thing.');
-    const request = { scenario_id: state.current.scenario.id, weights, constraints, ...(state.custom ? { custom: state.custom } : {}) };
-    const response = evaluateDecision(request, state.current);
+  }
+  if (!Object.values(weights).some((weight) => weight > 0)) throw new Error('Choose Important or Very important for at least one thing.');
+  return { scenario_id: state.current.scenario.id, weights, constraints, ...(state.custom ? { custom: state.custom } : {}) };
+
+}
+
+$('decision-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if (!state.current || state.busy) return;
+  clearComparison();
+  const version = state.version;
+  state.busy = true; $('decision-submit').disabled = true; $('custom-apply').disabled = true;
+  try {
+    const request = readDecisionRequest();
+    status('decision-status', 'Calculating…');
+    const response = await compareDecision(request, state.current);
+    if (version !== state.version) return;
     if (response.error) throw new Error(response.error.details[0]?.message ?? response.error.message);
     renderResult(response.data); effects.play(response.data.recommended ? 'success' : 'empty');
     if (window.matchMedia('(max-width: 760px)').matches) {
       showSection('comparison-title');
     }
-  } catch (error) { status('decision-status', error.message, true, error.params ?? {}); effects.play('empty'); }
+  } catch (error) { if (version === state.version) { status('decision-status', error.message, true, error.params ?? {}); effects.play('empty'); } }
+  finally { state.busy = false; $('decision-submit').disabled = !state.current; $('custom-apply').disabled = false; }
 });
-$('custom-apply').addEventListener('click', () => {
+$('custom-json').addEventListener('input', () => {
+  state.customDirty = true;
+  status('custom-status', 'Apply your custom data first.');
+});
+$('custom-apply').addEventListener('click', async () => {
+  if (!state.current || state.busy) return;
+  const version = state.version;
+  state.busy = true; $('custom-apply').disabled = true; $('decision-submit').disabled = true;
   try {
     const custom = JSON.parse($('custom-json').value);
-    const response = evaluateDecision({ scenario_id: 'custom', weights: {}, constraints: [], custom }, state.current);
+    const response = await compareDecision({ scenario_id: 'custom', weights: {}, constraints: [], custom }, state.current);
+    if (version !== state.version) return;
     if (response.error) throw new Error(t('Please check the structure, values and limits in your custom JSON.'));
-    state.custom = custom;
+    state.custom = custom; state.customDirty = false; updateScenarioNotice();
     renderControls(custom.criteria, {});
     bind($('scenario-title'), '{text}', { text: custom.title });
-    clearComparison('Your information is ready. Choose what matters and find your match.');
-    status('custom-status', 'Your information has been checked and is ready to use.');
-  } catch (error) { status('custom-status', 'Custom data was not applied: {message}', true, () => ({ message: error instanceof SyntaxError ? t('Please check the JSON format.') : t(error.message) })); }
+    clearComparison();
+    status('custom-status', 'Custom data applied.');
+  } catch (error) { if (version === state.version) status('custom-status', 'Custom data was not applied: {message}', true, () => ({ message: error instanceof SyntaxError ? t('Please check the JSON format.') : t(error.message) })); }
+  finally { state.busy = false; $('custom-apply').disabled = false; $('decision-submit').disabled = !state.current; }
 });
 
 function openTools() { if (!$('library-dialog').open) $('library-dialog').showModal(); }
 $('library-open').addEventListener('click', openTools);
-$('library-open-secondary').addEventListener('click', openTools);
 $('library-close').addEventListener('click', () => $('library-dialog').close());
 for (const link of document.querySelectorAll('a[href="#library"]')) link.addEventListener('click', (event) => { event.preventDefault(); openTools(); });
 for (const link of document.querySelectorAll('a[href="#planner"]')) link.addEventListener('click', () => { $('legacy-planner').open = true; });
@@ -459,5 +477,7 @@ globalThis.jinniI18n?.onChange(() => {
     [...$('decision-results').querySelectorAll('details')].forEach((item, index) => { item.open = !!open[index]; });
   }
 });
+
+configureContext({ decisionRequest: readDecisionRequest });
 
 void loadDecisions();

@@ -10,6 +10,7 @@ htmlcov/
 !.env.example
 tmp/
 dist/
+.codex-remote-attachments/
 node_modules/
 *.sqlite3
 *.sqlite3-shm

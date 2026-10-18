@@ -1,13 +1,15 @@
-# jinni
+# Jinni
 
 A decision workspace that combines independent option and measurement sources, applies your hard limits and priorities, and explains a clear recommendation with comparable alternatives. Students are one example audience; the core works with configurable criteria and datasets.
 
 DYHTG 2026 BlackRock challenge. Backend: roXy. Desktop interface: Wahab.
 Repository: [wahab-linux/my-jinni](https://github.com/wahab-linux/my-jinni). Local checkout: `my-jinni`.
 
-The product is named **jinni**. Its original lamp mark connects the idea of a helpful genie with making an informed choice. It is the team's independent prototype, not an official BlackRock or Aladdin product. Existing repository URLs, launcher filename, local storage identifiers and API identity retain `my-jinni` so existing installations and source libraries continue to work.
+The product is named **Jinni**. Its original lamp mark connects the idea of a helpful genie with making an informed choice. It is the team's independent prototype, not an official BlackRock or Aladdin product. Existing repository URLs, launcher filename, local storage identifiers and API identity retain `my-jinni` so existing installations and source libraries continue to work.
 
 The desktop and browser interfaces support English, Simplified Chinese, French, Japanese and Russian through the language selector. English is the default; each experience remembers its local language preference. This changes interface text, not the original language of imported documents, exact citation quotations or provider answers. Comparison inputs, GBP amounts and canonical API data retain their existing meaning. Cross-language search is not added by UI translation.
+
+Both editions use the same frontend in `web/`: page, styles, controls, translations and result presentation. Electron loads those local files directly, so frontend changes apply to both editions. A platform adapter uses the actual Python API and SQLite on desktop, or exported data and IndexedDB in a browser. Desktop-only AI tools use the same source selection and current form context. The shared page starts with choices and comparisons; repeated marketing and onboarding copy is omitted.
 
 ## Browser edition on GitHub Pages
 
