@@ -590,12 +590,14 @@ async function sharedDesktop() {
       await waitUntil(async () => !(await sources(backend.baseUrl)).some((source) => source.id === saved.excluded.id)); await closeTools(page); await page.locator('#language-select').selectOption('fr');
       assert.deepEqual(errors, []); await app.close(); app = null; assert.equal((await fetch(`${backend.baseUrl}/health`)).status, 200);
     });
-    await check('SQLite sources and selected locale survive restart while all provider session keys disappear', async () => {
+    await check('SQLite sources, locale and OS-encrypted provider keys survive restart without plaintext storage', async () => {
       const port = Number(new URL(backend.baseUrl).port); await backend.stop(); backend = await startMockBackend({ directory, port });
       ({ application: app, page } = await launchDesktop(electron, backend.baseUrl, directory)); await waitUntil(async () => await page.locator('#language-select').inputValue() === 'fr');
       assert.equal(await page.locator('html').getAttribute('lang'), 'fr'); await page.locator('#language-select').selectOption('en'); await library(page); await contains(page.locator('#sources'), saved.imported.title);
       const persisted = await sources(backend.baseUrl); assert.ok(persisted.some((source) => source.id === saved.guide.id)); assert.ok(persisted.some((source) => source.id === saved.imported.id));
-      for (const id of ['openai', 'deepseek', 'gemini', 'anthropic']) assert.deepEqual(await page.evaluate((provider) => window.myJinni.getSessionSettings(provider), id), { configured: false });
+      for (const id of ['openai', 'deepseek', 'gemini', 'anthropic']) assert.deepEqual(await page.evaluate((provider) => window.myJinni.getSessionSettings(provider), id), { configured: true });
+      const encrypted = fs.readFileSync(path.join(directory, 'desktop', 'jinni-credentials.json'), 'utf8');
+      for (const value of [TEST_KEY, 'sk-deepseek-test-placeholder', 'sk-gemini-test-placeholder', 'sk-anthropic-test-placeholder']) assert.equal(encrypted.includes(value), false);
     });
   } catch (error) { if (page && !page.isClosed()) await screenshot(page, 'shared-desktop-failure.png').catch(() => {}); throw error; }
   finally { if (app) await app.close().catch(() => {}); await backend.stop(); }

@@ -1,5 +1,7 @@
 # Multiple AI providers: additive contract v0.4
 
+Latest credential-storage direction, 2026-10-18: the user explicitly requested persistent provider keys. Desktop main now stores only OS-encrypted, provider-bound ciphertext in `jinni-credentials.json` under its existing user-data directory, using Electron `safeStorage` (Windows DPAPI). Restart restores keys; deleting a provider removes its saved entry; quitting clears only decrypted memory. Unavailable encryption, Linux `basic_text`, corrupt/decryption failures and failed writes fail closed without plaintext fallback. Settings still return only `{configured}` and existing IPC names and header-only HTTP contracts are retained. No keys enter SQLite, renderer storage, prompts, logs or Git. This supersedes earlier session-only storage descriptions. Model choices remain session-only; Google ADC is unchanged.
+
 Additive v0.7 supports explicit structured option proposals with the same five provider/credential paths; [AI_OPTIONS.md](AI_OPTIONS.md) defines `intent: "options"`, evidence limits and per-option exact citations. Ordinary answer schemas remain unchanged. Provider output schemas use supported structural keywords; local Pydantic validation enforces option/list/text bounds. In particular, Claude's documented array-keyword limits mean proposal cardinality cannot rely on an unsupported upstream `maxItems`. No live provider/account validation is implied by mocked protocol tests.
 
 ## Independent settings and model choices, 2026-10-18

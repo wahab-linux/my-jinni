@@ -1,30 +1,58 @@
 'use strict';
 
 const { validateBackendUrl, validateSessionKey, validateProvider, validateSessionKeySetting } = require('./validation.cjs');
+const { CredentialStoreError } = require('./credential-store.cjs');
 
 class ApiClient {
   #sessionApiKeys = new Map();
+  #credentialStore;
+  #credentialError = false;
 
   constructor({ baseUrl = 'http://127.0.0.1:8000', fetchImpl = globalThis.fetch,
-    timeoutMs = 5000, chatTimeoutMs = 40000, maxResponseBytes = 4 * 1024 * 1024 } = {}) {
+    timeoutMs = 5000, chatTimeoutMs = 40000, maxResponseBytes = 4 * 1024 * 1024, credentialStore = null } = {}) {
     this.baseUrl = validateBackendUrl(baseUrl);
     this.fetchImpl = fetchImpl;
     this.timeoutMs = timeoutMs;
     this.chatTimeoutMs = chatTimeoutMs;
     this.maxResponseBytes = maxResponseBytes;
+    this.#credentialStore = credentialStore;
+    if (credentialStore) {
+      try {
+        this.#sessionApiKeys = new Map(Object.entries(credentialStore.load()));
+      } catch {
+        this.#credentialError = true;
+      }
+    }
+  }
+
+  #checkCredentialStore() {
+    if (this.#credentialError) throw new CredentialStoreError();
   }
 
   setSessionApiKey(value) {
     const setting = validateSessionKeySetting(value);
     const provider = typeof setting === 'string' ? 'openai' : setting.provider;
     const key = validateSessionKey(typeof setting === 'string' ? setting : setting.key);
+    this.#checkCredentialStore();
+    if (this.#credentialStore) {
+      try {
+        if (key) this.#credentialStore.set(provider, key);
+        else this.#credentialStore.delete(provider);
+      } catch { throw new CredentialStoreError(); }
+    }
     if (key) this.#sessionApiKeys.set(provider, key);
     else this.#sessionApiKeys.delete(provider);
     return this.getSessionSettings(provider);
   }
 
   clearSessionApiKey(provider = 'openai') {
-    this.#sessionApiKeys.delete(validateProvider(provider));
+    provider = validateProvider(provider);
+    this.#checkCredentialStore();
+    if (this.#credentialStore) {
+      try { this.#credentialStore.delete(provider); }
+      catch { throw new CredentialStoreError(); }
+    }
+    this.#sessionApiKeys.delete(provider);
     return this.getSessionSettings(provider);
   }
 
@@ -34,6 +62,7 @@ class ApiClient {
   }
 
   getSessionSettings(provider = 'openai') {
+    this.#checkCredentialStore();
     return { configured: this.#sessionApiKeys.has(validateProvider(provider)) };
   }
 
@@ -49,6 +78,7 @@ class ApiClient {
     const provider = path === '/api/v1/chat'
       ? validateProvider(json && Object.hasOwn(json, 'provider') ? json.provider : 'openai')
       : null;
+    if (provider && provider !== 'vertex') this.#checkCredentialStore();
     const controller = new AbortController();
     const deadline = timeoutMs ?? (path === '/api/v1/chat' || path === '/api/v1/ai/vertex/check' ? this.chatTimeoutMs : this.timeoutMs);
     if (!Number.isFinite(deadline) || deadline <= 0) throw new Error('The request deadline must be positive and finite.');

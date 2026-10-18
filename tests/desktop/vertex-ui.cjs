@@ -36,7 +36,10 @@ const { chromium } = require('playwright');
         listSources:async()=>ok({sources:[],providers:[{id:'openai',label:'OpenAI',default_model:'gpt-4.1-mini'},{id:'gemini',label:'Google Gemini',default_model:'gemini-test'},{id:'vertex',label:'Google Vertex AI (ADC)',default_model:''}]}),
         getBackendStatus:async()=>({state:'ready'}),
         getSessionSettings:async provider=>({configured:!!window.vertexTest.keys[provider]}),
-        setSessionApiKey:async value=>{window.vertexTest.keys[value.provider]=value.key;return {configured:true};},
+        setSessionApiKey:async value=>{
+          if(window.vertexTest.failKeyStorage)return {status:503,body:{data:null,error:{code:'CREDENTIAL_STORAGE_ERROR',message:'Saved API keys could not be accessed securely. Check system encryption and try again.'},warnings:[]}};
+          window.vertexTest.keys[value.provider]=value.key;return {configured:true};
+        },
         clearSessionApiKey:async provider=>{delete window.vertexTest.keys[provider];return {configured:false};},
         checkVertexAdc:async value=>{
           window.vertexTest.checks.push(value);
@@ -111,6 +114,13 @@ const { chromium } = require('playwright');
       await page.locator('#desktop-ai-key').fill('fake-openai-session-key');
       await page.locator('#desktop-ai-key-save').click();
       await page.waitForFunction(()=>window.vertexTest.keys.openai==='fake-openai-session-key');
+      assert.equal(await page.locator('#desktop-ai-key').inputValue(),'');
+      assert.match(await page.locator('#desktop-ai-key-status').innerText(),/saved on this device/);
+      for(const locale of ['zh-CN','fr','ja','ru','en']) {
+        await page.evaluate(id=>window.jinniI18n.setLocale(id),locale);
+        assert.equal(await page.locator('#desktop-ai-key-save').innerText(),await page.evaluate(()=>window.jinniI18n.t('Save key on this device')));
+        assert.equal(await page.locator('#desktop-ai-key-clear').innerText(),await page.evaluate(()=>window.jinniI18n.t('Delete this provider’s saved key')));
+      }
       await page.locator('#desktop-ai-provider').selectOption('vertex');
       assert.equal(await page.locator('#desktop-vertex-project').inputValue(),'another-trial-project');
       assert.equal(await page.locator('#desktop-ai-model').inputValue(),'gemini-test-model');
@@ -141,6 +151,24 @@ const { chromium } = require('playwright');
       await page.locator('#desktop-vertex-project').fill('../private'); await page.locator('#desktop-vertex-check').click();
       assert.equal(await page.evaluate(()=>window.vertexTest.checks.length),count);
       await page.locator('#desktop-vertex-project').fill('my-trial-project');
+    });
+    await check('secure storage failures are visible without exposing entered keys and saved keys can be deleted',async()=>{
+      await openSettings(); await page.locator('#desktop-ai-provider').selectOption('openai');
+      await page.evaluate(()=>{window.vertexTest.failKeyStorage=true;});
+      await page.locator('#desktop-ai-key').fill('fake-rejected-storage-key'); await page.locator('#desktop-ai-key-save').click();
+      await page.waitForFunction(()=>document.querySelector('#desktop-ai-key-status').textContent.includes('Check system encryption'));
+      assert.equal(await page.locator('#desktop-ai-key').inputValue(),'');
+      assert.doesNotMatch(await page.locator('#desktop-ai-key-status').innerText(),/fake-rejected/);
+      assert.equal(await page.evaluate(()=>window.vertexTest.keys.openai),'fake-openai-session-key');
+      for(const locale of ['zh-CN','fr','ja','ru','en']) {
+        await page.evaluate(id=>window.jinniI18n.setLocale(id),locale);
+        assert.equal(await page.locator('#desktop-ai-key-status').innerText(),await page.evaluate(()=>window.jinniI18n.t('Saved API keys could not be accessed securely. Check system encryption and try again.')));
+      }
+      await page.evaluate(()=>{window.vertexTest.failKeyStorage=false;});
+      await page.locator('#desktop-ai-key-clear').click();
+      await page.waitForFunction(()=>!window.vertexTest.keys.openai);
+      assert.equal(await page.locator('#desktop-ai-key-status').innerText(),'OpenAI saved key deleted.');
+      await page.locator('#desktop-ai-provider').selectOption('vertex');
     });
     await check('ADC labels follow all five locales while project IDs and entered models remain original',async()=>{
       await closeSettings();

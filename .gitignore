@@ -9,6 +9,9 @@ htmlcov/
 .env.*
 application_default_credentials.json
 .gcloud/
+jinni-credentials.json
+jinni-credentials.json.*
+.jinni-credentials.json.*.tmp
 !.env.example
 tmp/
 dist/

@@ -3,8 +3,9 @@
 const path = require('node:path');
 const fs = require('node:fs');
 const { open } = require('node:fs/promises');
-const { app, BrowserWindow, dialog, ipcMain, Menu, protocol } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, Menu, protocol, safeStorage } = require('electron');
 const { ApiClient } = require('./api-client.cjs');
+const { CredentialStore, CredentialStoreError } = require('./credential-store.cjs');
 const { BackendManager } = require('./backend.cjs');
 const { ValidationError, validateBackendUrl, validateIpcInput } = require('./validation.cjs');
 const { DOCUMENT_URL, createAssetHandler, isTrustedDocument, preferenceReadScript, preferenceSeedScript } = require('./assets.cjs');
@@ -142,6 +143,7 @@ function registerBridge() {
         const input = validateIpcInput(method, values[0]);
         return await operation(input);
       } catch (error) {
+        if (error instanceof CredentialStoreError) return localError(503, 'CREDENTIAL_STORAGE_ERROR', error.message);
         return error instanceof ValidationError
           ? localError(422, 'VALIDATION_ERROR', error.message)
           : localError(500, 'INTERNAL_ERROR', 'The desktop operation failed. Please retry.');
@@ -202,7 +204,9 @@ if (!app.requestSingleInstanceLock()) {
     } catch {
       configurationError = 'MY_JINNI_BACKEND_URL must be a loopback HTTP origin without a path or credentials.';
     }
-    api = new ApiClient({ baseUrl });
+    api = new ApiClient({ baseUrl, credentialStore: new CredentialStore({
+      filePath: path.join(app.getPath('userData'), 'jinni-credentials.json'), safeStorage,
+    }) });
     backend = new BackendManager({ baseUrl, rootDir: ROOT_DIR,
       dataDir: process.env.MY_JINNI_DATA_DIR });
     registerBridge();

@@ -1,5 +1,7 @@
 # Jinni project plan
 
+Latest credential-storage direction, 2026-10-18: the user explicitly requested persistent provider keys. Desktop main now stores only OS-encrypted, provider-bound ciphertext in `jinni-credentials.json` under its existing user-data directory, using Electron `safeStorage` (Windows DPAPI). Restart restores keys; deleting a provider removes its saved entry; quitting clears only decrypted memory. Unavailable encryption, Linux `basic_text`, corrupt/decryption failures and failed writes fail closed without plaintext fallback. Settings still return only `{configured}` and existing IPC names and header-only HTTP contracts are retained. No keys enter SQLite, renderer storage, prompts, logs or Git. This supersedes earlier session-only storage descriptions. Model choices remain session-only; Google ADC is unchanged.
+
 ## Product and delivery
 
 Latest direction, 2026-10-18: arrange compact conditions and selected sources, candidate/comparison results, and Ask AI as three parallel responsive panels. Selected-provider AI can propose two or three evidence-grounded choices from a user goal and the explicit current settings/sources. [AI_OPTIONS.md](AI_OPTIONS.md) defines additive chat intent `options`, per-option citations and proposal/calculation boundaries. Source selection now sits with conditions; full library operations and AI settings remain separately opened. This supersedes earlier layout descriptions, with no automatic document-to-metric conversion.

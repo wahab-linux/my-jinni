@@ -57,11 +57,15 @@ Open [localhost:8080](http://localhost:8080). The repository includes a GitHub P
 
 ## Optional desktop AI
 
-Open **AI settings**, choose a provider and model, then enter that provider's key. OpenAI, DeepSeek, Google Gemini and Anthropic Claude have separate session keys. Google Vertex AI also supports [Application Default Credentials](docs/GOOGLE_ADC_SETUP.md).
+Open **AI settings**, choose a provider and model, then enter that provider's key. OpenAI, DeepSeek, Google Gemini and Anthropic Claude have separate encrypted saved keys. Google Vertex AI also supports [Application Default Credentials](docs/GOOGLE_ADC_SETUP.md).
 
-The selected recipient is shown before sending. Questions, the explicit decision context and bounded snippets from selected sources go to that provider. Keys stay in trusted desktop session memory and reach the local chat API only through `X-AI-API-Key`; they are not saved in SQLite, settings or Git. Switching provider never shares a key or silently falls back to another provider.
+The selected recipient is shown before sending. Questions, the explicit decision context and bounded snippets from selected sources go to that provider. Keys are encrypted by the operating system and saved on this device, then restored when Jinni restarts. **Delete this provider’s saved key** removes its stored entry. No plaintext key enters SQLite, browser storage or Git; the local chat API receives it only through `X-AI-API-Key`. If secure storage is unavailable, saving fails visibly instead of using plaintext. Switching provider never shares a key or silently falls back to another provider.
 
 Comparisons and the activity planner work without AI. Citations check source IDs and exact quotations, not the truth of every generated claim. Review proposals and evidence before relying on them. [Provider details](docs/AI_PROVIDERS.md) · [AI option proposals](docs/AI_OPTIONS.md)
+
+## Demo libraries
+
+[Three ready-to-import packs](demo-library/README.md): weekend day trip, laptop choice and campus learning. Each has three clearly labelled fictional sources, a decision goal, questions and expected trade-offs. Import one pack and select only its sources.
 
 ## How it works
 

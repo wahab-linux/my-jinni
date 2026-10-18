@@ -28,7 +28,7 @@ You can import notes or a text PDF and select the evidence. Then ask a question 
 
 ### 6. One interface, two editions
 
-Browser and desktop use the same interface files. Desktop calls our local Python API. Browser uses matching JavaScript rules. AI names the selected provider and keeps keys in session memory. Comparisons still work if AI fails. Theo handles the backend. Wahab handles the frontend and desktop interface.
+Browser and desktop use the same interface files. Desktop calls our local Python API. Browser uses matching JavaScript rules. AI names the selected provider. Keys are encrypted on this device, with an explicit delete control. Comparisons still work if AI fails. Theo handles the backend. Wahab handles the frontend and desktop interface.
 
 ### 7. Maya's choice and its trade-offs
 
@@ -60,7 +60,7 @@ No. Selected notes inform AI answers and proposals. They do not silently rewrite
 
 **What is local and what goes to the AI provider?**
 
-The library stays local. An explicit AI request sends the question, selected bounded evidence snippets and any explicitly included calculated context to the chosen provider. API-key providers keep separate keys in session memory. Vertex uses its separate ADC path.
+The library stays local. An explicit AI request sends the question, selected bounded evidence snippets and any explicitly included calculated context to the chosen provider. The desktop stores separate provider keys encrypted on this device through Electron safeStorage, using Windows DPAPI on Windows, and restores them after a restart. The user can explicitly delete a saved key. No plaintext fallback is allowed. Model choices remain session-only. Vertex keeps its separate ADC path.
 
 **Did you test a real provider?**
 
@@ -80,7 +80,7 @@ Codex was the development tool. It generated most implementation, tests and this
 
 ## Editing and rebuilding
 
-The editable PowerPoint is `Jinni_Pitch.pptx`. Its Artifact Tool JavaScript source is `build_pitch.mjs`; its public screenshot asset is `assets/pitch-comparison.png`. Text, tables and notes are native PowerPoint objects. The screenshot and original lamp artwork are embedded images.
+The current editable PowerPoint is `Jinni_Pitch_v2.pptx`, revised for the encrypted on-device key-storage request. `Jinni_Pitch.pptx` remains a historical snapshot with the earlier session-only policy. Use v2 for presentation. Its Artifact Tool JavaScript source is `build_pitch.mjs`; its public screenshot asset is `assets/pitch-comparison.png`. Text, tables and notes are native PowerPoint objects. The screenshot and original lamp artwork are embedded images.
 
 Run the source from the repository root with the bundled Node runtime and `@oai/artifact-tool` environment. It uses the installed Presentations skill's finalizer and the bundled Python runtime. It does not use `python-pptx`.
 

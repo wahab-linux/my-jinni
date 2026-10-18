@@ -1,6 +1,7 @@
 // Native-only interface messages extend, but never override, the shared catalog.
 (() => {
   const native = {
+  "Saved API keys could not be accessed securely. Check system encryption and try again.": { "zh-CN": "无法安全访问已保存的 API 密钥。请检查系统加密后重试。", "fr": "Impossible d’accéder aux clés API en sécurité. Vérifiez le chiffrement du système et réessayez.", "ja": "保存済み API キーに安全にアクセスできません。システムの暗号化を確認して再試行してください。", "ru": "Не удалось безопасно получить сохранённые API-ключи. Проверьте системное шифрование и повторите попытку." },
   "Comparison sent": { "zh-CN": "将发送的比较条件", "fr": "Comparaison envoyée", "ja": "送信する比較条件", "ru": "Передаваемое сравнение" },
   "Uses the current comparison and selected sources. Sent to {provider} · {model}.": { "zh-CN": "使用当前比较条件和所选资料。发送至 {provider} · {model}。", "fr": "Utilise la comparaison et les sources sélectionnées. Envoi à {provider} · {model}.", "ja": "現在の比較条件と選択した資料を使用し、{provider} · {model} に送信します。", "ru": "Использует текущее сравнение и выбранные источники. Получатель: {provider} · {model}." },
   "Context changed. Suggest options again.": { "zh-CN": "上下文已更改，请重新生成选项。", "fr": "Le contexte a changé. Relancez les suggestions.", "ja": "条件が変わりました。選択肢を再提案してください。", "ru": "Контекст изменился. Запросите варианты снова." },
@@ -18,7 +19,7 @@
   "Calculated result": { "zh-CN": "计算结果", "fr": "Résultat calculé", "ja": "計算結果", "ru": "Результат расчёта" },
   "Original context": { "zh-CN": "原文背景", "fr": "Contexte original", "ja": "元の文脈", "ru": "Исходный контекст" },
   "AI limitations": { "zh-CN": "AI 的局限", "fr": "Limites de l’IA", "ja": "AI の制限", "ru": "Ограничения ИИ" },
-  "Kept in session memory only. Never saved or shared between providers.": { "zh-CN": "仅保留在会话内存中，不会保存或分享给其他服务商。", "fr": "En mémoire de session uniquement, jamais enregistrée ni partagée entre fournisseurs.", "ja": "セッションのメモリにのみ保持し、保存や他社との共有はしません。", "ru": "Только в памяти сеанса. Не сохраняется и не передаётся другим сервисам." },
+  "Stored encrypted on this device. Provider keys stay separate.": { "zh-CN": "在此设备上加密保存。各服务商密钥相互独立。", "fr": "Stockée chiffrée sur cet appareil. Les clés des fournisseurs restent distinctes.", "ja": "この端末に暗号化して保存します。各社のキーは別々に管理します。", "ru": "Хранится на этом устройстве в зашифрованном виде. Ключи сервисов хранятся отдельно." },
   "AUTHORITATIVE CALCULATED COMPARISON": {
     "zh-CN": "以此计算比较结果为准",
     "fr": "COMPARAISON CALCULÉE DE RÉFÉRENCE",
@@ -85,29 +86,17 @@
     "ja": "選択した情報で質問",
     "ru": "Спросить с выбранным контекстом"
   },
-  "AI session settings": {
-    "zh-CN": "AI 会话设置",
-    "fr": "Réglages de session IA",
-    "ja": "AI セッション設定",
-    "ru": "Настройки сеанса ИИ"
+  "Save key on this device": {
+    "zh-CN": "将密钥保存在此设备",
+    "fr": "Enregistrer la clé sur cet appareil",
+    "ja": "この端末にキーを保存",
+    "ru": "Сохранить ключ на устройстве"
   },
-  "Use for this session": {
-    "zh-CN": "用于本次会话",
-    "fr": "Utiliser pour cette session",
-    "ja": "このセッションで使用",
-    "ru": "Использовать в этом сеансе"
-  },
-  "Clear this provider's key": {
-    "zh-CN": "清除此服务商的密钥",
-    "fr": "Effacer la clé de ce fournisseur",
-    "ja": "このプロバイダーのキーを消去",
-    "ru": "Удалить ключ этого сервиса"
-  },
-  "Held in desktop memory for this session only. Never shared with another provider or saved to your library. The field clears after saving.": {
-    "zh-CN": "仅在本次桌面会话内存中保留。不会分享给其他服务商，也不会存入资料库；保存后清空输入框。",
-    "fr": "Gardée en mémoire pour cette session uniquement, jamais partagée ni enregistrée dans la bibliothèque. Le champ est ensuite vidé.",
-    "ja": "このセッションのメモリにのみ保持し、他社やライブラリに保存しません。保存後に入力欄を消去します。",
-    "ru": "Хранится только в памяти текущего сеанса. Не передаётся другим сервисам и не сохраняется в библиотеке. После сохранения поле очищается."
+  "Delete this provider’s saved key": {
+    "zh-CN": "删除此服务商保存的密钥",
+    "fr": "Supprimer la clé enregistrée de ce fournisseur",
+    "ja": "このプロバイダーの保存済みキーを削除",
+    "ru": "Удалить сохранённый ключ этого сервиса"
   },
   "Each question starts fresh. Quote checks help you verify evidence; they do not prove every claim is true. Local search may miss paraphrases.": {
     "zh-CN": "每个问题独立处理。引文检查便于核对证据，但不能证明所有陈述正确。本地搜索可能遗漏同义改写。",
@@ -145,23 +134,23 @@
     "ja": "未対応のプロバイダー一覧です。ライブラリを更新してください。",
     "ru": "Неподдерживаемый список сервисов. Обновите библиотеку."
   },
-  "The desktop service returned an unexpected session-setting response.": {
-    "zh-CN": "桌面服务返回了异常的会话设置响应。",
-    "fr": "Réponse inattendue des réglages de session.",
-    "ja": "セッション設定の応答が不正です。",
-    "ru": "Неожиданный ответ настроек сеанса."
+  "The desktop service returned an unexpected key-setting response.": {
+    "zh-CN": "桌面服务返回了异常的密钥设置响应。",
+    "fr": "Réponse inattendue des réglages de clé.",
+    "ja": "キー設定の応答が不正です。",
+    "ru": "Неожиданный ответ настроек ключа."
   },
-  "Checking the {provider} session key…": {
-    "zh-CN": "正在检查 {provider} 会话密钥设置…",
+  "Checking the {provider} saved key…": {
+    "zh-CN": "正在检查 {provider} 保存的密钥…",
     "fr": "Vérification de la clé {provider}…",
     "ja": "{provider} のキー設定を確認中…",
-    "ru": "Проверка ключа сеанса {provider}…"
+    "ru": "Проверка сохранённого ключа {provider}…"
   },
-  "{provider} key saved for this session. Account access has not been checked.": {
-    "zh-CN": "{provider} 密钥已保存在本次会话中，尚未验证账户访问权限。",
-    "fr": "Clé {provider} enregistrée pour cette session. L’accès au compte n’a pas été testé.",
-    "ja": "{provider} のキーをこのセッション用に保存しました。アカウントの利用可否は未確認です。",
-    "ru": "Ключ {provider} сохранён для сеанса. Доступ к аккаунту не проверен."
+  "{provider} key saved on this device. Account access has not been checked.": {
+    "zh-CN": "{provider} 密钥已保存在此设备，尚未验证账户访问权限。",
+    "fr": "Clé {provider} enregistrée sur cet appareil. L’accès au compte n’a pas été testé.",
+    "ja": "{provider} のキーをこの端末に保存しました。アカウントの利用可否は未確認です。",
+    "ru": "Ключ {provider} сохранён на устройстве. Доступ к аккаунту не проверен."
   },
   "No {provider} key is saved. Planning and your library are still available.": {
     "zh-CN": "未保存 {provider} 密钥。仍可使用规划与资料库。",
@@ -169,23 +158,23 @@
     "ja": "{provider} のキーは未保存です。計画と資料は引き続き使えます。",
     "ru": "Ключ {provider} не сохранён. Планирование и библиотека доступны."
   },
-  "Enter an API key, or use Clear session key.": {
-    "zh-CN": "请输入 API 密钥，或清除会话密钥。",
-    "fr": "Saisissez une clé API ou effacez la clé de session.",
-    "ja": "API キーを入力するか、セッションキーを消去してください。",
-    "ru": "Введите API-ключ или удалите ключ сеанса."
+  "Enter an API key, or delete the saved key.": {
+    "zh-CN": "请输入 API 密钥，或删除已保存的密钥。",
+    "fr": "Saisissez une clé API ou supprimez la clé enregistrée.",
+    "ja": "API キーを入力するか、保存済みキーを削除してください。",
+    "ru": "Введите API-ключ или удалите сохранённый ключ."
   },
-  "{provider} key saved for this session. Access is checked when you ask an AI question.": {
-    "zh-CN": "{provider} 密钥已保存在本次会话中。提问时才会验证访问权限。",
-    "fr": "Clé {provider} enregistrée. L’accès sera testé lors d’une question IA.",
-    "ja": "{provider} のキーを保存しました。AI への質問時に利用可否を確認します。",
-    "ru": "Ключ {provider} сохранён. Доступ проверяется при вопросе ИИ."
+  "{provider} key saved on this device. Access is checked when you ask an AI question.": {
+    "zh-CN": "{provider} 密钥已保存在此设备。提问时才会验证访问权限。",
+    "fr": "Clé {provider} enregistrée sur cet appareil. L’accès sera testé lors d’une question IA.",
+    "ja": "{provider} のキーをこの端末に保存しました。AI への質問時に利用可否を確認します。",
+    "ru": "Ключ {provider} сохранён на устройстве. Доступ проверяется при вопросе ИИ."
   },
-  "{provider} session key cleared. Other providers, the planner and library are unchanged.": {
-    "zh-CN": "已清除 {provider} 的会话密钥。其他服务商、规划与资料库不受影响。",
-    "fr": "Clé {provider} effacée. Les autres fournisseurs, le planificateur et la bibliothèque restent inchangés.",
-    "ja": "{provider} のキーを消去しました。他のプロバイダー、計画、資料は変わりません。",
-    "ru": "Ключ {provider} удалён. Другие сервисы, планировщик и библиотека не изменены."
+  "{provider} saved key deleted.": {
+    "zh-CN": "已删除 {provider} 保存的密钥。",
+    "fr": "Clé {provider} enregistrée supprimée.",
+    "ja": "{provider} の保存済みキーを削除しました。",
+    "ru": "Сохранённый ключ {provider} удалён."
   },
   "Enter a question of up to 2,000 characters.": {
     "zh-CN": "请输入不超过 2,000 个字符的问题。",

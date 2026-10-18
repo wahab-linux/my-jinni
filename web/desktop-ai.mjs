@@ -99,9 +99,9 @@ export function mountDesktopTools() {
   const keyForm = make('form', 'desktop-ai-key-form'); keyForm.noValidate = true;
   const key = make('input', 'desktop-ai-key'); key.type = 'password'; key.autocomplete = 'off'; key.maxLength = 1024; key.spellcheck = false;
   const keyLabel = make('label', 'desktop-ai-key-label'); keyLabel.htmlFor = key.id;
-  const save = make('button', 'desktop-ai-key-save', 'Use for this session', 'button secondary'); save.type = 'submit';
-  const clear = button('desktop-ai-key-clear', "Clear this provider's key", clearKey, 'text-button');
-  keyForm.append(keyLabel, key, make('p', null, 'Kept in session memory only. Never saved or shared between providers.', 'muted'));
+  const save = make('button', 'desktop-ai-key-save', 'Save key on this device', 'button secondary'); save.type = 'submit';
+  const clear = button('desktop-ai-key-clear', 'Delete this provider’s saved key', clearKey, 'text-button');
+  keyForm.append(keyLabel, key, make('p', null, 'Stored encrypted on this device. Provider keys stay separate.', 'muted'));
   const actions = make('div', null, null, 'desktop-ai-key-actions'); actions.append(save, clear); keyForm.append(actions);
   const credentials = make('section', 'desktop-ai-credentials');
   credentials.append(keyStatus, keyForm); settings.append(credentials);
@@ -168,30 +168,30 @@ export function mountDesktopTools() {
   }
   function sessionValue(response) {
     if (typeof response?.configured === 'boolean') return response;
-    desktopData(response); throw new Error('The desktop service returned an unexpected session-setting response.');
+    desktopData(response); throw new Error('The desktop service returned an unexpected key-setting response.');
   }
   async function refreshKey() {
     const token = ++state.keyToken; const selected = state.provider;
     if (selected === 'vertex') return;
     keyStatus.dataset.configured = 'false';
-    bind(keyStatus, 'Checking the {provider} session key…', { provider: providerLabel() });
+    bind(keyStatus, 'Checking the {provider} saved key…', { provider: providerLabel() });
     try {
       const value = sessionValue(await callDesktop('getSessionSettings', selected));
       if (token !== state.keyToken || selected !== state.provider) return;
       keyStatus.dataset.configured = String(value.configured);
-      bind(keyStatus, value.configured ? '{provider} key saved for this session. Account access has not been checked.' : 'No {provider} key is saved. Planning and your library are still available.', { provider: providerLabel() });
+      bind(keyStatus, value.configured ? '{provider} key saved on this device. Account access has not been checked.' : 'No {provider} key is saved. Planning and your library are still available.', { provider: providerLabel() });
     } catch (error) { if (token === state.keyToken) bind(keyStatus, error.message); }
   }
   async function saveKey(event) {
     event.preventDefault(); const value = key.value.trim(); key.value = '';
-    if (!value) { bind(keyStatus, 'Enter an API key, or use Clear session key.'); return; }
+    if (!value) { bind(keyStatus, 'Enter an API key, or delete the saved key.'); return; }
     invalidate('AI settings changed. Ask again.');
     const selected = state.provider; const token = ++state.keyToken; save.disabled = true;
     try {
       const response = sessionValue(await callDesktop('setSessionApiKey', { provider: selected, key: value }));
       if (token !== state.keyToken || selected !== state.provider) return;
       keyStatus.dataset.configured = String(response.configured);
-      bind(keyStatus, '{provider} key saved for this session. Access is checked when you ask an AI question.', { provider: providerLabel() });
+      bind(keyStatus, '{provider} key saved on this device. Access is checked when you ask an AI question.', { provider: providerLabel() });
     } catch (error) { if (token === state.keyToken) bind(keyStatus, error.message); }
     finally { if (token === state.keyToken) save.disabled = false; }
   }
@@ -201,7 +201,7 @@ export function mountDesktopTools() {
     try {
       sessionValue(await callDesktop('clearSessionApiKey', selected));
       if (token !== state.keyToken || selected !== state.provider) return;
-      keyStatus.dataset.configured = 'false'; bind(keyStatus, '{provider} session key cleared. Other providers, the planner and library are unchanged.', { provider: providerLabel() });
+      keyStatus.dataset.configured = 'false'; bind(keyStatus, '{provider} saved key deleted.', { provider: providerLabel() });
     } catch (error) { if (token === state.keyToken) bind(keyStatus, error.message); }
     finally { if (token === state.keyToken) clear.disabled = false; }
   }

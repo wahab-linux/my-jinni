@@ -97,9 +97,9 @@ function table(slide, values, x, y, width, height, columnWidths, { bodySize = 25
 }
 
 {
-  const s = slide("One interface, two editions", "Browser and desktop use the same interface files. Desktop calls our local Python API. Browser uses matching JavaScript rules. AI names the selected provider and keeps keys in session memory. Comparisons still work if AI fails. Theo handles the backend. Wahab handles the frontend and desktop interface.", ["docs/ARCHITECTURE.md", "docs/BROWSER.md", "web/platform.mjs", "docs/AI_PROVIDERS.md", "Team 39 role confirmation, 2026-10-18"]);
+  const s = slide("One interface, two editions", "Browser and desktop use the same interface files. Desktop calls our local Python API. Browser uses matching JavaScript rules. AI names the selected provider. Keys are encrypted on this device, with an explicit delete control. Comparisons still work if AI fails. Theo handles the backend. Wahab handles the frontend and desktop interface.", ["docs/ARCHITECTURE.md", "docs/BROWSER.md", "web/platform.mjs", "docs/AI_PROVIDERS.md", "Team 39 role and encrypted-key storage confirmation, 2026-10-18"]);
   table(s, [["", "Browser", "Electron desktop"], ["Interface", "Shared web interface", "Shared web interface"], ["Calculation", "Equivalent JavaScript", "Local Python API"], ["Source library", "Local IndexedDB", "Local SQLite"], ["Evidence help", "Original passage search", "Optional cited cloud AI"]], 80, 176, 1120, 350, [240, 440, 440], { bodySize: 26 });
-  text(s, "The desktop identifies the selected AI recipient. Keys stay in session memory.\nCalculated comparisons stay available when AI fails.", 80, 563, 1120, 79, 26, C.purple, true);
+  text(s, "The desktop identifies the selected AI recipient. Keys are encrypted on this device.\nCalculated comparisons stay available when AI fails.", 80, 563, 1120, 79, 26, C.purple, true);
   text(s, "Theo: backend     Wahab: frontend and desktop interface", 80, 665, 1000, 32, 23, C.muted);
 }
 
@@ -145,7 +145,7 @@ for (let i = 0; i < deck.slides.items.length; i += 1) {
 }
 const draft = path.join(build, "Jinni_Pitch.draft.pptx");
 await (await PresentationFile.exportPptx(deck)).save(draft);
-const finalPath = path.join(output, process.env.JINNI_PRESENTATION_FILENAME ?? "Jinni_Pitch.pptx");
+const finalPath = path.join(output, process.env.JINNI_PRESENTATION_FILENAME ?? "Jinni_Pitch_v2.pptx");
 const result = await finalizePresentation({ workspaceDir: root, candidatePath: draft, finalPath, pythonExecutable: python, integrityValidatorPath: path.join(skill, "container_tools/inspect_presentation_package_integrity.py"), layoutValidatorPath: path.join(skill, "container_tools/inspect_presentation_layout_geometry.py"), layoutArgs: ["--expected-slide-size-emu", "12192000,6858000", "--validate-bullet-geometry", "--validate-heading-fit", ...[2, 4, 6].flatMap(number => ["--require-native-table-slide", String(number)])], explicitTotalSlideCount: 9, requiredNativeTableOwnerSlides: [2, 4, 6], requiredNativeChartOwnerSlides: [], fontPolicy: { basis: "design", families: [font] }, verifyArtifactToolImport: true, receiptPath: path.join(build, `${path.basename(finalPath)}.validation.json`) });
 await fs.writeFile(path.join(build, "speaker-notes.json"), JSON.stringify(notes, null, 2));
 console.log(JSON.stringify({ finalPath, slideCount: deck.slides.items.length, result }, null, 2));
