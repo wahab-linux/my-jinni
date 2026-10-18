@@ -1,0 +1,18 @@
+{
+  "provider": "vertex",
+  "vertex": {
+    "project_id": "my-trial-project",
+    "location": "global"
+  },
+  "model": "YOUR_AVAILABLE_GEMINI_MODEL_ID",
+  "question": "Explain the recommended option, its price in pounds and travel time. Cite the calculated comparison.",
+  "source_ids": [],
+  "decision_request": {
+    "scenario_id": "travel",
+    "weights": {"cost-pence": 100, "duration-minutes": 0, "emissions-grams": 0},
+    "constraints": [
+      {"criterion_id": "cost-pence", "operator": "lte", "value": 800},
+      {"criterion_id": "duration-minutes", "operator": "lte", "value": 180}
+    ]
+  }
+}

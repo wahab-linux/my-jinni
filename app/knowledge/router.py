@@ -25,6 +25,8 @@ from app.knowledge.schemas import (
     SourceDetail,
     SourceList,
     TextSourceRequest,
+    VertexSettings,
+    VertexStatus,
 )
 from app.knowledge.storage import KnowledgeStore, LibraryLimitError
 from app.schemas import APIWarning, Envelope, ErrorEnvelope, RecommendationData
@@ -44,6 +46,35 @@ async def get_ai_client() -> AsyncIterator[httpx.AsyncClient]:
 
 Store = Annotated[KnowledgeStore, Depends(get_store)]
 AIClient = Annotated[httpx.AsyncClient, Depends(get_ai_client)]
+
+
+@router.post(
+    "/ai/vertex/check",
+    response_model=Envelope[VertexStatus],
+    responses={
+        401: {"model": ErrorEnvelope},
+        503: {"model": ErrorEnvelope},
+        504: {"model": ErrorEnvelope},
+    },
+)
+async def check_vertex(settings: VertexSettings):
+    from app.knowledge.vertex import load_adc_token
+
+    try:
+        await load_adc_token(settings.project_id)
+    except AIServiceError as exc:
+        return error_response(exc.status_code, exc.code, exc.message)
+    return Envelope(
+        data=VertexStatus(
+            configured=True,
+            project_id=settings.project_id,
+            location=settings.location,
+            message=(
+                "Google sign-in works. Project permissions, model access and billing "
+                "are checked when you ask a question."
+            ),
+        )
+    )
 
 
 @router.get("/sources", response_model=Envelope[SourceList])
@@ -273,6 +304,7 @@ def checked_citations(draft, chunks: list[SourceChunk]) -> list[Citation]:
         status: {"model": ErrorEnvelope, "description": description}
         for status, description in (
             (401, "AI provider key missing or access denied"),
+            (403, "Google project access denied"),
             (404, "Selected source not found"),
             (429, "AI provider quota or rate limit"),
             (502, "Invalid or refused AI response"),
@@ -291,6 +323,10 @@ async def chat(
 ) -> Envelope[ChatData] | JSONResponse:
     if api_key is not None and provider_api_key is not None:
         return error_response(422, "VALIDATION_ERROR", "Supply only one API key header.")
+    if body.provider == "vertex" and (api_key is not None or provider_api_key is not None):
+        return error_response(
+            422, "VALIDATION_ERROR", "Vertex AI uses Google sign-in (ADC), not an API key header."
+        )
     for source_id in body.source_ids:
         if await run_in_threadpool(store.get_source, source_id) is None:
             return error_response(404, "NOT_FOUND", "A selected source no longer exists.")
@@ -346,7 +382,9 @@ async def chat(
         )
     selected_key = provider_api_key or (api_key if body.provider == "openai" else None)
     key = selected_key.get_secret_value() if selected_key is not None else ""
-    if not key or len(key) > 1024 or not key.isascii() or any(ord(char) <= 32 for char in key):
+    if body.provider != "vertex" and (
+        not key or len(key) > 1024 or not key.isascii() or any(ord(char) <= 32 for char in key)
+    ):
         return error_response(
             401,
             "AI_AUTH_ERROR",
@@ -360,6 +398,7 @@ async def chat(
             model=body.model,
             question=body.question,
             chunks=chunks,
+            **({"vertex": body.vertex} if body.provider == "vertex" else {}),
         )
         citations = checked_citations(draft, chunks) if draft.supported else []
     except AIServiceError as exc:

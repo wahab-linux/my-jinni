@@ -7,6 +7,8 @@ __pycache__/
 htmlcov/
 .env
 .env.*
+application_default_credentials.json
+.gcloud/
 !.env.example
 tmp/
 dist/

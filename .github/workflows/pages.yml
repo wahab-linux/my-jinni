@@ -38,6 +38,7 @@ jobs:
       - run: npm run build:pages
       - run: npx playwright install --with-deps chromium
       - run: npm run test:web:e2e
+      - run: npm run test:vertex-ui
       - name: Upload browser screenshots on failure
         if: failure()
         uses: actions/upload-artifact@v4

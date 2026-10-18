@@ -40,7 +40,7 @@ class ApiClient {
   async request(path, { method = 'GET', json, body, headers = {}, timeoutMs } = {}) {
     const allowed = {
       GET: /^\/(?:health|openapi\.json|api\/v1\/(?:options|decision-scenarios(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)?|sources(?:\/[a-zA-Z0-9_-]{1,100})?))$/,
-      POST: /^\/api\/v1\/(?:recommendations|decisions\/evaluate|sources(?:\/upload)?|chat)$/,
+      POST: /^\/api\/v1\/(?:recommendations|decisions\/evaluate|sources(?:\/upload)?|chat|ai\/vertex\/check)$/,
       DELETE: /^\/api\/v1\/sources\/[a-zA-Z0-9_-]{1,100}$/,
     };
     if (!Object.hasOwn(allowed, method) || typeof path !== 'string' || !allowed[method].test(path)) {
@@ -50,7 +50,7 @@ class ApiClient {
       ? validateProvider(json && Object.hasOwn(json, 'provider') ? json.provider : 'openai')
       : null;
     const controller = new AbortController();
-    const deadline = timeoutMs ?? (path === '/api/v1/chat' ? this.chatTimeoutMs : this.timeoutMs);
+    const deadline = timeoutMs ?? (path === '/api/v1/chat' || path === '/api/v1/ai/vertex/check' ? this.chatTimeoutMs : this.timeoutMs);
     if (!Number.isFinite(deadline) || deadline <= 0) throw new Error('The request deadline must be positive and finite.');
     const aborted = new Promise((resolve, reject) => {
       controller.signal.addEventListener('abort', () => reject(new Error('Request timed out.')), { once: true });

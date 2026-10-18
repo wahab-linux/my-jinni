@@ -699,6 +699,87 @@
         }
       }
     },
+    "/api/v1/ai/vertex/check": {
+      "post": {
+        "tags": [
+          "Source library and AI"
+        ],
+        "summary": "Check Vertex",
+        "operationId": "check_vertex_api_v1_ai_vertex_check_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VertexSettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_VertexStatus_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_dict_str__str__"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_dict_str__str__"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_dict_str__str__"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_dict_str__str__"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_dict_str__str__"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/sources": {
       "get": {
         "tags": [
@@ -1068,6 +1149,16 @@
               }
             }
           },
+          "403": {
+            "description": "Google project access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_dict_str__str__"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Selected source not found",
             "content": {
@@ -1132,7 +1223,8 @@
               "openai",
               "deepseek",
               "gemini",
-              "anthropic"
+              "anthropic",
+              "vertex"
             ],
             "title": "Id"
           },
@@ -1243,7 +1335,8 @@
               "openai",
               "deepseek",
               "gemini",
-              "anthropic"
+              "anthropic",
+              "vertex"
             ],
             "title": "Provider",
             "default": "openai"
@@ -1327,7 +1420,8 @@
               "openai",
               "deepseek",
               "gemini",
-              "anthropic"
+              "anthropic",
+              "vertex"
             ],
             "title": "Provider",
             "default": "openai"
@@ -1366,6 +1460,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/DecisionRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "vertex": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VertexSettings"
               },
               {
                 "type": "null"
@@ -2256,6 +2360,40 @@
         "additionalProperties": false,
         "type": "object",
         "title": "Envelope[TravelFeed]"
+      },
+      "Envelope_VertexStatus_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VertexStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/APIError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/APIWarning"
+            },
+            "type": "array",
+            "title": "Warnings"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "Envelope[VertexStatus]"
       },
       "Envelope_dict_": {
         "properties": {
@@ -3558,6 +3696,56 @@
           "name"
         ],
         "title": "Venue"
+      },
+      "VertexSettings": {
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{4,28}[a-z0-9]$",
+            "title": "Project Id"
+          },
+          "location": {
+            "type": "string",
+            "pattern": "^(global|[a-z]+-[a-z]+[0-9])$",
+            "title": "Location",
+            "default": "global"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "project_id"
+        ],
+        "title": "VertexSettings"
+      },
+      "VertexStatus": {
+        "properties": {
+          "configured": {
+            "type": "boolean",
+            "title": "Configured"
+          },
+          "project_id": {
+            "type": "string",
+            "title": "Project Id"
+          },
+          "location": {
+            "type": "string",
+            "title": "Location"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "configured",
+          "project_id",
+          "location",
+          "message"
+        ],
+        "title": "VertexStatus"
       }
     }
   }

@@ -120,6 +120,7 @@ function registerBridge() {
     getSource: (id) => request(`/api/v1/sources/${id}`),
     deleteSource: (id) => request(`/api/v1/sources/${id}`, { method: 'DELETE' }),
     askQuestion: (question) => request('/api/v1/chat', { method: 'POST', json: question }),
+    checkVertexAdc: (settings) => request('/api/v1/ai/vertex/check', { method: 'POST', json: settings }),
     setSessionApiKey: (key) => api.setSessionApiKey(key),
     clearSessionApiKey: (provider) => api.clearSessionApiKey(provider),
     getSessionSettings: (provider) => api.getSessionSettings(provider),

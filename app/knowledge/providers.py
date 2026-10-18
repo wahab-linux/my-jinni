@@ -20,7 +20,7 @@ from app.knowledge.openai_client import (
     validate_draft_answer,
 )
 from app.knowledge.provider_catalog import PROVIDER_DEFAULT_MODELS, ProviderId
-from app.knowledge.schemas import MAX_RETRIEVED_CHUNKS, DraftAnswer, SourceChunk
+from app.knowledge.schemas import MAX_RETRIEVED_CHUNKS, DraftAnswer, SourceChunk, VertexSettings
 
 ENDPOINTS = {
     "deepseek": "https://api.deepseek.com/chat/completions",
@@ -249,9 +249,23 @@ async def generate_answer(
     question: str,
     chunks: list[SourceChunk],
     timeout_seconds: float = 30.0,
+    vertex: VertexSettings | None = None,
 ) -> DraftAnswer:
     if provider not in PROVIDER_DEFAULT_MODELS:
         raise _request_error()
+    if provider == "vertex":
+        from app.knowledge.vertex import generate_answer as vertex_answer
+
+        if vertex is None:
+            raise _request_error()
+        return await vertex_answer(
+            client,
+            settings=vertex,
+            model=model,
+            question=question,
+            chunks=chunks,
+            timeout_seconds=timeout_seconds,
+        )
     if provider == "openai":
         return await openai_client.generate_answer(
             client,

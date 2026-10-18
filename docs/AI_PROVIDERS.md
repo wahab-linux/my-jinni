@@ -1,5 +1,19 @@
 # Multiple AI providers: additive contract v0.4
 
+## Google Cloud ADC extension, v0.6 (2026-10-18)
+
+The user additionally requested Google Cloud trial-credit access through ADC in the desktop app. Provider `vertex` is **Google Vertex AI (ADC)**, separate from the Gemini Developer API-key provider `gemini`. Follow [GOOGLE_ADC_SETUP.md](GOOGLE_ADC_SETUP.md) for the local Google sign-in walkthrough. The new `google-auth[requests]` dependency is recorded in the lockfile.
+
+- `/api/v1/sources` advertises the additional provider. Its suggested model is intentionally empty: the user enters a Gemini model ID currently available in their Vertex AI Studio/project/location. Existing provider/model defaults stay unchanged.
+- `POST /api/v1/chat` accepts `provider: "vertex"`, an explicit compatible `model`, and `vertex: {project_id, location}`. The settings contain validated identifiers, never URLs, credential paths, uploaded JSON or tokens. Other providers reject the `vertex` object. Vertex rejects both API-key header aliases; existing API-key providers retain their contracts.
+- `POST /api/v1/ai/vertex/check` accepts `{project_id, location}` and obtains ADC in the backend. It returns `{data:{configured, project_id, location, message},error,warnings}`. It does not call a model or establish model/project permissions, billing eligibility or quota.
+- Backend-only Google ADC obtains and refreshes short-lived OAuth tokens using the Cloud Platform scope and the selected quota project. Native `generateContent` HTTPS requests use the fixed global or validated regional `aiplatform.googleapis.com` host. Tokens never return to the renderer and are not persisted by Jinni. The app neither executes sign-in shell commands nor exposes a credential-file picker.
+- Native structured responses pass the existing answer schema and exact selected-quote checks. Evidence/response bounds, the overall generation deadline, explicit context inclusion, actual calculated results, insufficient-evidence behavior and no automatic model/provider fallback are preserved.
+- Desktop exposes the additional named operation `checkVertexAdc(settings)`. API-key settings are hidden for Vertex. Only nonsecret project/location preferences may be saved locally; models remain session-only. Google manages the ADC credential file outside the repository. Clearing a Jinni provider API key does not revoke ADC.
+- `ADC_AUTH_ERROR` covers missing/expired sign-in or denied project access; HTTP 403 remains distinguishable. Network, quota/capacity, invalid model/location, timeout, refusal and invalid answers use safe error families. Raw credential exceptions and Google response bodies are not exposed.
+
+Model calls can consume trial credits or incur charges; ADC is authentication, not free model entitlement. Google decides trial, region, model, organisation and quota eligibility. The sign-in check makes no generative model request. The optional `scripts.verify_vertex --ask` command explicitly makes one model call. Automated tests do not establish live Google access.
+
 The user requested mainstream provider selection, specifically DeepSeek, on 2026-10-17. Preserve every planner field and the v0.3 library/chat behaviour. Existing requests default to OpenAI. No arbitrary base URL, automatic provider fallback or automatic key sharing is supported.
 
 ## Provider catalog

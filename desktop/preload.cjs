@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld('myJinni', Object.freeze({
   getSource: (id) => invoke('getSource', id),
   deleteSource: (id) => invoke('deleteSource', id),
   askQuestion: (question) => invoke('askQuestion', question),
+  checkVertexAdc: (settings) => invoke('checkVertexAdc', settings),
   setSessionApiKey: (key) => invoke('setSessionApiKey', key),
   clearSessionApiKey: (provider) => invoke('clearSessionApiKey', provider),
   getSessionSettings: (provider) => invoke('getSessionSettings', provider),

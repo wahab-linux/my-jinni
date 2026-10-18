@@ -210,7 +210,7 @@ function validateDecisionRequest(value) {
 }
 
 function validateChatRequest(value) {
-  object(value, ['question', 'source_ids', 'provider', 'model', 'preferences', 'decision_request'], ['question', 'source_ids']);
+  object(value, ['question', 'source_ids', 'provider', 'model', 'preferences', 'decision_request', 'vertex'], ['question', 'source_ids']);
   text(value.question, 1, 2000);
   if (!Array.isArray(value.source_ids) || value.source_ids.length > 20
       || new Set(value.source_ids).size !== value.source_ids.length) {
@@ -225,6 +225,8 @@ function validateChatRequest(value) {
   if (ids.length === 0 && value.preferences === undefined && value.decision_request === undefined) {
     throw new ValidationError('Select a source or include your current decision or activity preferences.');
   }
+  if (value.provider === 'vertex' && !value.vertex) throw new ValidationError('Enter your Google Cloud project ID and location.');
+  if (value.provider !== 'vertex' && value.vertex !== undefined) throw new ValidationError('Google Cloud settings apply only to Vertex AI.');
   return {
     question: value.question,
     source_ids: ids,
@@ -232,6 +234,7 @@ function validateChatRequest(value) {
     ...(Object.hasOwn(value, 'model') ? { model: value.model } : {}),
     ...(value.preferences === undefined ? {} : { preferences: validatePreferences(value.preferences) }),
     ...(value.decision_request === undefined ? {} : { decision_request: validateDecisionRequest(value.decision_request) }),
+    ...(value.vertex === undefined ? {} : { vertex: validateVertexSettings(value.vertex) }),
   };
 }
 
@@ -243,7 +246,7 @@ function validateSessionKey(value) {
 }
 
 function validateProvider(value) {
-  if (typeof value !== 'string' || !['openai', 'deepseek', 'gemini', 'anthropic'].includes(value)) {
+  if (typeof value !== 'string' || !['openai', 'deepseek', 'gemini', 'anthropic', 'vertex'].includes(value)) {
     throw new ValidationError('Choose one of the supported AI providers.');
   }
   return value;
@@ -252,7 +255,17 @@ function validateProvider(value) {
 function validateSessionKeySetting(value) {
   if (typeof value === 'string') return validateSessionKey(value);
   object(value, ['provider', 'key']);
+  if (value.provider === 'vertex') throw new ValidationError('Vertex AI uses Google sign-in (ADC), not an API key.');
   return { provider: validateProvider(value.provider), key: validateSessionKey(value.key) };
+}
+
+function validateVertexSettings(value) {
+  object(value, ['project_id', 'location'], ['project_id']);
+  if (typeof value.project_id !== 'string' || !/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(value.project_id)
+      || (value.location !== undefined && (typeof value.location !== 'string' || !/^(global|[a-z]+-[a-z]+[0-9])$/.test(value.location)))) {
+    throw new ValidationError('Use your Google Cloud project ID and a location such as global or europe-west2.');
+  }
+  return { project_id: value.project_id, location: value.location ?? 'global' };
 }
 
 function validateIpcInput(method, value) {
@@ -265,6 +278,7 @@ function validateIpcInput(method, value) {
     getSource: validateSourceId,
     deleteSource: validateSourceId,
     askQuestion: validateChatRequest,
+    checkVertexAdc: validateVertexSettings,
     setSessionApiKey: validateSessionKeySetting,
     getSessionSettings: (input) => input === undefined ? undefined : validateProvider(input),
     clearSessionApiKey: (input) => input === undefined ? undefined : validateProvider(input),

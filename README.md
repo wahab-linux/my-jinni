@@ -89,6 +89,8 @@ Dependencies are locked in `uv.lock`. After initial setup, comparisons, activity
 
 ## Local library and cited AI questions
 
+**Using Google Cloud trial credits?** Select **Google Vertex AI (ADC)** in the desktop AI dialog. Follow the [step-by-step Google sign-in guide](docs/GOOGLE_ADC_SETUP.md); no API key or credential upload is required. Project, location and an available model must be selected explicitly. Trial eligibility, quota and any usage charges are controlled by Google.
+
 For desktop OpenAI setup, analysis prompts and a live-check command, read [the OpenAI guide](docs/OPENAI_DESKTOP_GUIDE.md). The [PowerPoint deck](docs/presentation/Jinni_Code_Walkthrough.pptx) and [slide writing/speaking guide](docs/PRESENTATION_GUIDE.md) explain the code and data flow.
 
 The user confirmed this extension while retaining activity planning, then requested multiple providers including DeepSeek. [AI_EXTENSION.md](docs/AI_EXTENSION.md) and [AI_PROVIDERS.md](docs/AI_PROVIDERS.md) specify additive v0.4, preserving the planner and library/citation fields.

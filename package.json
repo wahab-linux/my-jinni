@@ -16,7 +16,8 @@
     "build:pages": "uv run --locked python -m scripts.build_pages",
     "lint:web": "eslint web tests/web",
     "test:web": "node --test tests/web/*.test.mjs",
-    "test:web:e2e": "node tests/web/e2e.mjs"
+    "test:web:e2e": "node tests/web/e2e.mjs",
+    "test:vertex-ui": "node tests/desktop/vertex-ui.cjs"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

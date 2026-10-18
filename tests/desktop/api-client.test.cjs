@@ -190,3 +190,19 @@ test('invalid JSON and oversized response bytes are rejected with status preserv
   const large = new ApiClient({ maxResponseBytes: 10, fetchImpl: async () => new Response('x'.repeat(100)) });
   assert.equal((await large.request('/api/v1/options')).body, null);
 });
+
+test('Vertex ADC requests and sign-in checks never attach any provider API key', async () => {
+  const calls = [];
+  const client = new ApiClient({ fetchImpl: async (url, options) => { calls.push({url, ...options}); return Response.json({data:{configured:true},error:null,warnings:[]}); } });
+  client.setSessionApiKey({provider:'openai',key:'openai-private-test'});
+  client.setSessionApiKey({provider:'gemini',key:'gemini-private-test'});
+  assert.throws(() => client.setSessionApiKey({provider:'vertex',key:'must-not-be-stored'}));
+  const vertex = {project_id:'my-trial-project',location:'global'};
+  await client.request('/api/v1/chat',{method:'POST',json:{provider:'vertex',vertex},headers:{'X-AI-API-Key':'untrusted','x-openai-api-key':'untrusted'}});
+  await client.request('/api/v1/ai/vertex/check',{method:'POST',json:vertex});
+  for(const call of calls) {
+    assert.equal(Object.keys(call.headers).some(key => /x-(ai|openai)-api-key/i.test(key)),false);
+    assert.doesNotMatch(call.body,/private-test|must-not-be-stored/);
+  }
+  assert.equal(client.getSessionSettings('openai').configured,true);
+});

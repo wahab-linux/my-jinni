@@ -1,5 +1,7 @@
 # API contract v0.5
 
+Additive v0.6 Google ADC support extends chat with provider `vertex` and `vertex: {project_id, location}`, and adds `POST /api/v1/ai/vertex/check`. A Vertex model ID is explicitly required; API-key headers are rejected on that path. Existing calculation/source/chat fields and envelopes are preserved. See [AI_PROVIDERS.md](AI_PROVIDERS.md#google-cloud-adc-extension-v06-2026-10-18), [OpenAPI](openapi.json) and [GOOGLE_ADC_SETUP.md](GOOGLE_ADC_SETUP.md).
+
 The shared frontend adds no API fields or schema migration. Desktop operations use the same named IPC routes and authoritative Python responses; browser calculations retain existing parity. Library-source creation/upload returns a `LibrarySource` directly in `data`, while source detail returns `{source,chunks}`. The platform adapter preserves those existing envelopes and canonical IDs.
 
 Interface localization adds no HTTP fields or API migration. Existing canonical responses, source quotes, IDs, GBP/pence values and timezone-aware timestamps are unchanged. Locale preferences remain local to each experience; changing the display language never sends a translation or generation request. Generated provider answers and original evidence retain their returned/source language.

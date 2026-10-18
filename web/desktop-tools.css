@@ -20,3 +20,7 @@
 .desktop-ai-calculated pre, #desktop-ai-context-json { max-height: 280px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; }
 #desktop-ai-context-quote { white-space: pre-wrap; margin-inline: 0; padding: 14px; background: var(--mint-bg); border-left: 3px solid var(--mint-ink); }
 .desktop-backend-panel { position: fixed; inset: auto 16px 16px; z-index: 12; background: var(--surface); color: var(--ink); padding: 10px 16px; border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); display: flex; align-items: center; justify-content: space-between; gap: 18px; font-size: 12px; }
+.desktop-vertex-settings { margin-block: 18px; padding: 16px; border: 1px solid var(--control-line); border-radius: 12px; }
+.desktop-vertex-settings legend { font-size: 15px; padding-inline: 6px; }
+.desktop-vertex-settings .muted, .desktop-vertex-settings .feedback { font-size: 13px; }
+.desktop-vertex-settings pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; padding: 12px; background: var(--surface-soft); border-radius: 8px; }

@@ -1,5 +1,7 @@
 # Jinni desktop client
 
+Google Cloud users can choose **Google Vertex AI (ADC)**, enter their project/location/model, and use **Check Google sign-in** without making a model request. [GOOGLE_ADC_SETUP.md](../docs/GOOGLE_ADC_SETUP.md) explains what ADC is, how to create it with Google Cloud CLI, trial-credit billing and the optional live check. The backend discovers and refreshes Google credentials; the renderer never receives tokens or files. Existing API-key providers are preserved. Run `uv sync --locked` and restart the app/backend after updating.
+
 The Electron client loads the same local `web/index.html`, styles and presentation modules as the browser edition. Changes to the browser frontend therefore apply to desktop automatically. `web/platform.mjs` uses the restricted bridge for authoritative Python calculations, SQLite sources and native imports. Optional native AI tools extend the shared workspace. Comparisons cover market context, travel, student opportunities, sustainability and custom data; built-in datasets are fictional.
 
 The visible product name is **Jinni**. Its original violet-and-gold lamp mark is inline SVG, with no third-party artwork or external assets. Technical `my-jinni` bridge, storage, repository and launcher identifiers remain unchanged for compatibility.

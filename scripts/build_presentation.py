@@ -113,7 +113,8 @@ def write_guide(content):
         "Excel, OCR, forecasting or arbitrary-code analysis engine.",
         "",
         "See [OPENAI_DESKTOP_GUIDE.md](OPENAI_DESKTOP_GUIDE.md) for setup, prompts, "
-        "the demo checklist and the optional live verification command.",
+        "the demo checklist and the optional live verification command. "
+        "For Google Cloud sign-in, see [GOOGLE_ADC_SETUP.md](GOOGLE_ADC_SETUP.md).",
         "",
     ]
     GUIDE.write_text("\n".join(lines), encoding="utf-8")
@@ -130,7 +131,9 @@ def main():
     deck = Presentation()
     deck.slide_width, deck.slide_height = Inches(13.333), Inches(7.5)
     deck.core_properties.title = content["title"]
-    deck.core_properties.subject = "Code documentation, OpenAI setup and evidence boundaries"
+    deck.core_properties.subject = (
+        "Code documentation, Google ADC/OpenAI setup and evidence boundaries"
+    )
     deck.core_properties.author = "Jinni project"
     deck.core_properties.keywords = "Jinni, code walkthrough, OpenAI, fictional data"
 
@@ -190,7 +193,7 @@ def main():
                 6.32,
                 11.8,
                 0.35,
-                "Desktop application + optional OpenAI · presentation notes included",
+                "Desktop application + optional cloud AI · presentation notes included",
                 16,
                 MUTED,
             )

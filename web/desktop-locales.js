@@ -327,6 +327,93 @@
     "ru": "Соединение недоступно. Перезапустите Jinni."
   }
 };
+  Object.assign(native, {
+  "Google Cloud project": {
+    "zh-CN": "Google Cloud 项目",
+    "fr": "Projet Google Cloud",
+    "ja": "Google Cloud プロジェクト",
+    "ru": "Проект Google Cloud"
+  },
+  "ADC is your Google sign-in on this computer. No API key or credential upload is needed.": {
+    "zh-CN": "ADC 是此电脑上的 Google 登录凭据，无需 API 密钥或上传凭据。",
+    "fr": "ADC utilise votre connexion Google sur cet ordinateur. Aucune clé API ni importation de fichier secret.",
+    "ja": "ADC はこのパソコンの Google 認証情報です。API キーの入力や認証ファイルのアップロードは不要です。",
+    "ru": "ADC использует вход Google на этом компьютере. Ключ API и загрузка файла учётных данных не нужны."
+  },
+  "Project ID": {
+    "zh-CN": "项目 ID",
+    "fr": "ID du projet",
+    "ja": "プロジェクト ID",
+    "ru": "ID проекта"
+  },
+  "Location": {
+    "zh-CN": "位置",
+    "fr": "Région",
+    "ja": "ロケーション",
+    "ru": "Регион"
+  },
+  "Run Google sign-in, then check it here.": {
+    "zh-CN": "先登录 Google，再在此检查。",
+    "fr": "Connectez-vous à Google, puis vérifiez ici.",
+    "ja": "Google にログインしてから、ここで確認してください。",
+    "ru": "Войдите в Google, затем проверьте здесь."
+  },
+  "Check Google sign-in": {
+    "zh-CN": "检查 Google 登录",
+    "fr": "Vérifier la connexion Google",
+    "ja": "Google 認証を確認",
+    "ru": "Проверить вход Google"
+  },
+  "Checking Google sign-in…": {
+    "zh-CN": "正在检查 Google 登录…",
+    "fr": "Vérification de la connexion Google…",
+    "ja": "Google 認証を確認中…",
+    "ru": "Проверка входа Google…"
+  },
+  "How to sign in with Google": {
+    "zh-CN": "如何登录 Google",
+    "fr": "Comment se connecter à Google",
+    "ja": "Google 認証の設定方法",
+    "ru": "Как войти в Google"
+  },
+  "Install Google Cloud CLI. In a terminal, run these commands, replacing YOUR_PROJECT_ID:": {
+    "zh-CN": "安装 Google Cloud CLI。在终端运行以下命令，并替换 YOUR_PROJECT_ID：",
+    "fr": "Installez Google Cloud CLI. Exécutez ces commandes dans un terminal en remplaçant YOUR_PROJECT_ID :",
+    "ja": "Google Cloud CLI をインストールし、YOUR_PROJECT_ID を置き換えてターミナルで次のコマンドを実行してください。",
+    "ru": "Установите Google Cloud CLI. Выполните команды в терминале, заменив YOUR_PROJECT_ID:"
+  },
+  "Link the project to your trial billing account. Choose a Gemini model available in Vertex AI Studio. Credits, quota and model access depend on Google; usage can cost money after credits run out.": {
+    "zh-CN": "将项目关联到试用结算账号，选择 Vertex AI Studio 中可用的 Gemini 模型。额度、配额和模型权限由 Google 决定；额度耗尽后使用可能收费。",
+    "fr": "Associez le projet à votre compte de facturation d’essai et choisissez un modèle Gemini disponible dans Vertex AI Studio. Crédits, quotas et accès dépendent de Google ; des frais sont possibles après épuisement des crédits.",
+    "ja": "プロジェクトを試用の請求先アカウントに関連付け、Vertex AI Studio で利用可能な Gemini モデルを選んでください。クレジット、割り当て、利用資格は Google が管理し、クレジット消費後は料金が発生する場合があります。",
+    "ru": "Свяжите проект с пробным платёжным аккаунтом и выберите доступную модель Gemini в Vertex AI Studio. Кредиты, квоты и доступ определяет Google; после исчерпания кредитов возможна оплата."
+  },
+  "Use your Google Cloud project ID and a location such as global or europe-west2.": {
+    "zh-CN": "填写 Google Cloud 项目 ID 和位置，例如 global 或 europe-west2。",
+    "fr": "Indiquez l’ID du projet Google Cloud et une région, par exemple global ou europe-west2.",
+    "ja": "Google Cloud のプロジェクト ID と、global または europe-west2 などのロケーションを入力してください。",
+    "ru": "Укажите ID проекта Google Cloud и регион, например global или europe-west2."
+  },
+  "Copy a model ID from Vertex AI Studio": {
+    "zh-CN": "从 Vertex AI Studio 复制模型 ID",
+    "fr": "Copiez un ID de modèle depuis Vertex AI Studio",
+    "ja": "Vertex AI Studio からモデル ID をコピー",
+    "ru": "Скопируйте ID модели из Vertex AI Studio"
+  },
+  "Google sign-in works. Project permissions, model access and billing are checked when you ask a question.": {
+    "zh-CN": "Google 登录有效。项目权限、模型访问和结算将在提问时检查。",
+    "fr": "La connexion Google fonctionne. Les droits du projet, l’accès au modèle et la facturation seront vérifiés lors de la question.",
+    "ja": "Google 認証は有効です。プロジェクトの権限、モデルの利用資格、請求設定は質問時に確認されます。",
+    "ru": "Вход Google работает. Разрешения проекта, доступ к модели и оплата проверяются при отправке вопроса."
+  },
+  "Google sign-in was not found or has expired. Run gcloud auth application-default login, then check again.": {
+    "zh-CN": "未找到 Google 登录凭据或凭据已过期。运行 gcloud auth application-default login 后重试。",
+    "fr": "Connexion Google introuvable ou expirée. Exécutez gcloud auth application-default login, puis réessayez.",
+    "ja": "Google 認証情報が見つからないか期限切れです。gcloud auth application-default login を実行して再確認してください。",
+    "ru": "Вход Google не найден или истёк. Выполните gcloud auth application-default login и повторите проверку."
+  }
+});
+  Object.assign(native, {"Enter a model ID available in Vertex AI Studio.": {"zh-CN": "输入 Vertex AI Studio 中可用的模型 ID。", "fr": "Indiquez un ID de modèle disponible dans Vertex AI Studio.", "ja": "Vertex AI Studio で利用可能なモデル ID を入力してください。", "ru": "Введите ID модели, доступной в Vertex AI Studio."}});
   const shared = window.jinniMessages || {};
   const additions = Object.fromEntries(Object.entries(native).filter(([key]) => !Object.hasOwn(shared, key)));
   window.jinniI18n.registerMessages(additions);

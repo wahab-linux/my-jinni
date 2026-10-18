@@ -18,7 +18,7 @@ Compare data. Explain decisions.
 
 **What to say**
 
-Introduce Jinni as a decision-support prototype. It helps people compare supplied options using their budget, time and priorities, then ask an optional AI to explain the evidence. The built-in examples are fictional. Add your name, teammate names and course or event details before presenting. Do not describe the demo as a live travel or investment service.
+Introduce Jinni as a decision-support prototype. It helps people compare supplied options using their budget, time and priorities, then ask an optional cloud AI to explain the evidence. The built-in examples are fictional. Add your name, teammate names and course or event details before presenting. Do not describe the demo as a live travel or investment service.
 
 **Code to explain**
 
@@ -76,7 +76,7 @@ web/platform.mjs selects the runtime. The UI is not duplicated.
 - Shared web/ interface in Electron
 - Restricted preload → main-process IPC
 - Local FastAPI calculations + SQLite
-- Optional OpenAI through the backend
+- OpenAI or Google Vertex AI through the backend
 
 **GitHub Pages**
 
@@ -190,20 +190,20 @@ These numbers come from the actual comparison endpoint using the configured trav
 - `data/decisions/travel-metrics.json`
 - `app/comparison/catalog.py`
 
-## Slide 9: How OpenAI supports the decision
+## Slide 9: How AI supports the decision
 
 **Write on the slide**
 
-Python ranks the options. OpenAI explains the supplied results and evidence.
+Python ranks the options. The AI explains supplied results and evidence.
 
 - Calculate: Run the actual comparison again.
 - Assemble: Add explicit settings and selected evidence.
-- Explain: OpenAI returns a structured answer.
+- Explain: The selected provider returns structured text.
 - Check: Validate citations; return the actual result.
 
 **What to say**
 
-Tick Include my current comparison before asking. The backend calls the same comparison endpoint used by the normal workflow and inserts its result into temporary decision-context evidence. OpenAI receives the question and bounded evidence through the Responses API. The request uses a strict JSON schema, store false and a 30-second deadline. The final response includes the authoritative calculated decision separately from the AI prose. No API key or chat history is written to the source library.
+Tick Include my current comparison before asking. The backend calls the same comparison endpoint used by the normal workflow and inserts its result into temporary decision-context evidence. OpenAI receives the question and bounded evidence through the Responses API. The request uses a strict JSON schema, store false and a 30-second deadline. The final response includes the authoritative calculated decision separately from the AI prose. No API key or chat history is written to the source library. Google Vertex AI uses the same evidence and quote checks, with backend-only ADC and native generateContent instead of an API key.
 
 **Code to explain**
 
@@ -211,7 +211,7 @@ Tick Include my current comparison before asking. The backend calls the same com
 - `app/knowledge/router.py`
 - `app/knowledge/openai_client.py`
 
-## Slide 10: Give the model the meaning of the numbers
+## Slide 10: Give AI the meaning of the numbers
 
 **Write on the slide**
 
@@ -264,19 +264,42 @@ After initial uv sync and npm ci, run npm run desktop or the Windows launcher. A
 - `desktop/api-client.cjs`
 - `docs/OPENAI_DESKTOP_GUIDE.md`
 
-## Slide 12: Reliability, privacy and honest limits
+## Slide 12: Google Cloud sign-in: ADC
+
+**Write on the slide**
+
+- ADC means the Google sign-in stored on your computer.
+- Sign in using gcloud auth application-default login.
+- Choose Google Vertex AI (ADC) in Ask AI.
+- Enter your Project ID, location and an available Gemini model ID.
+- Check Google sign-in, then explicitly ask with your comparison included.
+
+Sign-in checking makes no model request. Asking can consume credits or incur charges.
+
+**What to say**
+
+ADC is Application Default Credentials. The Google Cloud CLI creates it locally; the user does not upload a JSON file or paste an API key into Jinni. The Python backend discovers and refreshes short-lived OAuth tokens for the selected Google Cloud project. The renderer sees only project metadata and safe status. A successful sign-in check does not prove project permissions, model availability, billing eligibility or quota. Select a model actually available in Vertex AI Studio. Google decides whether trial credits apply. Never put credential files or tokens into slides, Git or chat.
+
+**Code to explain**
+
+- `docs/GOOGLE_ADC_SETUP.md`
+- `app/knowledge/vertex.py`
+- `web/desktop-ai.mjs`
+- `scripts/verify_vertex.py`
+
+## Slide 13: Reliability, privacy and honest limits
 
 **Write on the slide**
 
 Source documents are untrusted data. The AI has no tools or authority to change the ranking.
 
-- Credentials: Keys stay in main-process session memory. Only the selected provider receives its key.
+- Credentials: API keys stay in session memory. Google ADC stays with the local Cloud sign-in.
 - Evidence: Every accepted quote must match selected evidence. Quote checks do not prove every claim.
 - Failures: Missing evidence, invalid keys, quota limits and timeouts have explicit outcomes.
 
 **What to say**
 
-The renderer has no Node access and uses a narrow preload bridge. The main process attaches a key only to the selected provider's chat request. The backend validates structured output and exact quotation membership. Instructions inside documents are treated as data, but this and quotation checks are safeguards rather than proof of truth. No matching source passages avoids a provider call. Ordinary comparisons remain available without any AI provider. Text/PDF import is bounded, with no OCR, web scraping or automatic provider fallback.
+The renderer has no Node access and uses a narrow preload bridge. The main process attaches a key only to the selected provider's chat request. The backend validates structured output and exact quotation membership. Instructions inside documents are treated as data, but this and quotation checks are safeguards rather than proof of truth. No matching source passages avoids a provider call. Ordinary comparisons remain available without any AI provider. Text/PDF import is bounded, with no OCR, web scraping or automatic provider fallback. ADC uses local Google-managed credentials and backend-only access tokens; the app does not store or return them.
 
 **Code to explain**
 
@@ -285,7 +308,7 @@ The renderer has no Node access and uses a narrow preload bridge. The main proce
 - `app/knowledge/openai_client.py`
 - `app/knowledge/storage.py`
 
-## Slide 13: What the checks establish
+## Slide 14: What the checks establish
 
 **Write on the slide**
 
@@ -296,11 +319,11 @@ A mocked API test does not establish live account access or answer quality.
 - Budget and time boundaries; missing-data handling
 - All five topics and custom criteria
 - Python/JavaScript response parity
-- Mocked provider requests, citations and safe errors
+- Mocked key/ADC providers, citations and safe errors
 
 **Separate live acceptance**
 
-- Run the live check with your own API account
+- Check Google ADC, then explicitly test an available model
 - Confirm the actual model responds
 - Check the cited answer in the desktop window
 - Review answer quality on your own selected data
@@ -308,7 +331,7 @@ A mocked API test does not establish live account access or answer quality.
 
 **What to say**
 
-Describe which checks used actual calculations and which used injected cloud responses. The new tests inspect the exact data sent to OpenAI, including units, changed priorities, limits and bounded custom context. A conservative live checker also checks that an example answer says £8.00 and 120 minutes and includes a valid citation. No genuine OpenAI key was configured during this work, so live access remains unverified. Update this slide only after recording a real run; do not claim human review or live success just because automated tests pass.
+Describe which checks used actual calculations and which used injected cloud responses. The new tests inspect the exact data sent to OpenAI, including units, changed priorities, limits and bounded custom context. A conservative live checker also checks that an example answer says £8.00 and 120 minutes and includes a valid citation. No genuine OpenAI key was configured during this work, so live access remains unverified. Update this slide only after recording a real run; do not claim human review or live success just because automated tests pass. ADC tests inject Google credential discovery/refresh and HTTP. Separate Chromium checks exercise the actual shared native-tools form with a fake bridge; they are not Electron window or live Google tests. No genuine Google credentials or live model call were used.
 
 **Code to explain**
 
@@ -317,24 +340,25 @@ Describe which checks used actual calculations and which used injected cloud res
 - `tests/test_verify_openai.py`
 - `scripts/verify_openai.py`
 
-## Slide 14: Demo it, explain it, check it
+## Slide 15: Demo it, explain it, check it
 
 **Write on the slide**
 
 - Compare the travel defaults: train, £18.00 and 70 minutes.
 - Choose price-only importance and an £8 / 180-minute limit: coach.
-- Ask OpenAI to explain the result; inspect the returned quote.
+- Ask the selected provider to explain the result; inspect the returned quote.
 - Reduce the budget to £7.99: show no match.
 - Explain one code path from the UI to the engine and back.
 
-Optional live check: uv run python -m scripts.verify_openai --decision
+ADC check: uv run python -m scripts.verify_vertex --project YOUR_PROJECT_ID
 
 **What to say**
 
-The demo should show a changing calculated result, not just a polished screen. Start keyless, then add optional OpenAI explanation with explicit context. If the provider fails, show the real error and continue using the comparison. Do not improvise a fake AI success. End by explaining one important design choice: exact pence protects money boundaries; pure ranking makes results reproducible; citations let users inspect evidence. Future live-data adapters and hosted browser AI are possible extensions, not current completed features.
+The demo should show a changing calculated result, not just a polished screen. Start keyless, then add optional OpenAI explanation with explicit context. If the provider fails, show the real error and continue using the comparison. Do not improvise a fake AI success. End by explaining one important design choice: exact pence protects money boundaries; pure ranking makes results reproducible; citations let users inspect evidence. Future live-data adapters and hosted browser AI are possible extensions, not current completed features. The ADC check obtains a Google token without making a model request. The separate --ask command requires a model and can consume credits.
 
 **Code to explain**
 
+- `docs/GOOGLE_ADC_SETUP.md`
 - `docs/OPENAI_DESKTOP_GUIDE.md`
 - `scripts/verify_openai.py`
 - `docs/AI_USAGE.md`
@@ -348,4 +372,4 @@ The demo should show a changing calculated result, not just a polished screen. S
 - **Does the website use OpenAI?** The GitHub Pages edition uses local calculations and text search. The desktop edition has the provider-backed AI tools.
 - **Can it analyse any spreadsheet?** Current imports are bounded text/Markdown/text PDFs. Custom structured comparisons use the declared criteria/data schema; there is no CSV, Excel, OCR, forecasting or arbitrary-code analysis engine.
 
-See [OPENAI_DESKTOP_GUIDE.md](OPENAI_DESKTOP_GUIDE.md) for setup, prompts, the demo checklist and the optional live verification command.
+See [OPENAI_DESKTOP_GUIDE.md](OPENAI_DESKTOP_GUIDE.md) for setup, prompts, the demo checklist and the optional live verification command. For Google Cloud sign-in, see [GOOGLE_ADC_SETUP.md](GOOGLE_ADC_SETUP.md).

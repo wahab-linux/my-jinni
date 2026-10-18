@@ -128,6 +128,7 @@ def test_default_request_is_valid(valid_request):
     [
         ("source-create.json", TextSourceRequest),
         ("chat-request.json", ChatRequest),
+        ("chat-request-vertex.json", ChatRequest),
         ("chat-success.json", Envelope[ChatData]),
     ],
 )

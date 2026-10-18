@@ -93,3 +93,14 @@ test('session IPC accepts provider-key objects and preserves legacy OpenAI-only 
   assert.throws(() => validateIpcInput('clearSessionApiKey', {}));
   assert.throws(() => validateIpcInput('clearAllSessionApiKeys'));
 });
+
+test('ADC bridge settings allow only project and location, with no token, credential file or URLs', () => {
+  const vertex={project_id:'my-trial-project',location:'europe-west2'};
+  const value={provider:'vertex',model:'gemini-test',vertex,question:'Explain',source_ids:[],decision_request:{scenario_id:'travel'}};
+  assert.deepEqual(validateChatRequest(value),value);
+  assert.deepEqual(validateIpcInput('checkVertexAdc',vertex),vertex);
+  assert.deepEqual(validateIpcInput('checkVertexAdc',{project_id:'my-trial-project'}),{project_id:'my-trial-project',location:'global'});
+  for(const changed of [{...vertex,token:'secret'},{...vertex,credential_file:'/private.json'},{...vertex,location:'global.evil.example'},{...vertex,project_id:'../private'}]) assert.throws(()=>validateIpcInput('checkVertexAdc',changed));
+  assert.throws(()=>validateChatRequest({...value,vertex:undefined}));
+  assert.throws(()=>validateChatRequest({...value,provider:'openai'}));
+});

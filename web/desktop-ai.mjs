@@ -1,5 +1,5 @@
 // Native-only tools extend the shared page without owning a second source library.
-import { bind, option } from './i18n.mjs';
+import { attribute, bind, option } from './i18n.mjs';
 import { callDesktop, desktopData } from './platform.mjs';
 import { getSourceIds, getPlannerPreferences, getDecisionRequest, openSource, onContextChange } from './ui-context.mjs';
 
@@ -45,6 +45,26 @@ export function mountDesktopTools() {
   for (const [suffix, text] of [['include-decision', 'Include my current comparison'], ['include-plan', 'Include my current activity preferences']]) {
     const row = make('label', null, null, 'desktop-ai-check'); const check = make('input', `desktop-ai-${suffix}`); check.type = 'checkbox'; row.append(check, make('span', null, text)); form.append(row);
   }
+  const vertexPanel = make('fieldset', 'desktop-vertex-settings', null, 'desktop-vertex-settings'); vertexPanel.hidden = true;
+  vertexPanel.append(make('legend', null, 'Google Cloud project'), make('p', null, 'ADC is your Google sign-in on this computer. No API key or credential upload is needed.', 'muted'));
+  const project = make('input', 'desktop-vertex-project'); project.maxLength = 30; project.placeholder = 'my-cloud-project'; project.autocomplete = 'off';
+  const location = make('input', 'desktop-vertex-location'); location.maxLength = 40; location.value = 'global'; location.autocomplete = 'off';
+  try { const saved = JSON.parse(localStorage.getItem('jinni-vertex-settings') || 'null'); if (saved && typeof saved.project_id === 'string' && typeof saved.location === 'string') { project.value = saved.project_id; location.value = saved.location; } } catch { /* Nonsecret preferences are optional. */ }
+  const adcStatus = make('p', 'desktop-vertex-status', 'Run Google sign-in, then check it here.', 'feedback'); adcStatus.setAttribute('role', 'status');
+  const checkAdc = button('desktop-vertex-check', 'Check Google sign-in', async () => {
+    let value; try { value = vertexSettings(); } catch (error) { adcStatus.classList.add('error'); bind(adcStatus, error.message); return; }
+    const current = () => state.provider === 'vertex' && project.value.trim() === value.project_id && location.value.trim() === value.location;
+    checkAdc.disabled = true; adcStatus.classList.remove('error'); bind(adcStatus, 'Checking Google sign-in…');
+    try { const data = desktopData(await callDesktop('checkVertexAdc', value)); if (current()) bind(adcStatus, data.message); }
+    catch (error) { if (current()) { adcStatus.classList.add('error'); bind(adcStatus, error.message); } }
+    finally { checkAdc.disabled = false; }
+  });
+  vertexPanel.append(...label(project.id, 'Project ID', project), ...label(location.id, 'Location', location), checkAdc, adcStatus);
+  const setup = make('details', null, null, 'desktop-ai-settings'); setup.append(make('summary', null, 'How to sign in with Google'));
+  setup.append(make('p', null, 'Install Google Cloud CLI. In a terminal, run these commands, replacing YOUR_PROJECT_ID:', 'muted'));
+  const commands = make('pre', 'desktop-vertex-commands'); commands.textContent = 'gcloud init\ngcloud config set project YOUR_PROJECT_ID\ngcloud services enable aiplatform.googleapis.com\ngcloud auth application-default login\ngcloud auth application-default set-quota-project YOUR_PROJECT_ID';
+  setup.append(commands, make('p', null, 'Link the project to your trial billing account. Choose a Gemini model available in Vertex AI Studio. Credits, quota and model access depend on Google; usage can cost money after credits run out.', 'muted'));
+  vertexPanel.append(setup); form.insertBefore(vertexPanel, question.previousElementSibling);
   const models = make('details', null, null, 'desktop-ai-settings'); models.append(make('summary', null, 'Model settings'));
   const model = make('input', 'desktop-ai-model'); model.maxLength = 100; model.autocomplete = 'off'; models.append(...label(model.id, 'Provider model', model));
   form.append(models);
@@ -81,12 +101,16 @@ export function mountDesktopTools() {
     provider.value = state.provider; model.value = state.models.get(state.provider) || '';
     bind(notice, 'Questions and selected evidence snippets are sent to {provider}. API processing is subject to that provider\'s data policies.', { provider: providerLabel() });
     bind(keyLabel, '{provider} API key', { provider: providerLabel() });
+    vertexPanel.hidden = state.provider !== 'vertex'; settings.hidden = state.provider === 'vertex';
+    form.insertBefore(models, state.provider === 'vertex' ? question.previousElementSibling : submit);
+    if (state.provider === 'vertex') models.open = true;
+    attribute(model, 'placeholder', state.provider === 'vertex' ? 'Copy a model ID from Vertex AI Studio' : '');
   }
   async function loadProviders() {
     feedback('Loading providers…');
     try {
       const data = desktopData(await callDesktop('listSources'));
-      const allowed = ['openai', 'deepseek', 'gemini', 'anthropic'];
+      const allowed = ['openai', 'deepseek', 'gemini', 'anthropic', 'vertex'];
       if (!Array.isArray(data.providers) || !data.providers.length || data.providers.some((item) => !allowed.includes(item.id))) throw new Error('The local service returned an unsupported provider catalog. Refresh the library to retry.');
       state.providers = data.providers;
       provider.replaceChildren(...data.providers.map((item) => { state.models.set(item.id, item.default_model); return option(item.label, item.id, true); }));
@@ -99,6 +123,7 @@ export function mountDesktopTools() {
   }
   async function refreshKey() {
     const token = ++state.keyToken; const selected = state.provider;
+    if (selected === 'vertex') return;
     keyStatus.dataset.configured = 'false';
     bind(keyStatus, 'Checking the {provider} session key…', { provider: providerLabel() });
     try {
@@ -135,8 +160,10 @@ export function mountDesktopTools() {
     try {
       const text = question.value.trim();
       if (!text || text.length > 2000) throw new Error('Enter a question of up to 2,000 characters.');
+      if (state.provider === 'vertex' && !/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,99}$/.test(model.value.trim())) throw new Error('Enter a model ID available in Vertex AI Studio.');
       if (!state.providers.some(({ id }) => id === state.provider) || !/^[a-zA-Z0-9._:-]{1,100}$/.test(model.value.trim())) throw new Error('Choose a valid provider model in Model settings. Refresh the library to load its default.');
       request = { question: text, source_ids: getSourceIds(), provider: state.provider, model: model.value.trim() };
+      if (state.provider === 'vertex') request.vertex = vertexSettings();
       if (nodes['desktop-ai-include-plan'].checked) { request.preferences = getPlannerPreferences(); if (!request.preferences) throw new Error('Load the activity options before including a plan.'); }
       if (nodes['desktop-ai-include-decision'].checked) { request.decision_request = getDecisionRequest(); if (!request.decision_request) throw new Error('Choose a scenario and wait for its sources to load.'); }
       if (!request.source_ids.length && !request.preferences && !request.decision_request) throw new Error('Select a source or include comparison/activity preferences first.');
@@ -168,6 +195,15 @@ export function mountDesktopTools() {
   provider.addEventListener('change', () => {
     state.models.set(state.provider, model.value); state.provider = provider.value; key.value = ''; save.disabled = false; clear.disabled = false;
     renderProvider(); invalidate('AI provider changed. Ask again to use the selected provider.'); void refreshKey();
+  });
+  function vertexSettings() {
+    const value = { project_id: project.value.trim(), location: location.value.trim() };
+    if (!/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(value.project_id) || !/^(global|[a-z]+-[a-z]+[0-9])$/.test(value.location)) throw new Error('Use your Google Cloud project ID and a location such as global or europe-west2.');
+    return value;
+  }
+  for (const input of [project, location]) input.addEventListener('input', () => {
+    invalidate('Question context changed. Ask again for an updated answer.'); bind(adcStatus, 'Run Google sign-in, then check it here.');
+    try { localStorage.setItem('jinni-vertex-settings', JSON.stringify(vertexSettings())); } catch { /* Invalid/incomplete values or restricted storage are not persisted. */ }
   });
   model.addEventListener('input', () => { state.models.set(state.provider, model.value); invalidate('Model changed. Ask again for an updated answer.'); });
   for (const input of [question, nodes['desktop-ai-include-plan'], nodes['desktop-ai-include-decision']]) input.addEventListener('input', () => invalidate('Question context changed. Ask again for an updated answer.'));

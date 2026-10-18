@@ -140,7 +140,10 @@ def test_catalog_preserves_legacy_defaults_and_advertises_all_providers(clients)
     metadata = client.get("/api/v1/sources").json()["data"]
     assert metadata["provider"] == "openai"
     assert metadata["default_model"] == DEFAULT_MODELS["openai"]
-    assert {item["id"]: item["default_model"] for item in metadata["providers"]} == DEFAULT_MODELS
+    assert {item["id"]: item["default_model"] for item in metadata["providers"]} == {
+        **DEFAULT_MODELS,
+        "vertex": "",
+    }
     assert calls == []
 
 

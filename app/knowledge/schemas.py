@@ -91,6 +91,18 @@ class SourceDeleted(Model):
     deleted: Literal[True] = True
 
 
+class VertexSettings(Model):
+    project_id: Annotated[str, Field(pattern=r"^[a-z][a-z0-9-]{4,28}[a-z0-9]$")]
+    location: Annotated[str, Field(pattern=r"^(global|[a-z]+-[a-z]+[0-9])$")] = "global"
+
+
+class VertexStatus(Model):
+    configured: bool
+    project_id: str
+    location: str
+    message: str
+
+
 class ChatRequest(Model):
     question: Annotated[str, Field(min_length=1, max_length=2000)]
     provider: ProviderId = "openai"
@@ -100,6 +112,7 @@ class ChatRequest(Model):
     )
     preferences: RecommendationRequest | None = None
     decision_request: DecisionRequest | None = None
+    vertex: VertexSettings | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -112,6 +125,10 @@ class ChatRequest(Model):
 
     @model_validator(mode="after")
     def validate_question_and_selection(self) -> "ChatRequest":
+        if self.provider == "vertex" and self.vertex is None:
+            raise ValueError("Enter your Google Cloud project ID and location for Vertex AI")
+        if self.provider != "vertex" and self.vertex is not None:
+            raise ValueError("Google Cloud settings apply only to the Vertex AI provider")
         if not self.question.strip():
             raise ValueError("Question must not be blank")
         try:

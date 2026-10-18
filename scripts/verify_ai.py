@@ -68,7 +68,7 @@ async def verify(provider: str, key: str, model: str) -> bool:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--provider", choices=list(PROVIDER_DEFAULT_MODELS), default="openai")
+    parser.add_argument("--provider", choices=list(KEY_VARIABLES), default="openai")
     parser.add_argument("--model", help="Override the selected provider's suggested model.")
     args = parser.parse_args()
     variable = KEY_VARIABLES[args.provider]
