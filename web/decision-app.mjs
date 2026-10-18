@@ -96,7 +96,8 @@ function control(criterion, defaults) {
   advanced.append(node('summary', 'Fine-tune importance'));
   const weights = node('div', undefined, 'weight-controls');
   const slider = document.createElement('input');
-  slider.type = 'range'; slider.min = '0'; slider.max = '100'; slider.step = '1';
+  slider.type = 'range'; slider.min = '0'; slider.max = '100'; slider.step = 'any';
+  slider.id = `importance-slider-${criterion.id}`;
   slider.value = String(defaultWeight);
   slider.setAttribute('aria-label', `Importance slider for ${title}`);
   const weight = document.createElement('input');
@@ -104,18 +105,41 @@ function control(criterion, defaults) {
   weight.id = `weight-${criterion.id}`; weight.value = String(defaultWeight);
   weight.dataset.weight = criterion.id;
   weight.setAttribute('aria-label', `Exact importance for ${title}`);
+  const weightBox = node('div', undefined, 'number-with-unit');
+  const weightUnit = node('span', '/ 100', 'number-unit'); weightUnit.setAttribute('aria-hidden', 'true');
+  weightBox.append(weight, weightUnit);
+  const weightHint = node('p', 'Importance points, not an amount. 0 = ignore; 100 = matters most.', 'hint');
+  weightHint.id = `importance-hint-${criterion.id}`;
+  slider.setAttribute('aria-describedby', weightHint.id); weight.setAttribute('aria-describedby', weightHint.id);
+  const updateWeight = () => {
+    const value = Number(weight.value);
+    if (weight.value.trim() && Number.isFinite(value) && value >= 0 && value <= 100) {
+      slider.value = weight.value;
+      slider.setAttribute('aria-valuetext', `${weight.value} out of 100 importance points`);
+      slider.style.setProperty('--range-fill', `${value}%`);
+    }
+  };
   const sync = () => {
     priority.value = Number(weight.value) === defaultWeight ? 'suggested'
       : ['0', '25', '50', '100'].includes(weight.value) ? weight.value : 'custom';
   };
-  slider.addEventListener('input', () => { weight.value = slider.value; sync(); clearComparison(); });
-  weight.addEventListener('input', () => { slider.value = weight.value; sync(); });
+  slider.addEventListener('keydown', (event) => {
+    const changes = { ArrowLeft: -1, ArrowDown: -1, ArrowRight: 1, ArrowUp: 1, PageDown: -10, PageUp: 10 };
+    if (!Object.hasOwn(changes, event.key)) return;
+    event.preventDefault(); slider.value = String(Math.min(100, Math.max(0, Number(slider.value) + changes[event.key])));
+    slider.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  slider.addEventListener('input', () => { weight.value = String(Number(Number(slider.value).toFixed(3))); updateWeight(); sync(); clearComparison(); });
+  weight.addEventListener('input', () => { updateWeight(); sync(); });
   priority.addEventListener('change', () => {
     if (priority.value === 'custom') { advanced.hidden = false; advanced.open = true; weight.focus(); }
-    else { weight.value = priority.value === 'suggested' ? String(defaultWeight) : priority.value; slider.value = weight.value; advanced.open = false; advanced.hidden = true; }
+    else { weight.value = priority.value === 'suggested' ? String(defaultWeight) : priority.value; updateWeight(); advanced.open = false; advanced.hidden = true; }
     clearComparison();
   });
-  weights.append(slider, weight); advanced.append(weights, node('p', '0 means ignore this; 100 means it matters most. Limits still apply.', 'hint'));
+  updateWeight();
+  const ends = node('div', undefined, 'range-endpoints'); ends.append(node('span', 'Ignore'), node('span', 'Matters most'));
+  const sliderGroup = node('div', undefined, 'slider-group'); sliderGroup.append(slider, ends);
+  weights.append(sliderGroup, weightBox); advanced.append(weights, weightHint);
   const bounds = node('div', undefined, 'constraint-controls');
   const operatorLabel = node('label', 'Any limits?', 'limit-heading');
   operatorLabel.textContent = criterion.unit === 'pence' ? `${title}: spending limit` : `${title}: limit`;
@@ -126,18 +150,56 @@ function control(criterion, defaults) {
   operator.append(new Option(criterion.unit === 'pence' ? 'No spending limit' : 'No limit', ''),
     new Option(criterion.unit === 'pence' ? 'Spend up to…' : 'No more than…', 'lte'),
     new Option(criterion.unit === 'pence' ? 'Spend at least…' : 'At least…', 'gte'));
-  const limitLabel = node('label', undefined, 'limit-field');
-  const limitName = node('span', '', 'limit-caption'); limitName.id = `limit-label-${criterion.id}`;
-  const inputWrap = node('span', undefined, criterion.unit === 'pence' ? 'currency-input' : 'limit-input');
+  const limitLabel = node('div', undefined, 'limit-field');
+  const limitName = node('label', '', 'limit-caption'); limitName.id = `limit-label-${criterion.id}`;
+  limitName.htmlFor = `limit-${criterion.id}`;
+  const inputWrap = node('div', undefined, 'number-with-unit amount-input');
   const limit = document.createElement('input');
   limit.id = `limit-${criterion.id}`; limit.type = 'text'; limit.inputMode = 'decimal';
   limit.dataset.limit = criterion.id; limit.setAttribute('aria-labelledby', limitName.id);
   limit.placeholder = criterion.unit === 'pence' ? 'e.g. 25.00' : 'Enter an amount';
-  if (criterion.unit === 'pence') { const symbol = node('span', '£', 'currency-prefix'); symbol.setAttribute('aria-hidden', 'true'); inputWrap.append(symbol); }
+  const unit = node('span', unitLabel(criterion.unit), 'number-unit'); unit.setAttribute('aria-hidden', 'true');
+  if (criterion.unit === 'pence') inputWrap.append(unit);
   inputWrap.append(limit);
+  if (criterion.unit !== 'pence') inputWrap.append(unit);
   const existing = defaults.constraints?.find((constraint) => constraint.criterion_id === criterion.id);
   operator.value = existing?.operator ?? '';
   limit.value = existing ? String(existing.value / (criterion.unit === 'pence' ? 100 : 1)) : '';
+  const amountSlider = document.createElement('input');
+  amountSlider.type = 'range'; amountSlider.id = `amount-slider-${criterion.id}`;
+  amountSlider.setAttribute('aria-label', `${title} limit in ${criterion.unit === 'pence' ? 'pounds' : unitLabel(criterion.unit)}`);
+  amountSlider.step = criterion.unit === 'pence' ? '0.01' : 'any';
+  const divisor = criterion.unit === 'pence' ? 100 : 1;
+  const values = (state.custom?.dataset ?? state.current.dataset).observations.map((item) => item.metrics?.[criterion.id])
+    .filter((value) => typeof value === 'number' && Number.isFinite(value)).map((value) => value / divisor);
+  const baseMin = Math.min(0, ...values);
+  const baseMax = Math.max(100, ...values, existing ? existing.value / divisor : 0);
+  const amountHint = node('p', '', 'amount-hint hint'); amountHint.id = `amount-hint-${criterion.id}`;
+  limit.setAttribute('aria-describedby', amountHint.id); amountSlider.setAttribute('aria-describedby', amountHint.id);
+  const syncAmount = () => {
+    const raw = limit.value.trim(); const value = Number(raw);
+    const valid = raw !== '' && Number.isFinite(value) && (criterion.unit !== 'pence' || value >= 0);
+    amountSlider.min = String(valid ? Math.min(baseMin, value) : baseMin);
+    amountSlider.max = String(valid ? Math.max(baseMax, value) : baseMax);
+    amountSlider.value = String(valid ? value : baseMin);
+    const display = valid ? measure(value * divisor, criterion.unit) : 'Enter an amount';
+    amountSlider.setAttribute('aria-valuetext', display);
+    amountSlider.style.setProperty('--range-fill', `${(Number(amountSlider.value) - Number(amountSlider.min)) / (Number(amountSlider.max) - Number(amountSlider.min)) * 100}%`);
+    amountHint.textContent = valid ? `Your limit: ${display}. Drag the slider or type an exact amount.` : 'Drag the slider or type an exact amount.';
+  };
+  amountSlider.addEventListener('input', () => {
+    limit.value = criterion.unit === 'pence' ? Number(amountSlider.value).toFixed(2) : String(Number(Number(amountSlider.value).toFixed(3)));
+    syncAmount(); updateLimitCount();
+  });
+  amountSlider.addEventListener('keydown', (event) => {
+    const changes = { ArrowLeft: -1, ArrowDown: -1, ArrowRight: 1, ArrowUp: 1, PageDown: -10, PageUp: 10 };
+    if (!Object.hasOwn(changes, event.key)) return;
+    event.preventDefault();
+    const step = criterion.unit === 'pence' ? 0.01 : 1;
+    amountSlider.value = String(Math.min(Number(amountSlider.max), Math.max(Number(amountSlider.min), Number(amountSlider.value) + changes[event.key] * step)));
+    amountSlider.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  syncAmount();
   const showLimit = () => {
     const visible = !!operator.value;
     limitLabel.hidden = !visible; limit.required = visible;
@@ -148,8 +210,9 @@ function control(criterion, defaults) {
   showLimit();
   operator.addEventListener('change', () => { showLimit(); updateLimitCount(); clearComparison(); if (operator.value) limit.focus(); });
   limit.addEventListener('invalid', () => { if (bounds.closest('#extra-limits')) $('extra-limits').open = true; });
-  limit.addEventListener('input', updateLimitCount);
-  limitLabel.append(limitName, inputWrap);
+  limit.addEventListener('input', () => { syncAmount(); updateLimitCount(); });
+  const amountPair = node('div', undefined, 'measure-controls'); amountPair.append(amountSlider, inputWrap);
+  limitLabel.append(limitName, amountPair, amountHint);
   const operatorGroup = node('div'); operatorGroup.append(operatorLabel, operator);
   bounds.append(operatorGroup, limitLabel);
   $(criterion.unit === 'pence' ? 'spending-controls' : 'other-limit-controls').append(bounds);

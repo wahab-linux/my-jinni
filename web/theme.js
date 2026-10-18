@@ -45,3 +45,35 @@
     });
   });
 })();
+
+// Background motion is optional, independent of appearance and sound.
+(() => {
+  const key = 'my-jinni-waves';
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+  let enabled = true;
+  try { enabled = localStorage.getItem(key) !== 'off'; } catch { /* Keep the switch usable without storage. */ }
+  const apply = () => {
+    document.documentElement.dataset.waves = enabled && !reduced.matches ? 'on' : 'off';
+    const input = document.getElementById('waves-toggle');
+    if (!input) return;
+    input.checked = enabled && !reduced.matches;
+    input.disabled = reduced.matches;
+    document.getElementById('waves-status').textContent = reduced.matches
+      ? 'Waves are still because your device requests reduced motion.'
+      : enabled ? 'Slow, subtle movement. Turn it off whenever you like.' : 'Waves are still. Your other settings stay the same.';
+  };
+  apply();
+  reduced.addEventListener('change', apply);
+  window.addEventListener('storage', (event) => {
+    if (event.key !== key && event.key !== null) return;
+    enabled = event.newValue !== 'off'; apply();
+  });
+  document.addEventListener('DOMContentLoaded', () => {
+    apply();
+    document.getElementById('waves-toggle').addEventListener('change', (event) => {
+      enabled = event.target.checked;
+      try { localStorage.setItem(key, enabled ? 'on' : 'off'); } catch { /* Session-only preference. */ }
+      apply();
+    });
+  });
+})();

@@ -176,6 +176,71 @@ try {
     assert.equal(await page.locator('#weight-cost-pence').inputValue(), '45');
     assert.equal(await page.locator('#exact-cost-pence').isVisible(), false);
   });
+  await check('importance slider and adjacent points field stay exact and keyboard accessible', async () => {
+    await page.locator('#priority-cost-pence').selectOption('custom');
+    const slider = page.locator('#importance-slider-cost-pence');
+    const value = page.locator('#weight-cost-pence');
+    await value.fill('42.5');
+    assert.equal(await slider.inputValue(), '42.5');
+    assert.equal(await slider.getAttribute('aria-valuetext'), '42.5 out of 100 importance points');
+    await slider.focus(); await page.keyboard.press('ArrowRight');
+    assert.equal(await value.inputValue(), '43.5');
+    await waitText(page.locator('#exact-cost-pence .number-unit'), '/ 100');
+    await page.locator('#decision-submit').click(); await page.locator('.decision-card').waitFor();
+    await slider.focus(); await page.keyboard.press('ArrowLeft');
+    assert.equal(await value.inputValue(), '42.5');
+    assert.equal(await page.locator('.decision-card').count(), 0);
+    await page.locator('#decision-reset').click();
+  });
+  await check('amount sliders show money and time units and preserve typed values beyond their suggested range', async () => {
+    const money = page.locator('#amount-slider-cost-pence');
+    const budget = page.locator('#limit-cost-pence');
+    assert.equal(await money.getAttribute('aria-valuetext'), '£25.00');
+    await money.focus(); await page.keyboard.press('ArrowLeft');
+    assert.equal(await budget.inputValue(), '24.99');
+    await budget.fill('7.99');
+    assert.equal(await money.inputValue(), '7.99');
+    await page.locator('#decision-submit').click(); await waitText(page.locator('#decision-status'), 'Nothing fits');
+    await money.focus(); await page.keyboard.press('ArrowRight');
+    assert.equal(await budget.inputValue(), '8.00');
+    await page.locator('#decision-submit').click(); await waitText(page.locator('.decision-card'), '£8.00');
+    await budget.fill('1234.56');
+    assert.equal(await money.inputValue(), '1234.56');
+    assert.ok(Number(await money.getAttribute('max')) >= 1234.56);
+    await moreLimits();
+    const time = page.locator('#amount-slider-duration-minutes');
+    await page.locator('#limit-duration-minutes').fill('70');
+    assert.equal(await time.inputValue(), '70');
+    assert.equal(await time.getAttribute('aria-valuetext'), '1 hr 10 min');
+    await waitText(page.locator('#limit-duration-minutes').locator('..'), 'minutes');
+    await time.focus(); await page.keyboard.press('ArrowRight');
+    assert.equal(await page.locator('#limit-duration-minutes').inputValue(), '71');
+    await page.locator('#priority-cost-pence').selectOption('custom');
+    await page.locator('.decision-preferences').screenshot({ path: 'tmp/web/slider-units-light.png' });
+    await appearance(page, 'dark');
+    await page.locator('.decision-preferences').screenshot({ path: 'tmp/web/slider-units-dark.png' });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.locator('.decision-preferences').screenshot({ path: 'tmp/web/slider-units-phone.png' });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+    await page.setViewportSize({ width: 1280, height: 950 }); await appearance(page, 'light');
+    await page.locator('#decision-reset').click();
+  });
+  await check('hours, days, carbon and custom rating limits keep their own units beside the number', async () => {
+    for (const [topic, id, input, display, unit] of [
+      ['student', 'commitment-hours', '4.5', '4.5 hours', 'hours'],
+      ['sustainability', 'wait-days', '7', '7 days', 'days'],
+      ['travel', 'emissions-grams', '2200', '2.2 kg CO₂e', 'g CO₂e'],
+      ['custom', 'quality-score', '75.5', '75.5 points', 'points'],
+    ]) {
+      await chooseTopic(topic); await moreLimits();
+      await page.locator(`#bound-${id}`).selectOption('lte');
+      await page.locator(`#limit-${id}`).fill(input);
+      assert.equal(await page.locator(`#amount-slider-${id}`).getAttribute('aria-valuetext'), display);
+      assert.equal(await page.locator(`#limit-${id}`).locator('..').locator('.number-unit').innerText(), unit);
+      await waitText(page.locator(`#amount-hint-${id}`), display);
+    }
+    await chooseTopic('travel');
+  });
   await check('pound budgets round-trip exactly and prices remain £ in cards and comparisons', async () => {
     await chooseTopic('travel');
     assert.equal(await page.locator('#limit-cost-pence').inputValue(), '25');
@@ -277,6 +342,35 @@ try {
     await page.locator('#decision-submit').click();
     assert.equal(await page.locator('.decision-card').evaluate((element) => getComputedStyle(element).animationName), 'decision-enter');
     await page.emulateMedia({ reducedMotion: 'reduce' });
+  });
+  await check('subtle waves move, pause persistently, and stop automatically for reduced motion', async () => {
+    const moving = await browser.newContext({ viewport: { width: 1280, height: 950 }, reducedMotion: 'no-preference', colorScheme: 'light' });
+    const tab = await moving.newPage(); await tab.goto(base);
+    await waitText(tab.locator('#decision-load-status'), 'Ready to explore');
+    assert.equal((await tab.request.get(`${base}waves.svg`)).status(), 200);
+    assert.equal(await tab.locator('html').getAttribute('data-waves'), 'on');
+    assert.equal(await tab.locator('.wave-layer').first().evaluate((element) => getComputedStyle(element).animationPlayState), 'running');
+    const start = await tab.locator('.wave-layer').first().evaluate((element) => getComputedStyle(element).transform);
+    await tab.waitForFunction((before) => getComputedStyle(document.querySelector('.wave-layer')).transform !== before, start);
+    await tab.locator('#theme-toggle').click(); await tab.locator('#waves-toggle').uncheck();
+    assert.equal(await tab.locator('html').getAttribute('data-waves'), 'off');
+    assert.equal(await tab.locator('.wave-layer').first().evaluate((element) => getComputedStyle(element).animationPlayState), 'paused');
+    await tab.reload(); await waitText(tab.locator('#decision-load-status'), 'Ready to explore');
+    assert.equal(await tab.locator('html').getAttribute('data-waves'), 'off');
+    await tab.locator('#theme-toggle').click(); await tab.locator('#waves-toggle').check();
+    await tab.locator('#appearance-done').click();
+    await tab.screenshot({ path: 'tmp/web/waves-light.png' });
+    await tab.emulateMedia({ reducedMotion: 'reduce' });
+    assert.equal(await tab.locator('.wave-layer').first().evaluate((element) => getComputedStyle(element).animationName), 'none');
+    await tab.locator('#theme-toggle').click();
+    await tab.waitForFunction(() => document.getElementById('waves-toggle').disabled);
+    assert.equal(await tab.locator('#waves-toggle').isDisabled(), true);
+    await waitText(tab.locator('#waves-status'), 'reduced motion');
+    await tab.emulateMedia({ reducedMotion: 'no-preference' });
+    await tab.waitForFunction(() => document.documentElement.dataset.waves === 'on');
+    assert.equal(await tab.locator('#waves-toggle').isChecked(), true);
+    assert.equal(await tab.locator('html').getAttribute('data-waves'), 'on');
+    await moving.close();
   });
   await check('failed decision data load has no fallback comparison and retry recovers', async () => {
     const broken = await context.newPage();
