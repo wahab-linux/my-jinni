@@ -101,6 +101,7 @@ function table(slide, values, x, y, width, height, columnWidths, { bodySize = 25
   table(s, [["", "Browser", "Electron desktop"], ["Interface", "Shared web interface", "Shared web interface"], ["Calculation", "Equivalent JavaScript", "Local Python API"], ["Source library", "Local IndexedDB", "Local SQLite"], ["Evidence help", "Original passage search", "Optional cited cloud AI"]], 80, 176, 1120, 350, [240, 440, 440], { bodySize: 26 });
   text(s, "The desktop identifies the selected AI recipient. Keys are encrypted on this device.\nCalculated comparisons stay available when AI fails.", 80, 563, 1120, 79, 26, C.purple, true);
   text(s, "Theo: backend     Wahab: frontend and desktop interface", 80, 665, 1000, 32, 23, C.muted);
+  s.speakerNotes.append("\n\nJudge detail: Development: Codex — GPT-6.1 Sol. Paid access used by at least one team member. AI usage: Level 5 (Vibe coded). Humans supplied requirements, product direction and code review. Codex generated implementation and tests. Runtime DeepSeek deepseek-flash verification is separate from the development model.");
 }
 
 {
@@ -123,19 +124,16 @@ function table(slide, values, x, y, width, height, columnWidths, { bodySize = 25
 }
 
 {
-  const s = slide("Questions we expect", "These are short answers for questions. Our numbers are fictional. AI discusses evidence and proposes choices, while the calculation stays deterministic. Only explicit questions, selected snippets and requested context go to the selected provider. Codex was our development tool. The team reviewed code. The coordinator verified two real DeepSeek API requests: a cited answer and two cited options. That does not verify live desktop use or real-world data.", ["AGENTS.md", "docs/AI_EXTENSION.md", "docs/AI_OPTIONS.md", "docs/AI_USAGE.md", "Team 39 role/tool/review confirmation and live DeepSeek verification report, 2026-10-18"], { backup: true });
-  const entries = [
-    ["Why use AI?", "To discuss selected evidence and propose options.\nThe score stays deterministic."],
-    ["Are the numbers live?", "No. The preset data is explicitly fictional."],
-    ["What leaves the device?", "The question, selected snippets and explicitly requested\ncalculated context go to the chosen provider."],
-    ["What did AI help build?", "Codex helped with planning, code, tests and this deck.\nThe team reviewed code and records human decisions."],
-  ];
-  for (let i = 0; i < entries.length; i += 1) {
-    const y = 170 + i * 121;
-    text(s, entries[i][0], 80, y, 345, 94, 28, C.purple, true);
-    text(s, entries[i][1], 445, y, 745, 96, 27, C.ink);
-  }
-  text(s, "Live DeepSeek API checks passed for cited answers and option proposals.", 80, 671, 990, 24, 19, C.muted);
+  const s = slide("AI use and team responsibilities", "Development: Codex — GPT-6.1 Sol. Paid access used by at least one team member. AI usage: Level 5 (Vibe coded). Theo owned backend work. Wahab owned the frontend and desktop interface. Humans supplied requirements, product direction and code review. Codex generated implementation and tests. Separately, two actual DeepSeek deepseek-flash API requests verified a cited answer and two cited option proposals. Desktop UI AI demonstrations used mocked providers. The preset data is fictional.", ["AGENTS.md", "docs/AI_EXTENSION.md", "docs/AI_OPTIONS.md", "docs/AI_USAGE.md", "Team 39 confirmed development model, paid access, roles and review; live DeepSeek API verification, 2026-10-18"], { backup: true });
+  text(s, "Development: Codex — GPT-6.1 Sol", 80, 166, 1120, 49, 31, C.purple, true);
+  text(s, "Paid access used by at least one team member", 80, 214, 1120, 45, 27, C.ink);
+  text(s, "AI usage: Level 5 (Vibe coded)", 80, 283, 1120, 48, 31, C.purple, true);
+  text(s, "AI generated implementation and tests. Humans directed and reviewed.", 80, 331, 1120, 45, 27, C.ink);
+  text(s, "Theo: backend. Wahab: frontend and desktop interface.", 80, 399, 1120, 48, 29, C.purple, true);
+  text(s, "Human work: requirements, product direction and code review.", 80, 447, 1120, 45, 27, C.ink);
+  text(s, "Runtime check: DeepSeek deepseek-flash", 80, 515, 1120, 48, 29, C.purple, true);
+  text(s, "Two real API requests: a cited answer and two option proposals.\nDesktop UI AI demonstrations used mocked providers.", 80, 563, 1120, 71, 26, C.ink);
+  text(s, "Fictional presets. Live API success does not verify real-world source accuracy.", 80, 671, 990, 24, 19, C.muted);
 }
 
 for (let i = 0; i < deck.slides.items.length; i += 1) {
@@ -145,7 +143,7 @@ for (let i = 0; i < deck.slides.items.length; i += 1) {
 }
 const draft = path.join(build, "Jinni_Pitch.draft.pptx");
 await (await PresentationFile.exportPptx(deck)).save(draft);
-const finalPath = path.join(output, process.env.JINNI_PRESENTATION_FILENAME ?? "Jinni_Pitch_v2.pptx");
+const finalPath = path.join(output, process.env.JINNI_PRESENTATION_FILENAME ?? "Jinni_Pitch_v3.pptx");
 const result = await finalizePresentation({ workspaceDir: root, candidatePath: draft, finalPath, pythonExecutable: python, integrityValidatorPath: path.join(skill, "container_tools/inspect_presentation_package_integrity.py"), layoutValidatorPath: path.join(skill, "container_tools/inspect_presentation_layout_geometry.py"), layoutArgs: ["--expected-slide-size-emu", "12192000,6858000", "--validate-bullet-geometry", "--validate-heading-fit", ...[2, 4, 6].flatMap(number => ["--require-native-table-slide", String(number)])], explicitTotalSlideCount: 9, requiredNativeTableOwnerSlides: [2, 4, 6], requiredNativeChartOwnerSlides: [], fontPolicy: { basis: "design", families: [font] }, verifyArtifactToolImport: true, receiptPath: path.join(build, `${path.basename(finalPath)}.validation.json`) });
 await fs.writeFile(path.join(build, "speaker-notes.json"), JSON.stringify(notes, null, 2));
 console.log(JSON.stringify({ finalPath, slideCount: deck.slides.items.length, result }, null, 2));

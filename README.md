@@ -6,6 +6,10 @@ Compare your options using priorities, hard limits and evidence. Jinni shows why
 
 Built by **Team39** — **Theo** (backend) and **Wahab** (interface) — for the **DYHTG 2026 BlackRock challenge**. Independent team prototype; not an official BlackRock or Aladdin product.
 
+Development AI: **GPT-6.1 Sol through Codex**, with paid access used by at least one team member. Declared AI usage: **Level 5 — Vibe coded**. [AI usage report](docs/AI_USAGE_SUBMISSION.md)
+
+[Judges guide and demo steps](docs/JUDGES.md)
+
 ## What you can do
 
 - Compare **Market, Travel, Student, Sustainability** or **Your own idea** scenarios. Set priorities and limits; inspect results, exclusions and both data sources.

@@ -4,6 +4,10 @@ This historical log preserves the team's original Level 4 intention and the late
 
 The final submission statement is maintained separately in [AI_USAGE_SUBMISSION.md](AI_USAGE_SUBMISSION.md). It reports Level 5 based on the team's later clarification and the official scale, while preserving the earlier Level 4 intention in this historical record.
 
+## Confirmed development model and paid access 2026-10-18
+
+Theo explicitly identified the development model as **GPT-6.1 Sol through Codex** and confirmed that at least one team member used paid subscription access or paid credits. These facts supersede earlier statements that the exact model or premium access had not been recorded. The judge-facing report, README, pitch and speaker guide now identify that model and paid use directly. Runtime DeepSeek deepseek-flash verification remains separate. No specific subscription tier, account owner or additional development model is inferred.
+
 ## Encrypted saved keys and demo libraries 2026-10-18
 
 Theo reported that the AI statement had been submitted, then explicitly requested persistent API keys and demonstration sources. This changes the earlier session-only storage policy. Codex delegated the encrypted store, shared settings/locales and fictional demo packs; the coordinator integrated the existing main/API client, restart tests, contracts and documentation. No real user key was persisted or reused for this increment.

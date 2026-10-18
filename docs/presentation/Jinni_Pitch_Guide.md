@@ -64,11 +64,11 @@ The library stays local. An explicit AI request sends the question, selected bou
 
 **Did you test a real provider?**
 
-Yes. The coordinator verified two actual DeepSeek `deepseek-flash` requests through the chat API: a cited answer and an option-proposal request returning two proposals with checked exact quotations. The returned calculated comparison matched the ordinary calculation. This establishes those API paths, not live desktop interaction, other providers, human usability or real-world source accuracy.
+Yes. Two actual DeepSeek `deepseek-flash` requests through the chat API returned a cited answer and two option proposals with checked exact quotations. The returned calculated comparison matched the ordinary calculation. This verifies those runtime API paths. Desktop UI AI demonstrations used mocked providers. Other providers, human usability and real-world source accuracy are outside this live check. DeepSeek is the application's runtime provider in this check, separate from the development model.
 
 **How did you use AI?**
 
-Codex was the development tool. It generated most implementation, tests and this deck. We chose the product direction and division of work, ran the application, and reviewed code. We did not regularly edit generated code manually. The final usage report follows the event's Level 5 definition rather than claiming the manual-editing condition of Level 4.
+Development: **Codex — GPT-6.1 Sol**. **Paid access used by at least one team member. AI usage: Level 5 (Vibe coded).** Codex generated implementation, tests and this deck. Humans supplied requirements and product direction, ran the application, and reviewed code. Theo owned backend work. Wahab owned the frontend and desktop interface. The team did not regularly edit generated code manually.
 
 ## Facts to preserve
 
@@ -80,7 +80,7 @@ Codex was the development tool. It generated most implementation, tests and this
 
 ## Editing and rebuilding
 
-The current editable PowerPoint is `Jinni_Pitch_v2.pptx`, revised for the encrypted on-device key-storage request. `Jinni_Pitch.pptx` remains a historical snapshot with the earlier session-only policy. Use v2 for presentation. Its Artifact Tool JavaScript source is `build_pitch.mjs`; its public screenshot asset is `assets/pitch-comparison.png`. Text, tables and notes are native PowerPoint objects. The screenshot and original lamp artwork are embedded images.
+The current editable PowerPoint is `Jinni_Pitch_v3.pptx`. Its Artifact Tool JavaScript source is `build_pitch.mjs`; its public screenshot asset is `assets/pitch-comparison.png`. Text, tables and notes are native PowerPoint objects. The screenshot and original lamp artwork are embedded images.
 
 Run the source from the repository root with the bundled Node runtime and `@oai/artifact-tool` environment. It uses the installed Presentations skill's finalizer and the bundled Python runtime. It does not use `python-pptx`.
 
