@@ -108,9 +108,14 @@ async function menu(page, id) {
 async function paste(page, base, title, text) {
   await library(page);
   if (!await page.locator('#paste-form').isVisible()) await menu(page, 'paste-toggle');
+  assert.equal(await page.locator('#source-simulated').isVisible(), true);
+  assert.equal(await page.locator('#import-simulated').isVisible(), false);
   await page.locator('#source-title').fill(title); await page.locator('#source-text').fill(text);
   await page.locator('#source-simulated').check(); await page.locator('#paste-form button[type=submit]').click();
   const result = await waitUntil(async () => (await sources(base)).find((item) => item.title === title));
+  await waitUntil(async () => !await page.locator('#paste-form').isVisible());
+  assert.equal(await page.locator('#source-simulated').isVisible(), false);
+  assert.equal(await page.locator('#import-simulated').isVisible(), true);
   await page.locator(`.source-item[data-source-id="${result.id}"]`).waitFor(); return result;
 }
 async function select(page, ids) {
@@ -122,6 +127,8 @@ async function importFile(page, app, base, directory, filename, bytes) {
   const file = path.join(directory, filename); fs.writeFileSync(file, bytes);
   await app.evaluate(({ dialog }, selected) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [selected] }); }, file);
   await library(page); await page.locator('#import-simulated').check(); await menu(page, 'import-button');
+  assert.equal(await page.locator('#source-simulated').isVisible(), false);
+  assert.equal(await page.locator('#import-simulated').isVisible(), true);
   const result = await waitUntil(async () => (await sources(base)).find((item) => item.filename === filename));
   await page.locator(`.source-item[data-source-id="${result.id}"]`).waitFor();
   await waitUntil(() => page.locator('#import-button').isEnabled());
@@ -573,6 +580,7 @@ async function sharedDesktop() {
       assert.equal(await page.locator('#library-dialog').isVisible(), false); assert.equal(await page.locator('#desktop-ai-settings').isVisible(), false);
       assert.equal(await page.locator('#desktop-ai-dialog').evaluate((node) => node.tagName), 'SECTION'); assert.equal(await page.locator('#desktop-ai-question').isVisible(), true);
       assert.equal(await page.locator('#legacy-planner').evaluate((node) => node.open), false);
+      assert.equal(await page.locator('.conditions-title').evaluate((node) => node.nextElementSibling.classList.contains('decision-source-picker')), true);
     });
     await decisions(page, backend.baseUrl); await planner(page, backend.baseUrl);
     const saved = await sourceLibrary(page, app, backend.baseUrl, directory); await providers(page, backend.baseUrl, saved);

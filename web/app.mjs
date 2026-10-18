@@ -408,21 +408,26 @@ document.addEventListener('keydown', (event) => {
   focused.querySelector('summary').focus();
   event.preventDefault();
 });
+function setPasteMode(open) {
+  $('paste-form').hidden = !open;
+  $('paste-toggle').setAttribute('aria-expanded', String(open));
+  $('import-simulated').closest('label').hidden = open;
+}
 $('paste-toggle').addEventListener('click', () => {
   $('add-source-picker').open = false;
-  $('paste-form').hidden = !$('paste-form').hidden;
-  $('paste-toggle').setAttribute('aria-expanded', String(!$('paste-form').hidden));
+  setPasteMode($('paste-form').hidden);
   if (!$('paste-form').hidden) $('source-title').focus();
 });
 $('paste-form').addEventListener('submit', (event) => {
   event.preventDefault();
   void withLibrary(async () => {
     await saveSource(createSource({ title: $('source-title').value, pages: [{ text: $('source-text').value, page: null }], is_simulated: $('source-simulated').checked }));
-    $('paste-form').reset(); $('paste-form').hidden = true; $('paste-toggle').setAttribute('aria-expanded', 'false');
+    $('paste-form').reset(); setPasteMode(false);
   });
 });
 $('import-button').addEventListener('click', () => {
   $('add-source-picker').open = false;
+  setPasteMode(false);
   if (!isDesktop) { $('file').click(); return; }
   void withLibrary(async () => {
     const result = await importDesktopSource({ is_simulated: $('import-simulated').checked });
@@ -446,6 +451,7 @@ $('file').addEventListener('change', () => {
 });
 $('demo-source').addEventListener('click', () => withLibrary(async () => {
   $('add-source-picker').open = false;
+  setPasteMode(false);
   const response = await fetch('./venue-guide.md', { signal: AbortSignal.timeout(10000) });
   if (!response.ok) throw new Error('Could not load the fictional guide. Check your connection and retry.');
   await saveSource(createSource({ title: 'Fictional venue guide', kind: 'markdown', pages: [{ text: await response.text(), page: null }], is_simulated: true }));

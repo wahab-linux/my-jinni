@@ -137,6 +137,49 @@ try {
     assert.equal(await tab.locator('#ai-options-results .ai-option-card').count(), 0);
     await local.close();
   });
+  await check('sources come first and paste/file modes show one flag with independent saved metadata', async () => {
+    const local = await browser.newContext({ viewport: { width: 1400, height: 1000 }, reducedMotion: 'reduce' });
+    const tab = await local.newPage(); await tab.goto(base); await tab.locator('#decision-inputs:not([disabled])').waitFor();
+    assert.equal(await tab.locator('.conditions-title').evaluate((node) => node.nextElementSibling.classList.contains('decision-source-picker')), true);
+    assert.ok(await tab.locator('.decision-source-picker').evaluate((node) => node.getBoundingClientRect().bottom <= document.querySelector('.decision-goal').getBoundingClientRect().top));
+    await openTools(tab); await tab.locator('#import-simulated').check(); await addSourceAction(tab, 'paste-toggle');
+    assert.equal(await tab.locator('#source-simulated:visible, #import-simulated:visible').count(), 1);
+    assert.equal(await tab.locator('#source-simulated').isVisible(), true);
+    assert.equal(await tab.locator('#source-simulated').isChecked(), false);
+    await tab.locator('#source-title').fill('Museum access note'); await tab.locator('#source-text').fill('The museum entrance has a ramp.');
+    await tab.locator('#paste-form button[type=submit]').click(); await tab.locator('.source-item').waitFor();
+    assert.equal(await tab.locator('#source-simulated').isVisible(), false);
+    assert.equal(await tab.locator('#import-simulated').isChecked(), true);
+    const saved = () => tab.evaluate(async () => (await import('./ui-context.mjs')).getSources());
+    assert.equal((await saved()).find((source) => source.title === 'Museum access note').is_simulated, false);
+    await addSourceAction(tab, 'paste-toggle'); await tab.locator('#source-simulated').check();
+    await addSourceAction(tab, 'paste-toggle');
+    assert.equal(await tab.locator('#source-simulated').isVisible(), false);
+    assert.equal(await tab.locator('#import-simulated').isVisible(), true);
+    await addSourceAction(tab, 'paste-toggle');
+    assert.equal(await tab.locator('#source-simulated').isChecked(), true);
+    const chooserReady = tab.waitForEvent('filechooser'); await addSourceAction(tab, 'import-button');
+    await (await chooserReady).setFiles({ name: 'Fictional museum guide.txt', mimeType: 'text/plain', buffer: Buffer.from('Fictional guide: the museum has a quiet room.') });
+    await tab.locator('.source-item').filter({ hasText: 'Fictional museum guide.txt' }).waitFor();
+    assert.equal(await tab.locator('#source-simulated:visible, #import-simulated:visible').count(), 1);
+    assert.equal((await saved()).find((source) => source.title === 'Fictional museum guide.txt').is_simulated, true);
+    await tab.locator('#library-close').click(); await compare(tab); await tab.locator('.decision-card').waitFor();
+    await tab.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+    await tab.screenshot({ path: 'tmp/web/jinni-sources-first-light.png' });
+    await openTools(tab); await addSourceAction(tab, 'paste-toggle');
+    await tab.locator('#source-title').fill('Museum visit note'); await tab.locator('#source-text').fill('The entrance has step-free access.');
+    for (const locale of ['zh-CN', 'fr', 'ja', 'ru', 'en']) {
+      await tab.evaluate((id) => window.jinniI18n.setLocale(id), locale);
+      assert.equal(await tab.locator('#source-simulated:visible, #import-simulated:visible').count(), 1);
+      assert.equal(await tab.locator('#source-text').inputValue(), 'The entrance has step-free access.');
+    }
+    await tab.screenshot({ path: 'tmp/web/jinni-paste-single-label.png' });
+    await tab.locator('#library-close').click(); await appearance(tab, 'dark'); await tab.setViewportSize({ width: 390, height: 844 });
+    await tab.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+    assert.ok(await tab.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+    await tab.screenshot({ path: 'tmp/web/jinni-sources-first-phone.png' });
+    await local.close();
+  });
   await check('first-time example produces a real comparison and an easy return to preserved choices', async () => {
     await waitText(page.locator('#decision-results'), 'Set your priorities, then compare.');
     await page.locator('#try-example').click();

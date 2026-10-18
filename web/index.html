@@ -48,6 +48,7 @@
       <div class="decision-grid">
         <section class="panel decision-preferences" aria-label="Decision preferences" data-i18n-aria-label="Decision preferences">
           <h2 class="conditions-title" data-i18n="Conditions &amp; sources">Conditions &amp; sources</h2>
+          <section class="decision-source-picker" aria-labelledby="decision-sources-title"><div class="compact-heading"><h3 id="decision-sources-title" data-i18n="Notes &amp; files">Notes &amp; files</h3><button id="decision-sources-manage" type="button" class="text-button" data-i18n="Import / manage">Import / manage</button></div><p id="decision-sources-status" class="hint" role="status" data-i18n="Loading sources…">Loading sources…</p><div id="decision-sources" class="decision-source-list"></div></section>
           <div class="decision-goal"><label for="decision-goal" data-i18n="Decision goal">Decision goal</label><textarea id="decision-goal" rows="2" maxlength="2000" placeholder="What are you trying to decide?" data-i18n-placeholder="What are you trying to decide?" aria-describedby="decision-goal-hint"></textarea><p id="decision-goal-hint" class="hint browser-only" data-i18n="Used by AI suggestions in the desktop edition.">Used by AI suggestions in the desktop edition.</p><button id="ai-options-generate" type="button" class="button secondary" hidden data-i18n="Suggest options">Suggest options</button><p id="ai-options-notice" class="hint" hidden></p></div>
           <form id="decision-form"><fieldset id="decision-inputs" disabled>
             <h3 id="scenario-title" tabindex="-1"><span data-i18n="Choose a topic">Choose a topic</span></h3><p id="scenario-notice" class="scenario-notice"></p>
@@ -60,7 +61,6 @@
             <button id="decision-submit" type="submit" class="button primary"><span data-i18n="Find my best match">Find my best match</span> <span aria-hidden="true">→</span></button>
 
           </fieldset></form>
-          <section class="decision-source-picker" aria-labelledby="decision-sources-title"><div class="compact-heading"><h3 id="decision-sources-title" data-i18n="Notes &amp; files">Notes &amp; files</h3><button id="decision-sources-manage" type="button" class="text-button" data-i18n="Import / manage">Import / manage</button></div><p id="decision-sources-status" class="hint" role="status" data-i18n="Loading sources…">Loading sources…</p><div id="decision-sources" class="decision-source-list"></div></section>
         </section>
         <section class="panel decision-output" aria-labelledby="comparison-title"><div class="results-heading"><div><h2 id="comparison-title" tabindex="-1"><span data-i18n="Your comparison">Your comparison</span></h2></div><span id="decision-count" class="local-badge"><span data-i18n="Let’s find a fit">Let’s find a fit</span></span></div>
           <p id="decision-status" class="feedback" role="status" aria-live="polite"><span data-i18n="Pick what matters, then tap Find my best match.">Pick what matters, then tap Find my best match.</span></p>

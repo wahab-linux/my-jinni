@@ -540,7 +540,7 @@ main.wrap { padding-top: 26px; }
 .decision-preferences .extra-limits { margin-block: 12px; padding-inline: 10px; }
 .decision-preferences .extra-limits > summary { min-height: 40px; padding-block: 9px; font-size: 12px; }
 .decision-preferences #decision-submit { margin-top: 12px; min-height: 42px; font-size: 13px; }
-.decision-source-picker { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 14px; }
+.decision-source-picker { border-bottom: 1px solid var(--line); margin-bottom: 16px; padding-bottom: 14px; }
 .compact-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .compact-heading h3 { margin: 0; font-size: 14px; }
 .compact-heading .text-button { font-size: 11px; }

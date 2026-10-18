@@ -1,166 +1,99 @@
+<img src="web/icon.svg" alt="Jinni lamp" width="72" align="right">
+
 # Jinni
 
-A decision workspace that combines independent option and measurement sources, applies your hard limits and priorities, and explains a clear recommendation with comparable alternatives. Students are one example audience; the core works with configurable criteria and datasets.
+Compare your options using priorities, hard limits and evidence. Jinni shows why a choice fits, what you give up, and which alternatives remain.
 
-DYHTG 2026 BlackRock challenge. Backend: roXy. Desktop interface: Wahab.
-Repository: [wahab-linux/my-jinni](https://github.com/wahab-linux/my-jinni). Local checkout: `my-jinni`.
+Built by **Team39** — **Theo** (backend) and **Wahab** (interface) — for the **DYHTG 2026 BlackRock challenge**. Independent team prototype; not an official BlackRock or Aladdin product.
 
-The product is named **Jinni**. Its original lamp mark connects the idea of a helpful genie with making an informed choice. It is the team's independent prototype, not an official BlackRock or Aladdin product. Existing repository URLs, launcher filename, local storage identifiers and API identity retain `my-jinni` so existing installations and source libraries continue to work.
+## What you can do
 
-The desktop and browser interfaces support English, Simplified Chinese, French, Japanese and Russian through the language selector. English is the default; each experience remembers its local language preference. This changes interface text, not the original language of imported documents, exact citation quotations or provider answers. Comparison inputs, GBP amounts and canonical API data retain their existing meaning. Cross-language search is not added by UI translation.
+- Compare **Market, Travel, Student, Sustainability** or **Your own idea** scenarios. Set priorities and limits; inspect results, exclusions and both data sources.
+- Import notes, TXT/Markdown or text PDFs into a local library. Select the evidence you want to use.
+- On desktop, ask the selected AI provider to explain evidence or **Suggest options** with checked quotations. AI proposals stay separate from calculated scores.
+- Use the same three-panel workspace on desktop and in a browser, with light/dark themes and five interface languages. English is the default.
 
-Both editions use the same frontend in `web/`: page, styles, controls, translations and result presentation. Electron loads those local files directly, so frontend changes apply to both editions. A platform adapter uses the actual Python API and SQLite on desktop, or exported data and IndexedDB in a browser. Desktop-only AI tools use the same source selection and current form context. The shared page starts with choices and comparisons; repeated marketing and onboarding copy is omitted.
+![Jinni comparing fictional journey choices](docs/presentation/assets/pitch-comparison.png)
 
-## Browser edition on GitHub Pages
+**The calculations are real; the built-in datasets are fictional.** No preset uses live market prices, routes, university listings or environmental feeds. Scores describe preference fit among the supplied options. Imported files inform AI answers and proposals; they do not silently become measurements or change rankings.
 
-The browser edition runs the general comparison workspace, detailed activity example, local source library, TXT/Markdown/text-PDF import and selected-source passage search without installing Python or Electron. All preset data is visibly fictional. Sources stay in this browser's IndexedDB; they are separate from the desktop library. Cloud AI questions remain a desktop feature; browser search returns original excerpts, not generated answers.
+## Run on Windows
 
-The Pages workflow tests and builds the site on pushes to `main`. A repository administrator must select **Settings → Pages → Build and deployment → Source: GitHub Actions** once. After a successful deployment, the site is available at **https://wahab-linux.github.io/my-jinni/**. A commit alone does not establish that it is live. See [browser setup and verification](docs/BROWSER.md).
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/) and Node.js **22+** with npm. In the repository root, install dependencies once:
 
-For local development after `uv sync --locked` and `npm ci`:
-
-```sh
-npm run build:pages
-python -m http.server 8080 --directory dist/pages
-```
-
-Open the local server in a modern browser. `npm run lint:web`, `npm run test:web` and `npm run test:web:e2e` check this edition; the last requires a Playwright Chromium installation (`npx playwright install chromium`).
-
-## Current delivery
-
-The central workspace offers **Market, Travel, Student, Sustainability and Your own idea** scenarios. Adjust criterion weights and optional minimum/maximum limits to compare actual calculated options, scores, measurements, exclusions and both source records. Custom criteria and datasets support new domains without changing the ranking core. [GENERAL_DECISIONS.md](docs/GENERAL_DECISIONS.md) defines additive v0.5, the scoring formula and exact limits.
-
-The market preset compares fictional share/ETF/digital-asset examples using illustrative measurements. The travel preset includes train, bus, flight, taxi and cycling examples; the student preset includes courses, societies, events and internships. Sustainability compares cost, impact and waiting time. These are simulated demonstrations, not live market/travel integrations or investment recommendations. Scores express relative preference fit among supplied options, not probabilities or forecasts.
-
-Library and question tools open on demand in compact dialogs; the activity itinerary is a collapsed detailed example. Short animations respect reduced-motion settings. Sound starts off and can be enabled with the sound button; it uses brief local synthesized tones with no media downloads.
-
-The Electron client adds original-text citation viewing and optional source-grounded questions using OpenAI, DeepSeek, Google Gemini or Anthropic Claude. Its restricted bridge calls the Python backend, which calculates each preset comparison from two independently shaped simulated HTTP feeds. The launcher starts a local backend when needed and stops only the process it owns. This is a source-run application; a Windows installer and bundled Python runtime are not included.
-
-All activities, venues, travel times, fares and availability are fictional. The configured demo day is **20 October 2026**, in `Europe/London`. Campus and city-centre origins have different travel data. This prototype is a team submission to the challenge and is not an official BlackRock or Aladdin product.
-
-## Run the desktop application
-
-Install [uv](https://docs.astral.sh/uv/getting-started/installation/) and Node.js 22 or later with npm. From the repository root, perform the initial setup:
-
-```sh
-uv sync
+```powershell
+uv sync --locked
 npm ci
 ```
 
-On Windows, double-click `start-my-jinni.cmd`, or launch it from PowerShell:
+Double-click **`start-my-jinni.cmd`**, or run:
 
 ```powershell
 .\start-my-jinni.cmd
 ```
 
-This uses the installed project-local Electron executable and works even when `node` and `npm` are absent from your terminal's PATH. The dependencies above must already be installed. It changes no system PATH settings and also works when invoked from another directory.
+The launcher starts local Electron and the Python backend. After setup, it also works when Node/npm are missing from the launch terminal's PATH and can be opened from another directory. It does not change system PATH settings. This is a source-run application; no installer or bundled Python runtime is included.
 
-For development with Node/npm available in the terminal, the desktop window and local backend also start with:
+With Node/npm available, `npm run desktop` starts the same application. For backend-only work:
 
-```sh
-npm run desktop
-```
-
-After dependencies are installed, Node 22+ can also launch it with `node --run desktop`. If PowerShell reports that `node` is not recognised, use the Windows launcher above. A Node runtime available inside Codex does not imply it is on an ordinary PowerShell PATH. Initial dependency installation needs Internet access. Activity planning and local source import/view/delete work without an AI key; optional questions send selected evidence to the selected provider. Choose a provider in **AI settings** and enter its own key. Keys stay separately in main-process memory for this session; switching provider never copies a key. Saving a key does not verify account/model access. Never commit or share a key.
-
-The default local API is `http://127.0.0.1:8000`. An existing backend is reused only after health and identity checks. A busy port produces a visible retryable error. Optional `MY_JINNI_BACKEND_URL` selects another loopback HTTP origin; `MY_JINNI_DATA_DIR` explicitly overrides local storage. Normal launches preserve the backend's canonical library location and legacy-data compatibility.
-
-## Run the backend separately
-
-For backend-only development:
-
-```sh
+```powershell
 uv run python -m app
 ```
 
-This starts the local API at `http://127.0.0.1:8000`. It binds to loopback only. No browser is needed to use a desktop client. `/docs` and `/openapi.json` are optional developer documentation, not the product interface.
+The API binds to `http://127.0.0.1:8000`; [interactive API docs](http://127.0.0.1:8000/docs) are available while it runs. The desktop reuses a compatible running backend and closes only a backend process it started. See [desktop setup](desktop/README.md) for ports, storage and troubleshooting.
+
+## Browser edition
+
+The browser edition provides the comparison workspace, detailed activity planner, local file library and passage search. It needs no Python service or AI key. Sources stay in this browser's IndexedDB, separately from the desktop SQLite library. Cloud AI and Google ADC are desktop features; browser search returns original excerpts.
+
+Build and serve locally after dependency setup:
 
 ```powershell
-$request = Get-Content -Raw contracts/fixtures/recommendation-request.json
-Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/api/v1/recommendations -ContentType 'application/json' -Body $request
+npm run build:pages
+uv run python -m http.server 8080 --directory dist/pages
 ```
 
-- Default campus request, budget 1000p: Board Game Night, total 500p, return 18:15.
-- Budget 400p: Acoustic Hour. Budget 0p: successful no-match result.
-- City-centre departure at 16:00 misses the 16:30 Board Game Night; its actual travel data is used.
-- Every calculated success includes simulated-data provenance and warnings where records or journeys were excluded.
+Open [localhost:8080](http://localhost:8080). The repository includes a GitHub Pages workflow; deployment must be enabled and finish successfully before the [hosted edition](https://wahab-linux.github.io/my-jinni/) is available. See [browser setup](docs/BROWSER.md).
 
-Dependencies are locked in `uv.lock`. After initial setup, comparisons, activity calculations and automated tests need no Internet or key. Optional AI questions need a key for the selected provider and network access; the local library uses SQLite.
+## Optional desktop AI
 
-## Local library and cited AI questions
+Open **AI settings**, choose a provider and model, then enter that provider's key. OpenAI, DeepSeek, Google Gemini and Anthropic Claude have separate session keys. Google Vertex AI also supports [Application Default Credentials](docs/GOOGLE_ADC_SETUP.md).
 
-**Using Google Cloud trial credits?** Select **Google Vertex AI (ADC)** in the desktop AI dialog. Follow the [step-by-step Google sign-in guide](docs/GOOGLE_ADC_SETUP.md); no API key or credential upload is required. Project, location and an available model must be selected explicitly. Trial eligibility, quota and any usage charges are controlled by Google.
+The selected recipient is shown before sending. Questions, the explicit decision context and bounded snippets from selected sources go to that provider. Keys stay in trusted desktop session memory and reach the local chat API only through `X-AI-API-Key`; they are not saved in SQLite, settings or Git. Switching provider never shares a key or silently falls back to another provider.
 
-For desktop OpenAI setup, analysis prompts and a live-check command, read [the OpenAI guide](docs/OPENAI_DESKTOP_GUIDE.md). The [PowerPoint deck](docs/presentation/Jinni_Code_Walkthrough.pptx) and [slide writing/speaking guide](docs/PRESENTATION_GUIDE.md) explain the code and data flow.
+Comparisons and the activity planner work without AI. Citations check source IDs and exact quotations, not the truth of every generated claim. Review proposals and evidence before relying on them. [Provider details](docs/AI_PROVIDERS.md) · [AI option proposals](docs/AI_OPTIONS.md)
 
-The user confirmed this extension while retaining activity planning, then requested multiple providers including DeepSeek. [AI_EXTENSION.md](docs/AI_EXTENSION.md) and [AI_PROVIDERS.md](docs/AI_PROVIDERS.md) specify additive v0.4, preserving the planner and library/citation fields.
-
-The prior v0.4 baseline passed 474 Python tests, 46 desktop unit tests and 20 actual Electron end-to-end checks, alongside lint/format. These regressions remain in the current checks below. Every cloud provider transport is mocked. A successful request with a real provider account/model remains unverified.
-
-- Import pasted text, UTF-8 TXT/Markdown or a text PDF. Select sources for each question and open citations to inspect the exact extracted quote and PDF page.
-- New source libraries default to `%LOCALAPPDATA%/my-jinni/library.sqlite3` when `LOCALAPPDATA` is available, or `~/.my-jinni/library.sqlite3` otherwise. Set `MY_JINNI_DATA_DIR` to choose another local data directory. No key or chat history is stored there.
-- Data compatibility: the legacy `PLANSCOPE_DATA_DIR` setting remains supported. An existing database under `%LOCALAPPDATA%/PlanScope/` or `~/.planscope/` is reused if the new default database is absent; no data is automatically moved or deleted.
-- Limits: 20 sources, 5 MiB per upload, 150,000 extracted characters and 40 PDF pages. Retrieval is local lexical search over at most six chunks, not embeddings or cross-language semantic search. One library and stateless chat are the MVP; no OCR, cloud sync or URL imports.
-- Provider selection offers OpenAI (`gpt-4.1-mini`), DeepSeek (`deepseek-flash`), Google Gemini (`gemini-3.8-flash`) and Anthropic Claude (`claude-sonnet-4-6`) with editable model IDs. Defaults are suggestions; account access requires a real-key check. Question and bounded selected snippets go only to that provider's fixed official HTTPS endpoint. OpenAI uses `store: false`; do not infer this option or a blanket retention guarantee for every provider. There is no automatic provider fallback or custom base URL.
-- The client passes only the selected provider's session key in `X-AI-API-Key` for chat, never JSON or URLs. Legacy `X-OpenAI-API-Key` is accepted for OpenAI only; sending both headers returns 422. The backend does not save or log keys. Without matching evidence, it returns insufficient evidence without contacting any model. A failed provider never becomes a fabricated answer.
-- Chat can include the current activity form's `preferences`. The actual planner result is supplied as citable simulated evidence and returned separately; it remains the authoritative cost/time/ranking display.
-- Chat can also include the current general `decision_request`. The backend recalculates it through the ordinary comparison endpoint and returns its exact result separately. A bounded ephemeral `decision-context` supplies the calculated winner, alternatives and source metadata for checked quotations; it is never saved as a library document. Neither AI questions nor imported documents automatically change comparison inputs.
-
-`GET /api/v1/sources` provides the list and capabilities. Add text with `POST /api/v1/sources`, upload multipart files to `/api/v1/sources/upload`, view/delete `/api/v1/sources/{id}`, and ask through `POST /api/v1/chat`. All use the existing data/error/warnings envelope. The named desktop operations are defined in [DESKTOP_BRIDGE.md](docs/DESKTOP_BRIDGE.md).
-
-For a demo, import [venue-guide.md](contracts/fixtures/venue-guide.md) and mark it fictional/AI-generated. Select it and ask, "Is Board Game Night suitable for a beginner?" With a valid key, inspect the returned quote against the extracted source. You can also tick **Include my current activity preferences** to supply an actual calculated plan. Without a key, demonstrate planning and local sources; do not present automated provider mocks as a live answer.
-
-An optional separate account check uses a hidden prompt, or the process environment, for the key:
-
-```sh
-uv run python -m scripts.verify_ai --provider deepseek
-```
-
-It makes one real billable request to the selected provider using a fictional fact and checks the returned citation. It prints no key or raw provider response. This is separate from desktop usability verification. The original `scripts.verify_openai` remains available for OpenAI-only checks.
-
-## Structure and ownership
+## How it works
 
 ```text
-app/
-  main.py                 API orchestration and result explanations
-  schemas.py              Shared JSON models
-  scenario.py             Coverage, origins, supported dates and limits
-  sources/adapters.py     HTTP deadlines, source validation and normalisation
-  sources/mock_api.py     Independently shaped simulated feeds
-  decision/domain.py      Normalised immutable records
-  decision/engine.py      Pure feasibility and deterministic ranking
-  comparison/            Pure general scoring, scenario catalog, HTTP adapters and API
-  knowledge/             Local library, ingestion, retrieval and OpenAI adapter
-data/                     Fictional source datasets
-  decisions/              Two independently shaped feeds per general scenario
-contracts/fixtures/       Shared request/response examples, not fallback answers
-desktop/                  Electron main/preload, API/lifecycle modules and renderer
-web/                      Static comparison UI, local library and JavaScript decision core
-tests/                    Python checks and desktop unit/end-to-end checks
-scripts/                  OpenAPI export and optional live OpenAI check
-docs/                     Requirements, architecture, tasks, prompts and AI log
+Shared web interface → browser engine + IndexedDB
+                    → Electron IPC → Python API → pure decision engines
+                                                → two source adapters
+                                                → local SQLite + optional AI
 ```
 
-Read [requirements](docs/REQUIREMENTS.md), [architecture](docs/ARCHITECTURE.md), [API](docs/API.md), and [tasks](docs/TASKS.md). The [backend prompt](docs/prompts/backend.md) and [desktop interface prompt](docs/prompts/frontend.md) define separate responsibilities. Coordinate shared schemas, examples and dependency changes before merging. All repository content must be English.
+Both editions use `web/`; platform differences live in `web/platform.mjs` and `desktop/`. Scenario configuration owns criteria and source capabilities. The comparison core filters hard constraints before deterministic scoring. The retained activity example separately checks budget, outbound arrival and return to the selected origin, using integer pence and timezone-aware times.
 
-## Check
+The original lamp mark is local SVG. Existing repository, storage, IPC and API identifiers retain **`my-jinni`** for compatibility with saved data.
 
-The v0.5 verification passes **566 Python tests**, including 77 focused comparison checks, 140 complete generic browser/Python parity cases and the 226 retained activity parity cases; **50 desktop and 31 browser Node unit tests**; **32 actual Electron and 30 Chromium browser checks**; Ruff lint/format, both ESLint checks and the static build. Mocked/live boundaries are recorded in [AI_USAGE.md](docs/AI_USAGE.md). The existing Starlette/httpx TestClient deprecation warning remains.
+## Develop and verify
 
-```sh
+```powershell
 uv run ruff check .
 uv run ruff format --check .
 uv run pytest
-uv run python -m scripts.export_openapi
 npm run lint:desktop
+npm run lint:web
 npm run test:desktop
-npm run test:e2e
+npm run test:web
 ```
 
-The Electron end-to-end suite opens actual Windows app windows on isolated temporary storage and ports. All provider transports are mocked; no account key is needed. Screenshots are written under ignored `tmp/desktop/`. See [desktop/README.md](desktop/README.md) for the test boundary and launch details.
+Actual Electron and Chromium suites run with `npm run test:e2e` and `npm run test:web:e2e`; Chromium requires `npx playwright install chromium`. Automated provider transports are mocked. Record real-account checks separately from tests and human demo acceptance.
 
-Required source calls each have a two-second deadline. A failed feed returns 503; malformed/ambiguous data returns 502; valid data with no feasible activity returns 200 with `recommended: null`. There is no automatic fixture fallback. Exact budget, outbound-arrival and return-deadline boundaries are accepted. Ranking is interest match, total cost, total travel time, then event ID.
-
-## Remaining delivery work
-
-Together, check the application with the team's own selected-provider account, inspect answer quality and citations, read the code you need to explain, rehearse the demo and complete the factual AI report. Record real manual edits and reviews before deciding the final AI-usage level. A packaged installer is deferred. Automated checks do not establish these human acceptance steps.
+| Read more | |
+| --- | --- |
+| [Requirements](docs/REQUIREMENTS.md) · [Architecture](docs/ARCHITECTURE.md) | Scope, rules and boundaries |
+| [API](docs/API.md) · [General decisions](docs/GENERAL_DECISIONS.md) | Contracts and scoring |
+| [Tasks](docs/TASKS.md) · [Backend prompt](docs/prompts/backend.md) · [Interface prompt](docs/prompts/frontend.md) | Ownership and handoffs |
+| [Presentation guide](docs/PRESENTATION_GUIDE.md) | Demo and code walkthrough |
+| [AI use statement](docs/AI_USAGE_SUBMISSION.md) · [Development log](docs/AI_USAGE.md) | Submission facts and verification history |
