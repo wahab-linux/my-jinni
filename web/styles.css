@@ -513,3 +513,58 @@ main.wrap { padding-top: 26px; }
 [data-platform="desktop"] .browser-only { display: none; }
 .provenance > summary { cursor: pointer; color: var(--accent-ink); font-weight: 600; }
 @media (max-width: 560px) { main.wrap { padding-top: 18px; }.workspace-heading h1 { font-size: 25px; }.workspace-heading .button { padding-inline: 12px; font-size: 12px; }.demo-detail { display: block; margin: 3px 0 0; } }
+
+/* Conditions, calculated choices and questions remain visible together on wide screens. */
+.wrap { max-width: 1600px; padding-inline: 30px; }
+.decision-grid { grid-template-columns: minmax(250px, .88fr) minmax(360px, 1.32fr) minmax(280px, 1fr); gap: 16px; }
+.decision-grid > .panel, .browser-ai-notice { padding: 20px; }
+.decision-grid h2 { font-size: 20px; }
+.conditions-title { margin: 0 0 16px; }
+.decision-goal { margin-bottom: 16px; }
+.decision-goal > label { display: block; font-size: 13px; font-weight: 650; margin-bottom: 6px; }
+#decision-goal { min-height: 76px; margin-bottom: 8px; font-size: 14px; resize: vertical; }
+#ai-options-generate { width: 100%; min-height: 40px; }
+#ai-options-notice { margin-block: 8px; font-size: 11px; }
+#scenario-title { font-size: 19px; }
+.decision-preferences .criteria-heading h3 { font-size: 15px; margin-block: 0; }
+.decision-preferences .criteria-heading .text-button { font-size: 11px; }
+.decision-preferences .criterion-control { padding: 9px 10px; margin-block: 7px; }
+.decision-preferences .criterion-title { margin-bottom: 5px; gap: 2px; }
+.decision-preferences .criterion-title label { font-size: 13px; }
+.decision-preferences .criterion-title .hint { font-size: 10px; }
+.decision-preferences .priority-choice, .decision-preferences .constraint-controls select { min-height: 36px; padding-block: 6px; font-size: 12px; }
+.decision-preferences #spending-controls { margin-block: 12px; }
+.decision-preferences #spending-controls .constraint-controls { padding: 10px; gap: 7px; }
+.decision-preferences .measure-controls { grid-template-columns: minmax(0, 1fr) minmax(95px, .85fr); gap: 8px; }
+.decision-preferences .amount-hint { margin-top: 3px; font-size: 11px; }
+.decision-preferences .extra-limits { margin-block: 12px; padding-inline: 10px; }
+.decision-preferences .extra-limits > summary { min-height: 40px; padding-block: 9px; font-size: 12px; }
+.decision-preferences #decision-submit { margin-top: 12px; min-height: 42px; font-size: 13px; }
+.decision-source-picker { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 14px; }
+.compact-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.compact-heading h3 { margin: 0; font-size: 14px; }
+.compact-heading .text-button { font-size: 11px; }
+#decision-sources-status { font-size: 11px; margin-block: 6px; }
+.decision-source-list { display: grid; gap: 2px; max-height: 180px; overflow: auto; }
+.compact-source { min-width: 0; padding-block: 5px; margin: 0; font-size: 12px; gap: 8px; }
+.compact-source span { min-width: 0; overflow-wrap: anywhere; }
+.compact-source-copy { display: grid; gap: 2px; }
+.compact-source-badge { color: var(--accent-ink); font-size: 10px; font-weight: 600; }
+.compact-source input { flex: 0 0 auto; width: 17px; height: 17px; }
+#decision-ai-slot { min-width: 0; }
+.browser-ai-notice h2 { margin-top: 0; }
+.browser-ai-notice .button { margin-bottom: 0; }
+.ai-options-panel { margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--line); }
+.ai-options-panel > h3 { font-size: 18px; margin-block: 0 6px; }
+.ai-options-panel > .hint { margin-block: 0 12px; }
+.ai-option-card { border: 1px solid var(--line); border-left: 3px solid var(--lamp-gold); border-radius: 12px; padding: 16px; margin-top: 12px; background: var(--surface-soft); }
+.ai-option-card h4 { margin: 0 0 8px; font-size: 16px; }
+.ai-option-card h5 { margin: 14px 0 4px; font-size: 12px; }
+.ai-option-card p, .ai-option-card ul, .ai-options-overview { font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ai-option-card ul { margin-block: 4px; padding-left: 18px; }
+.ai-options-context { font-size: 11px; margin-top: 8px; }
+.ai-options-context summary { color: var(--accent-ink); cursor: pointer; }
+.ai-options-context pre { max-height: 220px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 10px; }
+@media (max-width: 1199px) { .decision-grid { grid-template-columns: minmax(260px, .8fr) minmax(360px, 1.2fr); }#decision-ai-slot { grid-column: 1 / -1; }.wrap { padding-inline: 24px; } }
+@media (max-width: 800px) { .decision-grid { grid-template-columns: minmax(0, 1fr); }#decision-ai-slot { grid-column: auto; }.decision-output { min-height: 0; }.decision-placeholder { min-height: 100px; padding-block: 20px; } }
+@media (max-width: 560px) { .wrap { padding-inline: 16px; }.decision-grid > .panel, .browser-ai-notice { padding: 18px; }.decision-preferences .priority-choice, .decision-preferences .constraint-controls select, #decision-goal { font-size: 16px; }.decision-preferences .measure-controls { grid-template-columns: minmax(0, 1fr) minmax(105px, .85fr); } }

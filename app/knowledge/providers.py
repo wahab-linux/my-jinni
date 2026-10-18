@@ -23,6 +23,7 @@ from app.knowledge.provider_catalog import PROVIDER_DEFAULT_MODELS, ProviderId
 from app.knowledge.schemas import MAX_RETRIEVED_CHUNKS, DraftAnswer, SourceChunk, VertexSettings
 
 ENDPOINTS = {
+    "openai": openai_client.OPENAI_RESPONSES_URL,
     "deepseek": "https://api.deepseek.com/chat/completions",
     "gemini": "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
     "anthropic": "https://api.anthropic.com/v1/messages",
@@ -72,7 +73,13 @@ def _http_error(status: int, provider: ProviderId) -> AIServiceError:
 
 
 def _input_json(
-    api_key: str, model: str, question: str, chunks: list[SourceChunk], timeout_seconds: float
+    api_key: str,
+    model: str,
+    question: str,
+    chunks: list[SourceChunk],
+    timeout_seconds: float,
+    *,
+    intent: str | None = None,
 ) -> str:
     if (
         not isinstance(api_key, str)
@@ -105,7 +112,11 @@ def _input_json(
     ):
         raise _request_error()
     user_input = json.dumps(
-        {"question": question, "sources": [chunk.model_dump(mode="json") for chunk in chunks]},
+        {
+            **({"intent": intent} if intent is not None else {}),
+            "question": question,
+            "sources": [chunk.model_dump(mode="json") for chunk in chunks],
+        },
         ensure_ascii=False,
     )
     try:
@@ -118,29 +129,41 @@ def _input_json(
 
 
 def _request_body(
-    provider: ProviderId, model: str, user_input: str, chunk_ids: list[str]
+    provider: ProviderId,
+    model: str,
+    user_input: str,
+    chunk_ids: list[str],
+    *,
+    schema: dict[str, Any] | None = None,
+    instructions: str = INSTRUCTIONS,
+    max_output_tokens: int = MAX_OUTPUT_TOKENS,
+    schema_name: str = "grounded_answer",
 ) -> dict[str, Any]:
-    schema = _answer_schema(chunk_ids)
+    schema = _answer_schema(chunk_ids) if schema is None else schema
     if provider == "anthropic":
         return {
             "model": model,
-            "max_tokens": MAX_OUTPUT_TOKENS,
-            "system": INSTRUCTIONS,
+            "max_tokens": max_output_tokens,
+            "system": instructions,
             "messages": [{"role": "user", "content": user_input}],
             "output_config": {"format": {"type": "json_schema", "schema": schema}},
         }
-    instructions = INSTRUCTIONS
     if provider == "deepseek":
         instructions += (
             "\nThe JSON response must match this JSON schema: "
             + json.dumps(schema)
             + "\nExample insufficient-evidence JSON: "
-            '{"answer":"The selected evidence is insufficient.",'
-            '"supported":false,"citations":[]}'
+            + json.dumps(
+                {
+                    "answer": "The selected evidence is insufficient.",
+                    "supported": False,
+                    "options" if schema_name == "grounded_options" else "citations": [],
+                }
+            )
         )
     body = {
         "model": model,
-        "max_tokens": MAX_OUTPUT_TOKENS,
+        "max_tokens": max_output_tokens,
         "messages": [
             {"role": "system", "content": instructions},
             {"role": "user", "content": user_input},
@@ -152,7 +175,7 @@ def _request_body(
     else:
         body["response_format"] = {
             "type": "json_schema",
-            "json_schema": {"name": "grounded_answer", "strict": True, "schema": schema},
+            "json_schema": {"name": schema_name, "strict": True, "schema": schema},
         }
     return body
 

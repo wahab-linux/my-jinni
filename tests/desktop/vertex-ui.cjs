@@ -44,7 +44,8 @@ const { chromium } = require('playwright');
         },
         askQuestion:async value=>{
           window.vertexTest.questions.push(value);
-          return ok({provider:value.provider,model:value.model,status:'answered',answer:'Mocked Google answer.',citations:[{chunk_id:'decision-context',source_id:'decision-context',source_title:'Calculated comparison',quote:'Mocked exact quote',is_simulated:true}],decision:{scenario_id:value.decision_request.scenario_id},planner:null});
+          const citation={chunk_id:'decision-context',source_id:'decision-context',source_title:'Calculated comparison',quote:'Mocked exact quote',is_simulated:true};
+          return ok({provider:value.provider,model:value.model,status:'answered',answer:'Mocked Google answer.',citations:[citation],options:value.intent==='options'?[{id:'first-choice',title:'First fictional choice',summary:'First mocked proposal.',trade_offs:['Verify the assumption.'],missing_information:['Current availability.'],citations:[citation]},{id:'second-choice',title:'Second fictional choice',summary:'Second mocked proposal.',trade_offs:[],missing_information:[],citations:[citation]}]:[],decision:{scenario_id:value.decision_request.scenario_id},planner:null});
         },
       };
     },{scenarios,planner});
@@ -116,6 +117,21 @@ const { chromium } = require('playwright');
       assert.equal(await page.locator('#desktop-ai-model-select').inputValue(),'__custom__');
       assert.deepEqual(await page.evaluate(()=>window.vertexTest.keys),{openai:'fake-openai-session-key'});
       assert.doesNotMatch(await page.evaluate(()=>JSON.stringify(localStorage)),/fake-openai|token|credential/i);
+    });
+    await check('Vertex option proposals use explicit ADC metadata and the current model without any API key',async()=>{
+      await closeSettings();
+      await page.locator('#decision-goal').fill('Suggest two fictional ways to make this journey.');
+      await page.locator('#ai-options-generate').click();
+      await page.locator('#ai-options-results .ai-option-card').first().waitFor();
+      const request=await page.evaluate(()=>window.vertexTest.questions.at(-1));
+      assert.equal(request.intent,'options');assert.equal(request.provider,'vertex');assert.equal(request.model,'gemini-test-model');
+      assert.deepEqual(request.vertex,{project_id:'another-trial-project',location:'europe-west2'});
+      assert.equal(request.decision_request.scenario_id,'travel');
+      assert.equal(Object.keys(request).some(name=>/token|credential|api_key/.test(name)),false);
+      assert.equal(await page.locator('#ai-options-results .ai-option-card').count(),2);
+      await page.locator('#ai-options-results .ai-option-citation').first().click();
+      assert.equal(await page.locator('#desktop-ai-context-quote').textContent(),'Mocked exact quote');
+      await page.locator('#desktop-ai-context-close').click();await openSettings();
     });
     await check('missing ADC gives an actionable sign-in error, and invalid projects never reach the bridge',async()=>{
       await page.evaluate(()=>{window.vertexTest.fail=true;});

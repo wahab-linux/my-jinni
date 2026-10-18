@@ -104,3 +104,17 @@ test('ADC bridge settings allow only project and location, with no token, creden
   assert.throws(()=>validateChatRequest({...value,vertex:undefined}));
   assert.throws(()=>validateChatRequest({...value,provider:'openai'}));
 });
+
+test('option suggestions preserve evidence, provider and exact comparison while rejecting unknown intents', () => {
+  const request = { question: 'Find a low cost journey', source_ids: ['selected-source'], provider: 'deepseek', model: 'deepseek-flash', decision_request: { scenario_id: 'travel', constraints: [{ criterion_id: 'cost-pence', operator: 'lte', value: 800 }] } };
+  for (const intent of ['answer', 'options']) {
+    const value = { ...request, intent };
+    assert.deepEqual(validateIpcInput('askQuestion', value), value);
+  }
+  assert.deepEqual(validateChatRequest(request), request);
+  for (const intent of [null, undefined, '', 'execute', 'OPTIONS', {}, 1]) {
+    assert.throws(() => validateChatRequest({ ...request, intent }));
+  }
+  assert.throws(() => validateChatRequest({ ...request, intent: 'options', api_key: 'must-not-enter-json' }));
+  assert.throws(() => validateChatRequest({ question: 'Find choices', source_ids: [], intent: 'options' }));
+});

@@ -105,6 +105,10 @@ def _parse_answer(response: httpx.Response, chunks: list[SourceChunk]) -> DraftA
         payload = response.json()
     except ValueError:
         raise _invalid_response() from None
+    return validate_draft_answer(response_text(payload), chunks)
+
+
+def response_text(payload: Any) -> str:
     if (
         not isinstance(payload, dict)
         or payload.get("status") != "completed"
@@ -137,7 +141,7 @@ def _parse_answer(response: httpx.Response, chunks: list[SourceChunk]) -> DraftA
             texts.append(content["text"])
     if not texts:
         raise _invalid_response()
-    return validate_draft_answer("".join(texts), chunks)
+    return "".join(texts)
 
 
 def validate_draft_answer(text: str, chunks: list[SourceChunk]) -> DraftAnswer:

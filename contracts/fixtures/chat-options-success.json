@@ -1,0 +1,35 @@
+{
+  "data": {
+    "provider": "openai",
+    "status": "answered",
+    "answer": "Two fictional activities to consider; confirm travel and accessibility before choosing.",
+    "model": "gpt-4.1-mini",
+    "used_source_ids": ["example-source"],
+    "planner": null,
+    "decision": null,
+    "citations": [
+      {"chunk_id": "example-west", "source_id": "example-source", "source_title": "Fictional demo venue guide", "page": null, "quote": "Board Game Night provides equipment for beginners.", "is_simulated": true},
+      {"chunk_id": "example-hall", "source_id": "example-source", "source_title": "Fictional demo venue guide", "page": null, "quote": "Acoustic Hour is a seated music activity at Demo Hall", "is_simulated": true}
+    ],
+    "options": [
+      {
+        "id": "board-games",
+        "title": "Board Game Night",
+        "summary": "A fictional beginner-friendly board game activity.",
+        "trade_offs": ["Equipment is provided for beginners."],
+        "missing_information": ["Check the selected-origin travel cost and arrival/return feasibility."],
+        "citations": [{"chunk_id": "example-west", "source_id": "example-source", "source_title": "Fictional demo venue guide", "page": null, "quote": "Board Game Night provides equipment for beginners.", "is_simulated": true}]
+      },
+      {
+        "id": "acoustic-hour",
+        "title": "Acoustic Hour",
+        "summary": "A fictional seated music activity.",
+        "trade_offs": ["The guide does not confirm step-free access to the hall."],
+        "missing_information": ["Confirm accessibility and travel feasibility."],
+        "citations": [{"chunk_id": "example-hall", "source_id": "example-source", "source_title": "Fictional demo venue guide", "page": null, "quote": "Acoustic Hour is a seated music activity at Demo Hall", "is_simulated": true}]
+      }
+    ]
+  },
+  "error": null,
+  "warnings": [{"code": "EXAMPLE_ONLY", "message": "Static fictional interface example, not a calculated ranking or live provider response. Use actual imported source IDs in requests."}]
+}

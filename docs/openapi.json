@@ -1215,6 +1215,68 @@
   },
   "components": {
     "schemas": {
+      "AIOption": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 60,
+            "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "summary": {
+            "type": "string",
+            "maxLength": 1200,
+            "minLength": 1,
+            "title": "Summary"
+          },
+          "trade_offs": {
+            "items": {
+              "type": "string",
+              "maxLength": 400,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 3,
+            "title": "Trade Offs"
+          },
+          "missing_information": {
+            "items": {
+              "type": "string",
+              "maxLength": 400,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 3,
+            "title": "Missing Information"
+          },
+          "citations": {
+            "items": {
+              "$ref": "#/components/schemas/Citation"
+            },
+            "type": "array",
+            "maxItems": 4,
+            "minItems": 1,
+            "title": "Citations"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "summary",
+          "trade_offs",
+          "missing_information",
+          "citations"
+        ],
+        "title": "AIOption"
+      },
       "AIProvider": {
         "properties": {
           "id": {
@@ -1393,6 +1455,14 @@
                 "type": "null"
               }
             ]
+          },
+          "options": {
+            "items": {
+              "$ref": "#/components/schemas/AIOption"
+            },
+            "type": "array",
+            "maxItems": 3,
+            "title": "Options"
           }
         },
         "additionalProperties": false,
@@ -1408,6 +1478,15 @@
       },
       "ChatRequest": {
         "properties": {
+          "intent": {
+            "type": "string",
+            "enum": [
+              "answer",
+              "options"
+            ],
+            "title": "Intent",
+            "default": "answer"
+          },
           "question": {
             "type": "string",
             "maxLength": 2000,

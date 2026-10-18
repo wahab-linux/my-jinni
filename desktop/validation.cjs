@@ -210,8 +210,11 @@ function validateDecisionRequest(value) {
 }
 
 function validateChatRequest(value) {
-  object(value, ['question', 'source_ids', 'provider', 'model', 'preferences', 'decision_request', 'vertex'], ['question', 'source_ids']);
+  object(value, ['question', 'source_ids', 'provider', 'model', 'preferences', 'decision_request', 'vertex', 'intent'], ['question', 'source_ids']);
   text(value.question, 1, 2000);
+  if (Object.hasOwn(value, 'intent') && !['answer', 'options'].includes(value.intent)) {
+    throw new ValidationError('Choose an answer or option suggestions.');
+  }
   if (!Array.isArray(value.source_ids) || value.source_ids.length > 20
       || new Set(value.source_ids).size !== value.source_ids.length) {
     throw new ValidationError('Select up to twenty distinct sources.');
@@ -230,6 +233,7 @@ function validateChatRequest(value) {
   return {
     question: value.question,
     source_ids: ids,
+    ...(Object.hasOwn(value, 'intent') ? { intent: value.intent } : {}),
     ...(Object.hasOwn(value, 'provider') ? { provider: value.provider } : {}),
     ...(Object.hasOwn(value, 'model') ? { model: value.model } : {}),
     ...(value.preferences === undefined ? {} : { preferences: validatePreferences(value.preferences) }),

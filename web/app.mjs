@@ -224,6 +224,7 @@ function updateInterestSummary() {
 
 function renderSources() {
   $('sources').replaceChildren();
+  renderCompactSources();
   bind($('source-count'), '{count} / {limit} saved items · {selected} selected', { count: state.sources.length, limit: LIMITS.sources, selected: state.selected.size });
   $('select-all').disabled = !state.sources.length || state.selected.size === state.sources.length;
   $('clear-selection').disabled = !state.selected.size;
@@ -244,6 +245,7 @@ function renderSources() {
     input.addEventListener('change', () => {
       if (input.checked) state.selected.add(source.id); else state.selected.delete(source.id);
       clearSearch(); notifyContextChange();
+      renderCompactSources();
       bind($('source-count'), '{count} / {limit} saved items · {selected} selected', { count: state.sources.length, limit: LIMITS.sources, selected: state.selected.size });
       $('select-all').disabled = state.selected.size === state.sources.length;
       $('clear-selection').disabled = !state.selected.size;
@@ -262,6 +264,24 @@ function renderSources() {
     });
     actions.append(view, remove); row.append(actions); $('sources').append(row);
   }
+}
+
+function renderCompactSources() {
+  bind($('decision-sources-status'), state.sources.length ? '{selected} / {count} selected' : 'No sources saved.', { selected: state.selected.size, count: state.sources.length });
+  $('decision-sources').replaceChildren(...state.sources.map((source) => {
+    const label = node('label', undefined, 'compact-source check'); label.dataset.sourceId = source.id;
+    const input = document.createElement('input'); input.type = 'checkbox'; input.value = source.id; input.checked = state.selected.has(source.id);
+    input.addEventListener('change', () => {
+      if (input.checked) state.selected.add(source.id); else state.selected.delete(source.id);
+      clearSearch(); renderSources(); notifyContextChange();
+      [...$('decision-sources').querySelectorAll('input')].find((item) => item.value === source.id)?.focus({ preventScroll: true });
+    });
+    const title = node('span', source.title, '', true);
+    const copy = node('span', undefined, 'compact-source-copy'); copy.append(title);
+    if (source.is_simulated) copy.append(node('span', 'Simulated source', 'compact-source-badge'));
+    label.append(input, copy);
+    return label;
+  }));
 }
 
 async function withLibrary(action) {
@@ -497,6 +517,12 @@ globalThis.jinniI18n?.onChange(updateInterestSummary);
 
 configureContext({
   sourceIds: () => [...state.selected],
+  sources: () => state.sources.map(({ id, title, kind, is_simulated }) => ({ id, title, kind, is_simulated })),
+  setSourceIds: (ids) => {
+    const available = new Set(state.sources.map((source) => source.id));
+    state.selected = new Set(ids.filter((id) => available.has(id)));
+    clearSearch(); renderSources(); notifyContextChange();
+  },
   plannerPreferences: () => readPlannerPreferences(),
   sourceViewer: async (id, { quote, page } = {}) => {
     if (isDesktop && state.library) state.sources = await state.library.all();
@@ -526,7 +552,9 @@ async function loadLibrary() {
   } catch (error) {
     feedback('library-status', isDesktop ? error.message : 'Browser storage is unavailable. Allow site storage to save a library. Planning still works.', true);
     $('library-retry').hidden = false;
+    bind($('decision-sources-status'), isDesktop ? 'Local library is unavailable. Retry loading it.' : 'Browser storage is unavailable. Allow site storage to save a library. Planning still works.');
   }
 }
 $('library-retry').addEventListener('click', loadLibrary);
+$('decision-sources-manage').addEventListener('click', () => $('library-open').click());
 void loadLibrary();

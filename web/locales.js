@@ -1,6 +1,18 @@
 // Controlled interface copy only. Source text, quotations and custom labels stay original.
 (() => {
   const rows = [
+    ['Simulated source', '模拟资料', 'Source simulée', '模擬資料', 'Модельный источник'],
+    ['Conditions & sources', '条件与资料', 'Conditions et sources', '条件と資料', 'Условия и источники'],
+    ['Used by AI suggestions in the desktop edition.', '用于桌面版的 AI 选项建议。', 'Utilisé pour les suggestions IA de l’application.', 'デスクトップ版の AI 提案に使用します。', 'Используется для предложений ИИ в настольной версии.'],
+    ['Decision goal', '决策目标', 'Objectif de décision', '決定したいこと', 'Цель решения'],
+    ['What are you trying to decide?', '你想决定什么？', 'Que cherchez-vous à décider ?', '何を決めたいですか？', 'Что вы хотите решить?'],
+    ['Suggest options', '建议选项', 'Proposer des options', '選択肢を提案', 'Предложить варианты'],
+    ['Import / manage', '导入 / 管理', 'Importer / gérer', '読み込み・管理', 'Импорт / управление'],
+    ['AI suggestions', 'AI 建议', 'Suggestions IA', 'AI の提案', 'Предложения ИИ'],
+    ['Suggestions do not change comparison scores.', '建议不会改变比较分数。', 'Les suggestions ne changent pas les scores de comparaison.', '提案は比較スコアを変更しません。', 'Предложения не меняют оценки сравнения.'],
+    ['Ask AI', '询问 AI', 'Demander à l’IA', 'AI に質問', 'Спросить ИИ'],
+    ['Cloud AI is available in the desktop edition. This browser edition compares options locally.', '云端 AI 可在桌面版使用。浏览器版在本地比较选项。', 'L’IA cloud est disponible dans l’application. Cette version compare les options localement.', 'クラウド AI はデスクトップ版で利用できます。ブラウザー版は端末内で比較します。', 'Облачный ИИ доступен в настольной версии. Эта версия сравнивает варианты локально.'],
+    ['{selected} / {count} selected', '已选 {selected} / {count} 项', '{selected} / {count} sélectionnés', '{count} 件中 {selected} 件を選択', 'Выбрано: {selected} / {count}'],
     ['Fictional preset data', '预设为虚构数据', 'Données fictives des exemples', 'プリセットは架空データ', 'Вымышленные данные примеров'],
     ['Top priorities: {labels}', '主要偏好：{labels}', 'Priorités : {labels}', '主な優先事項：{labels}', 'Главные приоритеты: {labels}'],
     ['Why this match?', '为何匹配？', 'Pourquoi ce choix ?', 'この選択の理由は？', 'Почему этот вариант?'],

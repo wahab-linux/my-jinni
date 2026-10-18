@@ -47,6 +47,8 @@
       <p id="decision-load-status" class="feedback" role="status" aria-live="polite"><span data-i18n="Getting your choices ready…">Getting your choices ready…</span></p><button id="decision-retry" class="button secondary" type="button" hidden><span data-i18n="Retry decision data">Retry decision data</span></button>
       <div class="decision-grid">
         <section class="panel decision-preferences" aria-label="Decision preferences" data-i18n-aria-label="Decision preferences">
+          <h2 class="conditions-title" data-i18n="Conditions &amp; sources">Conditions &amp; sources</h2>
+          <div class="decision-goal"><label for="decision-goal" data-i18n="Decision goal">Decision goal</label><textarea id="decision-goal" rows="2" maxlength="2000" placeholder="What are you trying to decide?" data-i18n-placeholder="What are you trying to decide?" aria-describedby="decision-goal-hint"></textarea><p id="decision-goal-hint" class="hint browser-only" data-i18n="Used by AI suggestions in the desktop edition.">Used by AI suggestions in the desktop edition.</p><button id="ai-options-generate" type="button" class="button secondary" hidden data-i18n="Suggest options">Suggest options</button><p id="ai-options-notice" class="hint" hidden></p></div>
           <form id="decision-form"><fieldset id="decision-inputs" disabled>
             <h3 id="scenario-title" tabindex="-1"><span data-i18n="Choose a topic">Choose a topic</span></h3><p id="scenario-notice" class="scenario-notice"></p>
             <div id="spending-controls"></div>
@@ -58,10 +60,14 @@
             <button id="decision-submit" type="submit" class="button primary"><span data-i18n="Find my best match">Find my best match</span> <span aria-hidden="true">→</span></button>
 
           </fieldset></form>
+          <section class="decision-source-picker" aria-labelledby="decision-sources-title"><div class="compact-heading"><h3 id="decision-sources-title" data-i18n="Notes &amp; files">Notes &amp; files</h3><button id="decision-sources-manage" type="button" class="text-button" data-i18n="Import / manage">Import / manage</button></div><p id="decision-sources-status" class="hint" role="status" data-i18n="Loading sources…">Loading sources…</p><div id="decision-sources" class="decision-source-list"></div></section>
         </section>
         <section class="panel decision-output" aria-labelledby="comparison-title"><div class="results-heading"><div><h2 id="comparison-title" tabindex="-1"><span data-i18n="Your comparison">Your comparison</span></h2></div><span id="decision-count" class="local-badge"><span data-i18n="Let’s find a fit">Let’s find a fit</span></span></div>
-          <p id="decision-status" class="feedback" role="status" aria-live="polite"><span data-i18n="Pick what matters, then tap Find my best match.">Pick what matters, then tap Find my best match.</span></p><div id="decision-results"></div><button id="edit-choices" type="button" class="button secondary" hidden><span data-i18n="Change my choices">Change my choices</span> <span aria-hidden="true">↑</span></button>
+          <p id="decision-status" class="feedback" role="status" aria-live="polite"><span data-i18n="Pick what matters, then tap Find my best match.">Pick what matters, then tap Find my best match.</span></p>
+          <section id="ai-options-panel" class="ai-options-panel" aria-labelledby="ai-options-title" hidden><h3 id="ai-options-title" tabindex="-1" data-i18n="AI suggestions">AI suggestions</h3><p class="hint" data-i18n="Suggestions do not change comparison scores.">Suggestions do not change comparison scores.</p><p id="ai-options-status" class="feedback" role="status" aria-live="polite"></p><div id="ai-options-results"></div></section>
+          <div id="decision-results"></div><button id="edit-choices" type="button" class="button secondary" hidden><span data-i18n="Change my choices">Change my choices</span> <span aria-hidden="true">↑</span></button>
         </section>
+        <aside id="decision-ai-slot" aria-label="Ask AI" data-i18n-aria-label="Ask AI"><section class="panel browser-ai-notice browser-only"><h2 data-i18n="Ask AI">Ask AI</h2><p class="hint" data-i18n="Cloud AI is available in the desktop edition. This browser edition compares options locally.">Cloud AI is available in the desktop edition. This browser edition compares options locally.</p><a class="button secondary" href="https://github.com/wahab-linux/my-jinni#run-the-desktop-application" data-i18n="Desktop edition">Desktop edition</a></section></aside>
       </div>
     </section>
     <details id="legacy-planner" class="legacy-example"><summary><span data-i18n="Plan an activity">Plan an activity</span> <span><span data-i18n="Optional Glasgow demo · prices and return times included">Optional Glasgow demo · prices and return times included</span></span></summary>

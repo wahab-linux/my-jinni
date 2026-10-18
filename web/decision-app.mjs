@@ -371,7 +371,7 @@ function renderResult(result) {
   about.append(node('summary', 'Sources and limitations'), provenance); target.append(about);
 }
 
-$('decision-form').addEventListener('input', () => clearComparison());
+$('decision-form').addEventListener('input', (event) => { if (event.target.id !== 'custom-json') clearComparison(); });
 $('decision-form').addEventListener('change', () => clearComparison());
 $('decision-reset').addEventListener('click', () => selectScenario(state.current.scenario.id));
 $('decision-retry').addEventListener('click', loadDecisions);
@@ -430,6 +430,7 @@ $('decision-form').addEventListener('submit', async (event) => {
 });
 $('custom-json').addEventListener('input', () => {
   state.customDirty = true;
+  clearComparison();
   status('custom-status', 'Apply your custom data first.');
 });
 $('custom-apply').addEventListener('click', async () => {
@@ -478,6 +479,7 @@ globalThis.jinniI18n?.onChange(() => {
   }
 });
 
-configureContext({ decisionRequest: readDecisionRequest });
+configureContext({ decisionRequest: readDecisionRequest, decisionGoal: () => $('decision-goal').value.trim() });
+$('decision-goal').addEventListener('input', notifyContextChange);
 
 void loadDecisions();

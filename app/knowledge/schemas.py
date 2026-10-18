@@ -104,6 +104,7 @@ class VertexStatus(Model):
 
 
 class ChatRequest(Model):
+    intent: Literal["answer", "options"] = "answer"
     question: Annotated[str, Field(min_length=1, max_length=2000)]
     provider: ProviderId = "openai"
     source_ids: Annotated[list[SourceId], Field(max_length=MAX_SOURCES)] = []
@@ -153,6 +154,46 @@ class DraftAnswer(Model):
     citations: Annotated[list[DraftCitation], Field(max_length=12)]
 
 
+OptionText = Annotated[str, Field(min_length=1, max_length=400)]
+OptionId = Annotated[str, Field(max_length=60, pattern=r"^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$")]
+
+
+class DraftAIOption(Model):
+    id: OptionId
+    title: Annotated[str, Field(min_length=1, max_length=200)]
+    summary: Annotated[str, Field(min_length=1, max_length=1200)]
+    trade_offs: Annotated[list[OptionText], Field(max_length=3)]
+    missing_information: Annotated[list[OptionText], Field(max_length=3)]
+    citations: Annotated[list[DraftCitation], Field(min_length=1, max_length=4)]
+
+    @model_validator(mode="after")
+    def require_visible_text(self) -> "DraftAIOption":
+        if any(
+            not text.strip()
+            for text in [self.title, self.summary, *self.trade_offs, *self.missing_information]
+        ):
+            raise ValueError("Option descriptions must not be blank")
+        return self
+
+
+class DraftOptions(Model):
+    answer: Annotated[str, Field(min_length=1, max_length=2000)]
+    supported: StrictBool
+    options: Annotated[list[DraftAIOption], Field(max_length=3)]
+
+    @model_validator(mode="after")
+    def require_grounded_choices(self) -> "DraftOptions":
+        if not self.answer.strip():
+            raise ValueError("The overview must not be blank")
+        if (self.supported and not 2 <= len(self.options) <= 3) or (
+            not self.supported and self.options
+        ):
+            raise ValueError("Return two or three supported options, or no unsupported options")
+        if len({option.id for option in self.options}) != len(self.options):
+            raise ValueError("Option IDs must be unique")
+        return self
+
+
 class Citation(Model):
     chunk_id: str
     source_id: SourceId
@@ -160,6 +201,15 @@ class Citation(Model):
     page: int | None
     quote: str
     is_simulated: bool
+
+
+class AIOption(Model):
+    id: OptionId
+    title: Annotated[str, Field(min_length=1, max_length=200)]
+    summary: Annotated[str, Field(min_length=1, max_length=1200)]
+    trade_offs: Annotated[list[OptionText], Field(max_length=3)]
+    missing_information: Annotated[list[OptionText], Field(max_length=3)]
+    citations: Annotated[list[Citation], Field(min_length=1, max_length=4)]
 
 
 class ChatData(Model):
@@ -171,3 +221,4 @@ class ChatData(Model):
     used_source_ids: list[str]
     planner: RecommendationData | None = None
     decision: DecisionResult | None = None
+    options: list[AIOption] = Field(default_factory=list, max_length=3)

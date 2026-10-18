@@ -19,6 +19,7 @@ last_header_used = False
 last_body_key_free = True
 last_store_disabled = False
 last_provider = None
+last_intent = "answer"
 captured_responses = {}
 source_failure = False
 CAPTURE_PATHS = {
@@ -157,11 +158,30 @@ def evidence_chunks(value):
             yield from evidence_chunks(decoded)
 
 
+def options_requested(value):
+    if isinstance(value, dict):
+        return value.get("intent") == "options" or any(
+            options_requested(child) for child in value.values()
+        )
+    if isinstance(value, list):
+        return any(options_requested(child) for child in value)
+    if isinstance(value, str):
+        try:
+            decoded = json.loads(value)
+        except ValueError:
+            return False
+        return isinstance(decoded, (dict, list)) and options_requested(decoded)
+    return False
+
+
 async def mocked_provider(request):
-    global last_evidence, last_header_used, last_body_key_free, last_store_disabled, last_provider
+    global last_evidence, last_header_used, last_body_key_free, last_store_disabled
+    global last_provider, last_intent
     payload = json.loads(request.content)
     provider = HOST_PROVIDERS[request.url.host]
     last_provider = provider
+    option_intent = options_requested(payload)
+    last_intent = "options" if option_intent else "answer"
     model = payload["model"]
     call_id = f"{provider}:{model}"
     provider_calls[call_id] += 1
@@ -182,26 +202,67 @@ async def mocked_provider(request):
         )
     if model == "test-auth-error":
         return httpx.Response(401, json={"error": {"message": "Mocked invalid key"}})
-    if model == "test-provider-error" and provider_calls[call_id] == 1:
+    if (
+        model in {"test-provider-error", "test-options-provider-error"}
+        and provider_calls[call_id] == 1
+    ):
         return httpx.Response(503, json={"error": {"message": "Mocked temporary failure"}})
     if model == "test-rate-limit":
         return httpx.Response(429, json={"error": {"message": "Mocked rate limit"}})
     if model == "test-provider-timeout":
         raise httpx.ReadTimeout("Mocked provider timeout")
-    if model == "test-slow":
+    if model in {"test-slow", "test-options-slow"}:
         await asyncio.sleep(0.4)
     if model == "test-insufficient":
         return provider_response(
-            {"answer": "Evidence is insufficient.", "supported": False, "citations": []}, provider
+            {
+                "answer": "Evidence is insufficient.",
+                "supported": False,
+                "options" if option_intent else "citations": [],
+            },
+            provider,
         )
     selected = next(
-        (chunk for chunk in chunks if chunk["source_id"] != "planner-context"), chunks[0]
+        (
+            chunk
+            for chunk in chunks
+            if chunk["source_id"] not in {"planner-context", "decision-context"}
+        ),
+        chunks[0],
     )
     quote = (
         "A deliberately invalid quote that does not appear in the selected source."
-        if model == "test-invalid-quote"
+        if model in {"test-invalid-quote", "test-options-invalid-quote"}
         else selected["text"][:120]
     )
+    if option_intent:
+        return provider_response(
+            {
+                "answer": "Two fictional ways to use the selected guide.",
+                "supported": True,
+                "options": [
+                    {
+                        "id": "museum-visit",
+                        "title": "Fictional museum visit",
+                        "summary": "Plan a museum visit using the selected opening-time evidence.",
+                        "trade_offs": ["The source does not verify ticket prices."],
+                        "missing_information": ["Check current opening times."],
+                        "citations": [{"chunk_id": selected["chunk_id"], "quote": quote}],
+                    },
+                    {
+                        "id": "ramp-access-visit",
+                        "title": "Fictional ramp-access visit",
+                        "summary": (
+                            "Use the guide's ramp-access information. Literal <img src=x> text."
+                        ),
+                        "trade_offs": ["Availability has not been checked."],
+                        "missing_information": ["Confirm accessibility details."],
+                        "citations": [{"chunk_id": selected["chunk_id"], "quote": quote}],
+                    },
+                ],
+            },
+            provider,
+        )
     return provider_response(
         {
             "answer": "The selected guide says: " + quote,
@@ -232,6 +293,7 @@ def provider_status():
         "body_key_free": last_body_key_free,
         "store_disabled": last_store_disabled,
         "last_provider": last_provider,
+        "last_intent": last_intent,
     }
 
 

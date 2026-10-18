@@ -12,10 +12,12 @@ from app.comparison.schemas import DecisionRequest, DecisionResult
 from app.errors import error_response
 from app.knowledge.ingestion import IngestionError, extract_upload
 from app.knowledge.openai_client import MAX_CHUNK_CHARACTERS, AIServiceError
+from app.knowledge.options import generate_options
 from app.knowledge.providers import generate_answer
 from app.knowledge.schemas import (
     MAX_RETRIEVED_CHUNKS,
     MAX_UPLOAD_BYTES,
+    AIOption,
     ChatData,
     ChatRequest,
     Citation,
@@ -391,7 +393,8 @@ async def chat(
             "Enter a valid key for the selected AI provider in session settings.",
         )
     try:
-        draft = await generate_answer(
+        generator = generate_options if body.intent == "options" else generate_answer
+        draft = await generator(
             ai_client,
             provider=body.provider,
             api_key=key,
@@ -400,7 +403,24 @@ async def chat(
             chunks=chunks,
             **({"vertex": body.vertex} if body.provider == "vertex" else {}),
         )
-        citations = checked_citations(draft, chunks) if draft.supported else []
+        options = []
+        if body.intent == "options":
+            for option in draft.options:
+                options.append(
+                    AIOption(
+                        **option.model_dump(exclude={"citations"}),
+                        citations=checked_citations(option, chunks),
+                    )
+                )
+            citations = list(
+                {
+                    (citation.chunk_id, citation.quote): citation
+                    for option in options
+                    for citation in option.citations
+                }.values()
+            )
+        else:
+            citations = checked_citations(draft, chunks) if draft.supported else []
     except AIServiceError as exc:
         return error_response(exc.status_code, exc.code, exc.message)
     return Envelope(
@@ -417,6 +437,7 @@ async def chat(
             used_source_ids=used_sources,
             planner=planner,
             decision=decision,
+            options=options,
         ),
         warnings=warnings,
     )

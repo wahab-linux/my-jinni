@@ -1,6 +1,9 @@
 // Shared UI readers expose current choices, never credentials or mutable application state.
 const readers = {
   sourceIds: () => [],
+  sources: () => [],
+  setSourceIds: () => {},
+  decisionGoal: () => '',
   plannerPreferences: () => null,
   decisionRequest: () => null,
   sourceViewer: async () => false,
@@ -12,6 +15,9 @@ export function configureContext(next) {
   for (const name of Object.keys(readers)) if (typeof next[name] === 'function') readers[name] = next[name];
 }
 export const getSourceIds = () => [...readers.sourceIds()];
+export const getSources = () => snapshot(readers.sources());
+export const setSourceIds = (ids) => readers.setSourceIds([...ids]);
+export const getDecisionGoal = () => readers.decisionGoal();
 export const getPlannerPreferences = () => snapshot(readers.plannerPreferences());
 export const getDecisionRequest = () => snapshot(readers.decisionRequest());
 export const openSource = (id, options = {}) => readers.sourceViewer(id, options);

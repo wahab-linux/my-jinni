@@ -129,7 +129,9 @@ def test_default_request_is_valid(valid_request):
         ("source-create.json", TextSourceRequest),
         ("chat-request.json", ChatRequest),
         ("chat-request-vertex.json", ChatRequest),
+        ("chat-options-request.json", ChatRequest),
         ("chat-success.json", Envelope[ChatData]),
+        ("chat-options-success.json", Envelope[ChatData]),
     ],
 )
 def test_knowledge_examples_match_additive_contract(filename, model):

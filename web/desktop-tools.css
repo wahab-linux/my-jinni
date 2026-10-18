@@ -1,4 +1,4 @@
-.desktop-ai-panel { margin-top: 24px; padding: 24px 28px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); scroll-margin-top: 24px; }
+.desktop-ai-panel { margin-top: 0; padding: 20px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); scroll-margin-top: 24px; min-width: 0; }
 .desktop-ai-settings-dialog { width: min(660px, calc(100% - 32px)); max-height: 90vh; }
 :is(.desktop-ai-panel, .desktop-ai-settings-dialog) h2 { margin-top: 0; }
 :is(.desktop-ai-panel, .desktop-ai-settings-dialog) form { display: grid; gap: 10px; }
@@ -27,6 +27,10 @@
 .desktop-vertex-settings pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; padding: 12px; background: var(--surface-soft); border-radius: 8px; }
 
 .desktop-ai-panel > .dialog-top, .desktop-ai-settings-dialog > .dialog-top { align-items: center; flex-wrap: wrap; gap: 12px; }
+.desktop-ai-panel > .dialog-top .button { min-height: 36px; padding: 7px 10px; font-size: 11px; }
+.desktop-ai-panel > .dialog-top h2 { margin-bottom: 0; font-size: 20px; }
+.desktop-ai-panel .desktop-ai-check { font-size: 11px; }
+.desktop-ai-panel #desktop-ai-ask { margin-bottom: 0; min-height: 42px; }
 .desktop-ai-panel > .muted, .desktop-ai-summary { margin-block: 8px 12px; }
 .desktop-ai-summary { font-size: 13px; font-weight: 650; overflow-wrap: anywhere; }
 .desktop-ai-source-tools { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }

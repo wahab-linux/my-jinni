@@ -1,5 +1,7 @@
 # Multiple AI providers: additive contract v0.4
 
+Additive v0.7 supports explicit structured option proposals with the same five provider/credential paths; [AI_OPTIONS.md](AI_OPTIONS.md) defines `intent: "options"`, evidence limits and per-option exact citations. Ordinary answer schemas remain unchanged. Provider output schemas use supported structural keywords; local Pydantic validation enforces option/list/text bounds. In particular, Claude's documented array-keyword limits mean proposal cardinality cannot rely on an unsupported upstream `maxItems`. No live provider/account validation is implied by mocked protocol tests.
+
 ## Independent settings and model choices, 2026-10-18
 
 Desktop **Ask AI** starts visible in the shared decision workspace. **AI settings** opens a separate dialog for provider selection, model choices, session API keys or Google project/location/ADC setup. Close settings to ask a question; the selected provider and exact model remain visible with the cloud notice. The source library starts closed. This supersedes the earlier embedded/expandable session-settings layout.

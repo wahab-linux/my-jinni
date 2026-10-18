@@ -93,6 +93,50 @@ try {
     assert.equal(await page.locator('#sound-toggle').getAttribute('aria-pressed'), 'false');
     assert.equal(await page.locator('#decision-workspace').getAttribute('data-scenario'), 'travel');
   });
+  await check('parallel browser workspace keeps compact goal/source state local and labels unavailable cloud proposals honestly', async () => {
+    const local = await browser.newContext({ viewport: { width: 1680, height: 1000 }, reducedMotion: 'reduce' });
+    const tab = await local.newPage(); await tab.goto(base); await tab.locator('#decision-inputs:not([disabled])').waitFor();
+    const columns = await tab.evaluate(() => [document.querySelector('#decision-form').closest('section'), document.querySelector('#decision-results').closest('section'), document.querySelector('#decision-ai-slot')].map(node => ({ x: node.getBoundingClientRect().x, y: node.getBoundingClientRect().y, width: node.getBoundingClientRect().width })));
+    assert.ok(columns[0].x + columns[0].width <= columns[1].x + 2); assert.ok(columns[1].x + columns[1].width <= columns[2].x + 2);
+    assert.ok(Math.max(...columns.map(item => item.y)) - Math.min(...columns.map(item => item.y)) < 60);
+    assert.equal(await tab.locator('#ai-options-generate').isVisible(), false);
+    assert.match(await tab.locator('#decision-ai-slot .browser-ai-notice').innerText(), /desktop/i);
+    await tab.locator('#decision-goal').fill('Compare a fictional museum visit.');
+    await openTools(tab); await addSourceAction(tab, 'paste-toggle');
+    const title = 'Price <img src=x>'; const text = 'Exact compactsource evidence stays literal.';
+    await tab.locator('#source-title').fill(title); await tab.locator('#source-text').fill(text);
+    await tab.locator('#source-simulated').check(); await tab.locator('#paste-form button[type=submit]').click();
+    await tab.locator('.source-item').waitFor(); await tab.locator('#library-close').click();
+    const compact = tab.locator('#decision-sources label.compact-source');
+    assert.ok((await compact.innerText()).includes(title)); assert.equal(await compact.locator('input').isChecked(), true);
+    assert.equal(await compact.locator('.compact-source-badge').innerText(), 'Simulated source');
+    assert.equal(await compact.locator('img').count(), 0);
+    await compact.locator('input').focus(); await tab.keyboard.press('Space');
+    assert.equal(await tab.evaluate(() => document.activeElement.value), await compact.locator('input').inputValue());
+    assert.equal(await compact.locator('input').isChecked(), false); await tab.keyboard.press('Tab');
+    await tab.locator('#decision-sources-manage').click();
+    assert.equal(await tab.locator('.source-item input').isChecked(), false);
+    await tab.locator('.source-item input').check(); await tab.locator('#library-close').click();
+    assert.equal(await compact.locator('input').isChecked(), true);
+    await compare(tab); await tab.locator('.decision-card').waitFor();
+    const numeric = await tab.evaluate(async () => (await import('./ui-context.mjs')).getDecisionRequest());
+    await tab.evaluate(() => { window.parallelFetches = 0; const original = window.fetch; window.fetch = (...args) => { window.parallelFetches++; return original(...args); }; });
+    for (const language of ['zh-CN', 'fr', 'ja', 'ru', 'en']) {
+      await tab.locator('#language-select').selectOption(language);
+      assert.equal(await tab.locator('#decision-goal').inputValue(), 'Compare a fictional museum visit.');
+      assert.ok((await compact.innerText()).includes(title)); assert.equal(await compact.locator('input').isChecked(), true);
+      assert.deepEqual(await tab.evaluate(async () => (await import('./ui-context.mjs')).getDecisionRequest()), numeric);
+    }
+    assert.equal(await tab.evaluate(() => window.parallelFetches), 0);
+    await tab.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+    await tab.screenshot({ path: 'tmp/web/jinni-parallel-wide.png' });
+    await tab.setViewportSize({ width: 390, height: 844 });
+    assert.ok(await tab.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+    await tab.locator('#decision-goal').fill('A retained narrow-layout goal.');
+    await tab.screenshot({ path: 'tmp/web/jinni-parallel-phone.png', fullPage: true });
+    assert.equal(await tab.locator('#ai-options-results .ai-option-card').count(), 0);
+    await local.close();
+  });
   await check('first-time example produces a real comparison and an easy return to preserved choices', async () => {
     await waitText(page.locator('#decision-results'), 'Set your priorities, then compare.');
     await page.locator('#try-example').click();

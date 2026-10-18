@@ -317,6 +317,10 @@ async function providers(page, base, saved) {
   });
   await check('missing-key feedback stays explicit while deterministic planning remains enabled', async () => {
     assert.equal((await ask(page, base, question)).status, 401); await contains(page.locator('#desktop-ai-feedback'), 'key');
+    await page.locator('#decision-goal').fill('Suggest a visit using the fictional museum guide.');
+    const proposal = await submit(page, base, 'chat', '#ai-options-generate');
+    assert.equal(proposal.request.intent, 'options'); assert.equal(proposal.status, 401);
+    await contains(page.locator('#ai-options-status'), 'key');
     assert.deepEqual(await page.evaluate(() => window.myJinni.getSessionSettings()), { configured: false }); assert.equal(await page.locator('#plan-submit').isEnabled(), true);
   });
   await check('session settings return only configured state and saving clears the key input', async () => {
@@ -397,6 +401,90 @@ async function providers(page, base, saved) {
   });
 }
 
+async function options(page, app, base, saved) {
+  const goal = 'Use the museum guide to suggest a small accessible visit.';
+  const cards = page.locator('#ai-options-results > .ai-option-card');
+  async function generate() {
+    const result = await submit(page, base, 'chat', '#ai-options-generate');
+    if (result.status === 200 && result.body.data.status === 'answered') await cards.first().waitFor();
+    return result;
+  }
+  await check('AI proposals use current goal, settings, sources and conditions without changing numeric comparisons', async () => {
+    await scenario(page, 'travel'); const compared = (await compare(page, base)).body.data;
+    await select(page, [saved.imported.id]); await closeTools(page); await chooseModel(page, 'gpt-4.1-mini');
+    await page.locator('#decision-goal').fill(goal);
+    const current = await context(page); const result = await generate();
+    assert.equal(result.status, 200); assert.equal(result.request.intent, 'options'); assert.equal(result.request.question, goal);
+    assert.equal(result.request.provider, 'openai'); assert.equal(result.request.model, 'gpt-4.1-mini');
+    assert.deepEqual(result.request.source_ids, [saved.imported.id]); assert.deepEqual(result.request.decision_request, current.decision);
+    assert.equal(Object.hasOwn(result.request, 'preferences'), false);
+    assert.deepEqual(result.body.data.decision, compared); assert.equal(result.body.data.options.length, 2);
+    assert.equal(await cards.count(), 2);
+    assert.equal(await page.evaluate(() => Boolean(document.getElementById('ai-options-panel').compareDocumentPosition(document.getElementById('decision-results')) & window.Node.DOCUMENT_POSITION_FOLLOWING)), true);
+    await waitUntil(() => page.evaluate(() => document.getElementById('ai-options-panel').contains(document.activeElement)));
+    for (const option of result.body.data.options) {
+      const card = page.locator(`#ai-options-results [data-option-id="${option.id}"]`);
+      assert.equal(await card.locator('h4').textContent(), option.title);
+      for (const phrase of [option.summary, ...option.trade_offs, ...option.missing_information]) await contains(card, phrase);
+      assert.equal(option.citations[0].source_id, saved.imported.id); assert.equal(option.citations[0].quote, saved.text);
+    }
+    assert.equal(await page.locator('#ai-options-results img, #ai-options-results script').count(), 0);
+    assert.deepEqual((await context(page)).decision, current.decision);
+    assert.equal(await page.locator('.decision-card').getAttribute('data-option-id'), compared.recommended.id);
+    const telemetry = await status(base); assert.equal(telemetry.last_intent, 'options');
+    assert.ok(telemetry.last_source_ids.includes(saved.imported.id)); assert.equal(telemetry.last_source_ids.includes(saved.excluded.id), false);
+    await page.locator('#ai-options-results .ai-option-citation').first().click();
+    assert.equal(await page.locator('#viewer-content mark').innerText(), saved.text); await page.locator('#viewer-close').click();
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1680, 1000));
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' })); await screenshot(page, 'jinni-parallel-options-wide.png');
+  });
+  await check('questions and locale changes keep current proposals, original citations and source selections without automatic calls', async () => {
+    await page.locator('#desktop-ai-question').fill('When does the fictional museum open?');
+    assert.equal((await submit(page, base, 'chat', '#desktop-ai-ask')).status, 200);
+    assert.equal(await cards.count(), 2);
+    const original = await cards.allTextContents(); const current = await context(page); const calls = (await status(base)).calls;
+    for (const locale of ['zh-CN', 'fr', 'ja', 'ru', 'en']) {
+      await page.locator('#language-select').selectOption(locale);
+      assert.equal(await page.locator('#decision-goal').inputValue(), goal); assert.deepEqual(await context(page), current);
+      assert.equal(await cards.first().locator('h4').textContent(), 'Fictional museum visit');
+      await contains(cards.nth(1), 'Literal <img src=x> text.');
+      await page.locator('#ai-options-results .ai-option-citation').first().click();
+      assert.equal(await page.locator('#viewer-content mark').innerText(), saved.text); await page.locator('#viewer-close').click();
+    }
+    assert.deepEqual(await cards.allTextContents(), original); assert.deepEqual((await status(base)).calls, calls);
+  });
+  await check('goal, source, conditions and provider/model changes invalidate proposals and stale responses', async () => {
+    await page.locator('#decision-goal').fill(`${goal} Revised.`); assert.equal(await cards.count(), 0);
+    await page.locator('#decision-goal').fill(goal); await generate();
+    await page.locator(`#decision-sources input[value="${saved.imported.id}"]`).uncheck();
+    assert.equal(await cards.count(), 0); await select(page, [saved.imported.id]); await closeTools(page); await generate();
+    await page.locator('#limit-cost-pence').fill('24.75'); assert.equal(await cards.count(), 0); await compare(page, base); await generate();
+    await chooseModel(page, 'test-options-slow'); assert.equal(await cards.count(), 0);
+    await page.locator('#ai-options-generate').click(); await page.locator('#desktop-ai-question').focus();
+    await waitUntil(async () => await cards.count() === 2); assert.equal(await page.evaluate(() => document.activeElement.id), 'desktop-ai-question');
+    await page.locator('#ai-options-generate').click(); await page.locator('#decision-goal').fill('A changed goal during the slow request.');
+    await page.waitForTimeout(650); assert.equal(await cards.count(), 0); assert.equal(await page.evaluate(() => document.activeElement.id), 'decision-goal');
+    await page.locator('#decision-goal').fill(goal); await provider(page, 'deepseek'); await chooseModel(page, 'deepseek-flash');
+    const deepseek = await generate(); assert.equal(deepseek.body.data.provider, 'deepseek'); assert.equal((await status(base)).header_used, true);
+    await provider(page, 'openai'); assert.equal(await cards.count(), 0); await chooseModel(page, 'gpt-4.1-mini');
+  });
+  await check('proposal provider errors, invalid quotations and unsupported evidence never show fallback choices; retry remains explicit', async () => {
+    await chooseModel(page, 'test-options-provider-error'); assert.equal((await generate()).status, 503);
+    await contains(page.locator('#ai-options-status'), 'unavailable'); assert.equal(await cards.count(), 0);
+    assert.equal((await generate()).status, 200); assert.equal(await cards.count(), 2);
+    await chooseModel(page, 'test-options-invalid-quote'); assert.equal((await generate()).status, 502);
+    await contains(page.locator('#ai-options-status'), 'valid'); assert.equal(await cards.count(), 0);
+    await chooseModel(page, 'test-insufficient'); const insufficient = await generate();
+    assert.equal(insufficient.body.data.status, 'insufficient_evidence'); assert.deepEqual(insufficient.body.data.options, []); assert.equal(await cards.count(), 0);
+    assert.equal(await page.locator('#decision-submit').isEnabled(), true);
+    await chooseModel(page, 'gpt-4.1-mini'); await generate();
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(900, 850));
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 2), true);
+    await screenshot(page, 'jinni-parallel-options-narrow.png');
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1440, 1000));
+  });
+}
+
 async function languages(page, app, base, saved) {
   await check('five locales retain raw content, custom labels/units, input state, keys and calculations without cloud calls', async () => {
     await scenario(page, 'custom'); await definition(page, equipment()); await compare(page, base);
@@ -470,6 +558,7 @@ async function sharedDesktop() {
   const directory = tempDirectory(); let backend = await startMockBackend({ directory }); let app; let page; const errors = [];
   try {
     ({ application: app, page } = await launchDesktop(electron, backend.baseUrl, directory)); page.on('pageerror', (error) => errors.push(error.message));
+    await page.emulateMedia({ reducedMotion: 'reduce' });
     await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1440, 1000));
     await waitUntil(async () => page.url() === 'jinni://app/index.html' && await page.locator('#decision-submit').isEnabled() && await page.locator('#desktop-backend-status').count() && await page.locator('#scenario-tabs button').count() === 5);
     await waitUntil(async () => await page.locator('#origin option').count() === 2);
@@ -486,7 +575,8 @@ async function sharedDesktop() {
       assert.equal(await page.locator('#legacy-planner').evaluate((node) => node.open), false);
     });
     await decisions(page, backend.baseUrl); await planner(page, backend.baseUrl);
-    const saved = await sourceLibrary(page, app, backend.baseUrl, directory); await providers(page, backend.baseUrl, saved); await languages(page, app, backend.baseUrl, saved);
+    const saved = await sourceLibrary(page, app, backend.baseUrl, directory); await providers(page, backend.baseUrl, saved);
+    await options(page, app, backend.baseUrl, saved); await languages(page, app, backend.baseUrl, saved);
     await check('deletion updates SQLite and the external backend survives close without page errors', async () => {
       await library(page); await page.locator(`.source-item[data-source-id="${saved.excluded.id}"] button`).last().click(); await page.locator('#delete-confirm').click();
       await waitUntil(async () => !(await sources(backend.baseUrl)).some((source) => source.id === saved.excluded.id)); await closeTools(page); await page.locator('#language-select').selectOption('fr');

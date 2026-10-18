@@ -1,5 +1,7 @@
 # Jinni requirements
 
+**AI choices and parallel panels, 2026-10-18:** place compact conditions/source selection, choices/comparisons and Ask AI in three parallel responsive panels. Provide explicit AI option generation from a goal, current comparison and selected sources, using the existing provider configuration. [AI_OPTIONS.md](AI_OPTIONS.md) defines additive v0.7; proposals have checked citations, trade-offs and missing information, and never replace deterministic scores. Full library tools and AI settings remain closed until opened. This supersedes older source/dialog layout descriptions. FR-24 and AC-37/38 cover this increment.
+
 **AI interface request, 2026-10-18:** desktop Ask AI starts visible beside the decision workflow; provider/model/credentials and Vertex ADC setup belong in a separate settings dialog. Keep notes/files closed until requested. Model selection offers provider-specific suggestions and a custom ID. Preserve session isolation and all five languages. Selected retrieved source evidence informs AI prose; it does not automatically edit comparison measurements or ranking. This supersedes the earlier requirement that the question dialog start closed. FR-23 and AC-35/36 cover this increment.
 
 **Shared frontend and concise copy, 2026-10-18:** desktop must follow the browser frontend through the same source files, not manually mirrored markup. The visible brand is `Jinni`. Keep native API/SQLite/import/provider operations through the existing restricted bridge; browser behavior and data remain local. Remove copy that adds no understanding or action, while retaining units, simulation labels, meaningful explanations, errors and cloud-recipient disclosure. FR-22 and AC-33/34 cover this change.
@@ -85,6 +87,7 @@ All requirements below are P0 unless marked P1. IDs are stable so code, tasks, a
 | **FR-21** | Offer English, Simplified Chinese, French, Japanese and Russian through a native language selector in both experiences. Keep English as the default, remember the local preference and translate only explicit interface text. Preserve current inputs, selected evidence, keys, custom labels/units, calculated results and exact original quotations when switching. | AC-31, AC-32 |
 | **FR-22** | Load the same page, CSS, controls, translations and result presentation in browser and Electron. Keep platform-specific operations behind a small adapter and optional native tools. Display Jinni with an uppercase J. Remove text that can be deleted without changing understanding, actions or evidence/privacy boundaries. | AC-33, AC-34 |
 | **FR-23** | Keep desktop Ask AI visible without a modal. Place provider/model/session credentials and Vertex project/sign-in setup in a separately opened, keyboard-accessible settings dialog. Offer provider-specific model suggestions with custom IDs and separate in-memory choices; disclose the actual selected recipient/model. Preserve citations and distinguish AI document analysis from deterministic ranking. | AC-35, AC-36 |
+| **FR-24** | Provide three parallel responsive panels for compact conditions/source selection, choices/comparisons and Ask AI. Explicitly request two or three AI proposals from the goal, current settings and selected evidence, with exact citations, trade-offs and missing information. Retain actual calculated results separately, invalidate stale proposals and preserve keyless comparison/browser behavior. | AC-37, AC-38 |
 
 ## 5. Business and data rules
 
@@ -191,6 +194,13 @@ AI interface acceptance, 2026-10-18:
 | **AC-36** | Import notes and a text file, select each separately and together, and request the same comparison → AI input contains only selected matching source chunks plus explicitly included comparison context; calculated metrics/ranking equal the ordinary endpoint. No unselected document changes scores. Show the boundary to users. Model suggestions require no credential discovery or silent fallback. | API evidence capture, model catalog unit tests and desktop checks |
 
 ## 8. Work packages and ownership
+
+AI choices and layout acceptance, 2026-10-18:
+
+| ID | Given → action → expected result | Verify |
+| --- | --- | --- |
+| **AC-37** | Set a goal/conditions and select sources beside them → explicitly generate AI options → see two or three separate proposal cards with checked original citations. Inputs, provider/model and selection changes invalidate old/pending proposals; provider failures and insufficient evidence show no substitute options. Calculated comparison remains unchanged and works without credentials. | API/provider tests and actual Electron |
+| **AC-38** | Open the shared workspace at wide/narrow sizes → conditions, results and Ask AI use parallel columns or readable stacked panels. Compact source selection and full library selection stay synchronized; deletion refreshes both. Locale changes preserve goals, choices, exact quotations and source state without generation. Browser remains local-only. | Shared-context tests, actual Chromium/Electron and screenshots |
 
 Read this with `docs/PROJECT_PLAN.md` and the assigned prompt. Coordinate shared contract/dependency/documentation changes before editing them. The sequence allows parallel development without having two people edit the same implementation files.
 

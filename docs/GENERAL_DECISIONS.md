@@ -1,5 +1,7 @@
 # General decisions: additive contract v0.5
 
+The 2026-10-18 extension adds a parallel conditions/sources, choices and Ask AI layout and explicitly requested source-grounded AI proposals. [AI_OPTIONS.md](AI_OPTIONS.md) defines additive chat intent `options`; no general-engine or metric schema changes occur. AI cards are distinct from the calculated comparison. Compact source selection shares the existing library state; full tools and settings open separately. Earlier collapsed-question/layout descriptions are superseded.
+
 On 2026-10-17 the user requested a general decision backend covering the challenge's market, travel, student-hub, sustainability and own-idea scenarios. They also requested decision-first presentation, compact/collapsible library and question tools, animation and sound. The challenge image gives potential problem areas, not a requirement to connect every real service or proof of bonus rules.
 
 Preserve all v0.2-v0.4 planner/library/provider contracts and the latest browser edition, themes, accessible controls and local storage. Add a small reusable deterministic comparison core; keep domain assumptions in configured scenarios. Source-run Electron remains available. The browser performs the same calculation locally over exported validated data; it has no cloud AI/key entry.

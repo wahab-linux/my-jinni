@@ -1,5 +1,7 @@
 # Backend development and integration prompt
 
+The visible name is now **Jinni**. The user authorized evidence-grounded AI option proposals in additive v0.7; [AI_OPTIONS.md](../AI_OPTIONS.md) defines optional chat intent `options` and structured proposals with checked per-option citations, trade-offs and missing information. Preserve ordinary answers, exact calculated planner/comparison results, provider isolation and Vertex ADC. Proposals never silently rewrite comparison measurements, rankings or form values. This supersedes older display-name and answer-only scope below.
+
 Current visible product name is `jinni`. Preserve the existing repository, storage, IPC and API identity for compatibility; a branding change must not migrate or discard user data. UI language support cannot silently translate source evidence or alter units and ranking.
 
 You are maintaining jinni in `wahab-linux/my-jinni` for the DYHTG 2026 BlackRock challenge. I own the Python backend; Wahab owns the Electron desktop client. The product compares options across configurable domains; students and detailed activity planning are examples. All repository content must be English.

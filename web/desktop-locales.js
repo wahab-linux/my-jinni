@@ -1,6 +1,17 @@
 // Native-only interface messages extend, but never override, the shared catalog.
 (() => {
   const native = {
+  "Comparison sent": { "zh-CN": "将发送的比较条件", "fr": "Comparaison envoyée", "ja": "送信する比較条件", "ru": "Передаваемое сравнение" },
+  "Uses the current comparison and selected sources. Sent to {provider} · {model}.": { "zh-CN": "使用当前比较条件和所选资料。发送至 {provider} · {model}。", "fr": "Utilise la comparaison et les sources sélectionnées. Envoi à {provider} · {model}.", "ja": "現在の比較条件と選択した資料を使用し、{provider} · {model} に送信します。", "ru": "Использует текущее сравнение и выбранные источники. Получатель: {provider} · {model}." },
+  "Context changed. Suggest options again.": { "zh-CN": "上下文已更改，请重新生成选项。", "fr": "Le contexte a changé. Relancez les suggestions.", "ja": "条件が変わりました。選択肢を再提案してください。", "ru": "Контекст изменился. Запросите варианты снова." },
+  "AI settings changed. Ask again.": { "zh-CN": "AI 设置已更改，请重新提问。", "fr": "Les réglages IA ont changé. Posez à nouveau la question.", "ja": "AI 設定が変わりました。もう一度質問してください。", "ru": "Настройки ИИ изменились. Задайте вопрос снова." },
+  "Enter a decision goal of up to 2,000 characters.": { "zh-CN": "请输入不超过 2,000 字符的决策目标。", "fr": "Saisissez un objectif de 2 000 caractères maximum.", "ja": "決定したいことを 2,000 文字以内で入力してください。", "ru": "Введите цель решения длиной до 2 000 символов." },
+  "Suggesting…": { "zh-CN": "正在生成建议…", "fr": "Suggestions en cours…", "ja": "提案中…", "ru": "Подготовка вариантов…" },
+  "Generating suggestions from the current comparison and selected sources…": { "zh-CN": "正在根据当前比较条件和所选资料生成建议…", "fr": "Suggestions à partir de la comparaison et des sources sélectionnées…", "ja": "現在の比較条件と選択した資料から提案を作成中…", "ru": "Создаём варианты по текущему сравнению и выбранным источникам…" },
+  "No supported suggestions were found in the selected evidence.": { "zh-CN": "所选依据不足以支持选项建议。", "fr": "Aucune suggestion étayée par les éléments sélectionnés.", "ja": "選択した根拠から裏付けのある提案は得られませんでした。", "ru": "Выбранных данных недостаточно для обоснованных предложений." },
+  "The local service returned invalid suggestions. Try again.": { "zh-CN": "本地服务返回了无效建议，请重试。", "fr": "Le service local a renvoyé des suggestions invalides. Réessayez.", "ja": "ローカルサービスの提案が無効です。再試行してください。", "ru": "Локальный сервис вернул неверные варианты. Повторите попытку." },
+  "Trade-offs": { "zh-CN": "取舍", "fr": "Compromis", "ja": "トレードオフ", "ru": "Компромиссы" },
+  "Missing information": { "zh-CN": "缺失信息", "fr": "Informations manquantes", "ja": "不足している情報", "ru": "Недостающие сведения" },
   "Loading providers…": { "zh-CN": "正在加载服务商…", "fr": "Chargement des fournisseurs…", "ja": "プロバイダーを読み込み中…", "ru": "Загрузка сервисов…" },
   "Ask": { "zh-CN": "提问", "fr": "Demander", "ja": "質問する", "ru": "Спросить" },
   "Answer": { "zh-CN": "回答", "fr": "Réponse", "ja": "回答", "ru": "Ответ" },

@@ -1,5 +1,7 @@
 # OpenAI analysis in the Jinni desktop app
 
+To ask for choices, enter a **Decision goal** in the left conditions/source panel, select notes/files and set priorities/limits. Choose **Suggest options** after reviewing the named provider notice. The middle panel displays citation-bearing AI suggestions separately from calculated scores; the parallel **Ask AI** panel accepts a further independent question. This explicit action sends the goal, current comparison and selected retrieved snippets. Missing evidence and provider failures do not create fallback choices. See [AI_OPTIONS.md](AI_OPTIONS.md).
+
 Jinni calculates comparisons in Python and can ask OpenAI to explain the calculated data and selected documents. Choose **Desktop app** for this workflow. The GitHub Pages edition has local comparisons and text search; it does not host the Python AI service.
 
 ## Connect your account

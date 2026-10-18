@@ -18,7 +18,7 @@ from app.knowledge.openai_client import (
     _answer_schema,
     validate_draft_answer,
 )
-from app.knowledge.schemas import DraftAnswer, SourceChunk, VertexSettings
+from app.knowledge.schemas import DraftAnswer, DraftOptions, SourceChunk, VertexSettings
 
 SCOPES = ["https://www.googleapis.com/auth/cloud-platform"]
 ADC_HELP = (
@@ -94,7 +94,7 @@ def response_schema(value):
     }
 
 
-async def generate_answer(
+async def _generate(
     client: httpx.AsyncClient,
     *,
     settings: VertexSettings,
@@ -102,13 +102,39 @@ async def generate_answer(
     question: str,
     chunks: list[SourceChunk],
     timeout_seconds: float = 30,
-) -> DraftAnswer:
+    intent: str = "answer",
+) -> DraftAnswer | DraftOptions:
     # Reuse the same evidence limits as the API-key adapters; the marker is not a credential.
     from app.knowledge.providers import _input_json
 
     url = endpoint(settings, model)
-    user_input = _input_json("adc-validation-marker", model, question, chunks, timeout_seconds)
+    user_input = _input_json(
+        "adc-validation-marker",
+        model,
+        question,
+        chunks,
+        timeout_seconds,
+        intent="options" if intent == "options" else None,
+    )
+    instructions, max_tokens = INSTRUCTIONS, MAX_OUTPUT_TOKENS
+    schema = _answer_schema([chunk.chunk_id for chunk in chunks])
+    parse = validate_draft_answer
+    if intent == "options":
+        from app.knowledge.options import (
+            MAX_OPTIONS_OUTPUT_TOKENS,
+            OPTIONS_INSTRUCTIONS,
+            options_schema,
+            validate_options,
+        )
+
+        instructions, max_tokens = OPTIONS_INSTRUCTIONS, MAX_OPTIONS_OUTPUT_TOKENS
+        schema = options_schema([chunk.chunk_id for chunk in chunks])
+        parse = validate_options
     if not chunks:
+        if intent == "options":
+            return DraftOptions(
+                answer="The selected evidence is insufficient.", supported=False, options=[]
+            )
         return DraftAnswer(
             answer="The selected evidence is insufficient.", supported=False, citations=[]
         )
@@ -116,15 +142,13 @@ async def generate_answer(
     async def exchange():
         token = await load_adc_token(settings.project_id)
         body = {
-            "systemInstruction": {"parts": [{"text": INSTRUCTIONS}]},
+            "systemInstruction": {"parts": [{"text": instructions}]},
             "contents": [{"role": "user", "parts": [{"text": user_input}]}],
             "generationConfig": {
-                "maxOutputTokens": MAX_OUTPUT_TOKENS,
+                "maxOutputTokens": max_tokens,
                 "candidateCount": 1,
                 "responseMimeType": "application/json",
-                "responseSchema": response_schema(
-                    _answer_schema([chunk.chunk_id for chunk in chunks])
-                ),
+                "responseSchema": response_schema(schema),
             },
         }
         request = client.build_request("POST", url, json=body, timeout=timeout_seconds)
@@ -206,7 +230,7 @@ async def generate_answer(
                 raise ValueError("Unexpected content")
             if not part.get("thought", False):
                 texts.append(part["text"])
-        return validate_draft_answer("".join(texts), chunks)
+        return parse("".join(texts), chunks)
 
     try:
         return await asyncio.wait_for(exchange(), timeout=timeout_seconds)
@@ -222,3 +246,42 @@ async def generate_answer(
         raise AIServiceError(
             502, "INVALID_AI_RESPONSE", "Google returned an invalid or incomplete answer."
         ) from None
+
+
+async def generate_answer(
+    client: httpx.AsyncClient,
+    *,
+    settings: VertexSettings,
+    model: str,
+    question: str,
+    chunks: list[SourceChunk],
+    timeout_seconds: float = 30,
+) -> DraftAnswer:
+    return await _generate(
+        client,
+        settings=settings,
+        model=model,
+        question=question,
+        chunks=chunks,
+        timeout_seconds=timeout_seconds,
+    )
+
+
+async def generate_options(
+    client: httpx.AsyncClient,
+    *,
+    settings: VertexSettings,
+    model: str,
+    question: str,
+    chunks: list[SourceChunk],
+    timeout_seconds: float = 30,
+) -> DraftOptions:
+    return await _generate(
+        client,
+        settings=settings,
+        model=model,
+        question=question,
+        chunks=chunks,
+        timeout_seconds=timeout_seconds,
+        intent="options",
+    )

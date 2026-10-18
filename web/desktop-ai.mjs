@@ -2,12 +2,12 @@
 import { attribute, bind, option } from './i18n.mjs';
 import { callDesktop, desktopData } from './platform.mjs';
 import { modelChoices } from './provider-models.mjs';
-import { getSourceIds, getPlannerPreferences, getDecisionRequest, openSource, onContextChange } from './ui-context.mjs';
+import { getSourceIds, getPlannerPreferences, getDecisionRequest, getDecisionGoal, openSource, onContextChange } from './ui-context.mjs';
 
 export function mountDesktopTools() {
   if (document.getElementById('desktop-ai-dialog')) return;
   const stylesheet = document.createElement('link'); stylesheet.rel = 'stylesheet'; stylesheet.href = new URL('./desktop-tools.css', import.meta.url).href; document.head.append(stylesheet);
-  const state = { providers: [], provider: 'openai', models: new Map(), customModels: new Set(), token: 0, keyToken: 0, busy: false, data: null };
+  const state = { providers: [], provider: 'openai', models: new Map(), customModels: new Set(), token: 0, optionsToken: 0, keyToken: 0, busy: false, optionsBusy: false, data: null, optionsData: null };
   const nodes = {};
   const make = (tag, id, text, className) => {
     const node = document.createElement(tag);
@@ -22,6 +22,18 @@ export function mountDesktopTools() {
   const label = (id, text, input) => { const node = make('label', null, text); node.htmlFor = id; return [node, input]; };
   const feedback = (message = '', error = false, params = {}) => { bind(nodes['desktop-ai-feedback'], message, params); nodes['desktop-ai-feedback'].classList.toggle('error', error); };
   const providerLabel = () => state.providers.find(({ id }) => id === state.provider)?.label || 'OpenAI';
+  const generate = document.getElementById('ai-options-generate'); generate.hidden = false;
+  const optionsPanel = document.getElementById('ai-options-panel');
+  const optionsStatus = document.getElementById('ai-options-status');
+  const optionsResults = document.getElementById('ai-options-results');
+  const optionsNotice = document.getElementById('ai-options-notice'); optionsNotice.hidden = false;
+  const optionsFeedback = (message = '', error = false, params = {}) => {
+    bind(optionsStatus, message, params); optionsStatus.classList.toggle('error', error);
+    optionsPanel.hidden = !message && !state.optionsData && !state.optionsBusy;
+  };
+  const sentContext = make('details', 'ai-options-context', null, 'ai-options-context');
+  sentContext.append(make('summary', null, 'Comparison sent'));
+  const sentRequest = make('pre', 'ai-options-request'); sentContext.append(sentRequest); optionsNotice.after(sentContext);
   const result = make('section', 'desktop-ai-result', null, 'desktop-ai-result'); result.hidden = true;
   const answer = make('div', 'desktop-ai-answer', null, 'desktop-ai-answer');
   const citations = make('div', 'desktop-ai-citations', null, 'desktop-ai-citations');
@@ -96,7 +108,7 @@ export function mountDesktopTools() {
   const limitations = make('details', null, null, 'desktop-ai-settings');
   limitations.append(make('summary', null, 'AI limitations'), make('p', null, 'Each question starts fresh. Quote checks help you verify evidence; they do not prove every claim is true. Local search may miss paraphrases.', 'muted'));
   dialog.append(limitations);
-  document.querySelector('#decision-workspace').insertAdjacentElement('afterend', dialog);
+  document.querySelector('#decision-ai-slot').append(dialog);
   document.body.append(settings);
   const open = button('desktop-ai-open', 'Ask AI', () => { dialog.scrollIntoView({ behavior: 'instant', block: 'start' }); question.focus({ preventScroll: true }); }, 'nav-link');
   const settingsNav = button('desktop-ai-settings-nav', 'AI settings', openSettings, 'nav-link'); settingsNav.setAttribute('aria-haspopup', 'dialog');
@@ -109,13 +121,25 @@ export function mountDesktopTools() {
 
   function openSettings() { key.value = ''; settings.showModal(); void refreshKey(); }
   function selectionLabel() { bind(selection, '{count} sources selected', { count: getSourceIds().length }); }
-  function invalidate(message = '') {
+  function clearAnswer(message = '') {
     const had = state.busy || state.data;
     state.token++; state.busy = false; state.data = null; result.hidden = true; answer.textContent = ''; citations.replaceChildren(); submit.disabled = false;
     bind(submit, 'Ask'); if (had) feedback(message); selectionLabel();
   }
+  function invalidate(message = '') {
+    clearAnswer(message);
+    const had = state.optionsBusy || state.optionsData;
+    state.optionsToken++; state.optionsBusy = false; state.optionsData = null; optionsResults.replaceChildren(); generate.disabled = false;
+    bind(generate, 'Suggest options'); optionsFeedback(had ? 'Context changed. Suggest options again.' : '');
+    updateSentContext();
+  }
+  function updateSentContext() {
+    try { bind(sentRequest, '{text}', { text: JSON.stringify(getDecisionRequest(), null, 2) }); }
+    catch (error) { bind(sentRequest, error.message, error.params ?? {}); }
+  }
   function renderSummary() {
     bind(summary, '{provider} · {model}', { provider: providerLabel(), model: model.value || window.jinniI18n.t('Model not set') });
+    bind(optionsNotice, 'Uses the current comparison and selected sources. Sent to {provider} · {model}.', { provider: providerLabel(), model: model.value || window.jinniI18n.t('Model not set') });
   }
   window.jinniI18n.onChange(renderSummary);
   function renderProvider() {
@@ -161,6 +185,7 @@ export function mountDesktopTools() {
   async function saveKey(event) {
     event.preventDefault(); const value = key.value.trim(); key.value = '';
     if (!value) { bind(keyStatus, 'Enter an API key, or use Clear session key.'); return; }
+    invalidate('AI settings changed. Ask again.');
     const selected = state.provider; const token = ++state.keyToken; save.disabled = true;
     try {
       const response = sessionValue(await callDesktop('setSessionApiKey', { provider: selected, key: value }));
@@ -171,6 +196,7 @@ export function mountDesktopTools() {
     finally { if (token === state.keyToken) save.disabled = false; }
   }
   async function clearKey() {
+    invalidate('AI settings changed. Ask again.');
     key.value = ''; const selected = state.provider; const token = ++state.keyToken; clear.disabled = true;
     try {
       sessionValue(await callDesktop('clearSessionApiKey', selected));
@@ -185,38 +211,85 @@ export function mountDesktopTools() {
     try {
       const text = question.value.trim();
       if (!text || text.length > 2000) throw new Error('Enter a question of up to 2,000 characters.');
-      if (state.provider === 'vertex' && !/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,99}$/.test(model.value.trim())) throw new Error('Enter a model ID available in Vertex AI Studio.');
-      if (!state.providers.some(({ id }) => id === state.provider) || !/^[a-zA-Z0-9._:-]{1,100}$/.test(model.value.trim())) throw new Error('Choose a model in AI settings.');
-      request = { question: text, source_ids: getSourceIds(), provider: state.provider, model: model.value.trim() };
-      if (state.provider === 'vertex') request.vertex = vertexSettings();
+      request = recipientRequest(text);
       if (nodes['desktop-ai-include-plan'].checked) { request.preferences = getPlannerPreferences(); if (!request.preferences) throw new Error('Load the activity options before including a plan.'); }
       if (nodes['desktop-ai-include-decision'].checked) { request.decision_request = getDecisionRequest(); if (!request.decision_request) throw new Error('Choose a scenario and wait for its sources to load.'); }
       if (!request.source_ids.length && !request.preferences && !request.decision_request) throw new Error('Select a source or include comparison/activity preferences first.');
-    } catch (error) { feedback(error.message, true); return; }
-    invalidate(); const token = ++state.token; state.busy = true; submit.disabled = true; bind(submit, 'Reading selected evidence…'); feedback('Retrieving selected evidence and preparing an answer…');
+    } catch (error) { feedback(error.message, true, error.params ?? {}); return; }
+    clearAnswer(); const token = ++state.token; state.busy = true; submit.disabled = true; bind(submit, 'Reading selected evidence…'); feedback('Retrieving selected evidence and preparing an answer…');
     try {
       const envelope = await callDesktop('askQuestion', request); const data = desktopData(envelope);
       if (token !== state.token) return;
       if (data.provider !== request.provider) throw new Error('The answer did not match the selected provider. Please try again.');
       state.data = data; answer.textContent = data.answer; result.hidden = false;
       bind(nodes['desktop-ai-answer-label'], data.status === 'answered' ? 'Answer' : 'INSUFFICIENT EVIDENCE');
-      for (const citation of data.citations || []) {
-        const link = button(null, null, () => {
-          if (['planner-context', 'decision-context'].includes(citation.source_id)) {
-            quote.textContent = citation.quote; contextJson.textContent = JSON.stringify(citation.source_id === 'planner-context' ? data.planner : data.decision, null, 2); context.showModal();
-          } else void openSource(citation.source_id, { quote: citation.quote, page: citation.page }).catch((error) => feedback(error.message, true));
-        }, 'desktop-ai-citation');
-        link.dataset.testid = 'desktop-ai-citation'; link.dataset.sourceId = citation.source_id;
-        const title = make('strong'); title.textContent = citation.source_title;
-        link.append(title, make('span', null, 'Open exact quote ↗'));
-        if (citation.is_simulated) link.append(make('span', null, 'Simulated source'));
-        citations.append(link);
-      }
+      for (const citation of data.citations || []) citations.append(citationButton(citation, data));
       calculated.hidden = !data.planner && !data.decision; calculatedJson.textContent = JSON.stringify({ planner: data.planner, decision: data.decision }, null, 2);
       feedback(data.status === 'answered' ? 'Answer ready. Open a citation to check its context.' : 'No supported answer was found in the selected evidence.');
     } catch (error) { if (token === state.token) { feedback(error.message, true); status.append(button('desktop-ai-retry', 'Try again', ask, 'text-button')); } }
     finally { if (token === state.token) { state.busy = false; submit.disabled = false; bind(submit, 'Ask'); } }
   }
+  function recipientRequest(text) {
+    if (state.provider === 'vertex' && !/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,99}$/.test(model.value.trim())) throw new Error('Enter a model ID available in Vertex AI Studio.');
+    if (!state.providers.some(({ id }) => id === state.provider) || !/^[a-zA-Z0-9._:-]{1,100}$/.test(model.value.trim())) throw new Error('Choose a model in AI settings.');
+    return { question: text, source_ids: getSourceIds(), provider: state.provider, model: model.value.trim(), ...(state.provider === 'vertex' ? { vertex: vertexSettings() } : {}) };
+  }
+  function citationButton(citation, data, isOption = false) {
+    const link = button(null, null, () => {
+      if (['planner-context', 'decision-context'].includes(citation.source_id)) {
+        quote.textContent = citation.quote; contextJson.textContent = JSON.stringify(citation.source_id === 'planner-context' ? data.planner : data.decision, null, 2); context.showModal();
+      } else void openSource(citation.source_id, { quote: citation.quote, page: citation.page }).catch((error) => isOption ? optionsFeedback(error.message, true) : feedback(error.message, true));
+    }, `desktop-ai-citation${isOption ? ' ai-option-citation' : ''}`);
+    link.dataset.testid = isOption ? 'ai-option-citation' : 'desktop-ai-citation'; link.dataset.sourceId = citation.source_id;
+    const title = make('strong'); title.textContent = citation.source_title;
+    link.append(title, make('span', null, 'Open exact quote ↗'));
+    if (citation.is_simulated) link.append(make('span', null, 'Simulated source'));
+    return link;
+  }
+  async function suggestOptions() {
+    if (state.optionsBusy) return;
+    let request;
+    try {
+      const goal = getDecisionGoal();
+      if (!goal || goal.length > 2000) throw new Error('Enter a decision goal of up to 2,000 characters.');
+      const decision = getDecisionRequest();
+      if (!decision) throw new Error('Choose a scenario and wait for its sources to load.');
+      request = { ...recipientRequest(goal), intent: 'options', decision_request: decision };
+    } catch (error) { optionsFeedback(error.message, true, error.params ?? {}); return; }
+    const focusedGenerate = document.activeElement === generate;
+    const token = ++state.optionsToken; state.optionsBusy = true; state.optionsData = null; optionsResults.replaceChildren(); generate.disabled = true;
+    bind(generate, 'Suggesting…'); optionsFeedback('Generating suggestions from the current comparison and selected sources…');
+    try {
+      const data = desktopData(await callDesktop('askQuestion', request));
+      if (token !== state.optionsToken) return;
+      if (data.provider !== request.provider) throw new Error('The answer did not match the selected provider. Please try again.');
+      if (data.status !== 'answered') { optionsFeedback('No supported suggestions were found in the selected evidence.'); return; }
+      if (!Array.isArray(data.options) || data.options.length < 2 || data.options.length > 3) throw new Error('The local service returned invalid suggestions. Try again.');
+      state.optionsData = data;
+      if (data.answer) { const overview = make('p', null, null, 'ai-options-overview'); overview.textContent = data.answer; optionsResults.append(overview); }
+      for (const item of data.options) {
+        const card = make('article', null, null, 'ai-option-card'); card.dataset.optionId = item.id;
+        const title = make('h4'); title.textContent = item.title;
+        const description = make('p'); description.textContent = item.summary; card.append(title, description);
+        for (const [field, heading] of [['trade_offs', 'Trade-offs'], ['missing_information', 'Missing information']]) {
+          if (!item[field]?.length) continue;
+          const list = make('ul');
+          for (const text of item[field]) { const row = make('li'); row.textContent = text; list.append(row); }
+          card.append(make('h5', null, heading), list);
+        }
+        const references = make('div', null, null, 'desktop-ai-citations');
+        for (const citation of item.citations || []) references.append(citationButton(citation, data, true));
+        card.append(references); optionsResults.append(card);
+      }
+      optionsFeedback();
+      if (focusedGenerate && [generate, document.body].includes(document.activeElement)) {
+        document.getElementById('ai-options-title').focus({ preventScroll: true });
+        optionsPanel.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' });
+      }
+    } catch (error) { if (token === state.optionsToken) optionsFeedback(error.message, true); }
+    finally { if (token === state.optionsToken) { state.optionsBusy = false; generate.disabled = false; bind(generate, 'Suggest options'); } }
+  }
+  generate.addEventListener('click', suggestOptions);
   provider.addEventListener('change', () => {
     state.models.set(state.provider, model.value); state.provider = provider.value; key.value = ''; save.disabled = false; clear.disabled = false;
     renderProvider(); invalidate('AI provider changed. Ask again to use the selected provider.'); void refreshKey();
@@ -236,10 +309,10 @@ export function mountDesktopTools() {
     renderSummary(); invalidate('Model changed. Ask again for an updated answer.');
   });
   model.addEventListener('input', () => { state.models.set(state.provider, model.value); renderSummary(); invalidate('Model changed. Ask again for an updated answer.'); });
-  for (const input of [question, nodes['desktop-ai-include-plan'], nodes['desktop-ai-include-decision']]) input.addEventListener('input', () => invalidate('Question context changed. Ask again for an updated answer.'));
+  for (const input of [question, nodes['desktop-ai-include-plan'], nodes['desktop-ai-include-decision']]) input.addEventListener('input', () => clearAnswer('Question context changed. Ask again for an updated answer.'));
   form.addEventListener('submit', ask); keyForm.addEventListener('submit', saveKey); settings.addEventListener('close', () => { key.value = ''; });
   onContextChange(() => invalidate('Question context changed. Ask again for an updated answer.'));
-  selectionLabel(); void loadProviders();
+  selectionLabel(); updateSentContext(); void loadProviders();
 
   const native = make('aside', 'desktop-backend-panel', null, 'desktop-backend-panel');
   const backendLabel = make('span', 'desktop-backend-status', 'Starting local service…'); backendLabel.setAttribute('role', 'status');
